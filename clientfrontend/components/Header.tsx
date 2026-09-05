@@ -26,9 +26,15 @@ export function Header() {
           <Link href="/" className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
             Venop<span className="text-emerald-600 dark:text-emerald-400">AI</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-zinc-600 dark:text-zinc-400">
             <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
               Products
+            </Link>
+            <Link href="/manufacturing" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Manufacturing
+            </Link>
+            <Link href="/projects" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Projects
             </Link>
           </nav>
         </div>

@@ -498,11 +498,21 @@ class PaymentService:
             if quote:
                 quote.status = "PAID"
 
-                # Unlock linked requests
-                db.query(ManufacturingRequest).filter(ManufacturingRequest.project_id == quote.project_id).update({"status": "IN_PROGRESS"})
-                db.query(DesignRequest).filter(DesignRequest.project_id == quote.project_id).update({"status": "IN_PROGRESS"})
-                db.query(SoftwareRequest).filter(SoftwareRequest.project_id == quote.project_id).update({"status": "IN_PROGRESS"})
-                db.query(ConsultationRequest).filter(ConsultationRequest.project_id == quote.project_id).update({"status": "SCHEDULED"})
+                # Unlock linked requests (by direct request_id or project_id)
+                if getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "manufacturing":
+                    db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).update({"status": "in_progress"})
+                elif getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "design":
+                    db.query(DesignRequest).filter(DesignRequest.id == quote.request_id).update({"status": "in_progress"})
+                elif getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "software":
+                    db.query(SoftwareRequest).filter(SoftwareRequest.id == quote.request_id).update({"status": "in_progress"})
+                elif getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "consultation":
+                    db.query(ConsultationRequest).filter(ConsultationRequest.id == quote.request_id).update({"status": "scheduled"})
+
+                if quote.project_id:
+                    db.query(ManufacturingRequest).filter(ManufacturingRequest.project_id == quote.project_id).update({"status": "in_progress"})
+                    db.query(DesignRequest).filter(DesignRequest.project_id == quote.project_id).update({"status": "in_progress"})
+                    db.query(SoftwareRequest).filter(SoftwareRequest.project_id == quote.project_id).update({"status": "in_progress"})
+                    db.query(ConsultationRequest).filter(ConsultationRequest.project_id == quote.project_id).update({"status": "scheduled"})
 
                 audit = AuditEvent(
                     id=uuid.uuid4(),
