@@ -67,3 +67,22 @@ class OrderListResponse(BaseModel):
 
 class OrderCancelRequest(BaseModel):
     reason: Optional[str] = None
+
+class OrderInvoiceData(BaseModel):
+    invoice_number: str
+    order_id: str
+    order_number: str
+    invoice_url: str
+    subtotal: str
+    tax_total: str
+    shipping_total: str
+    total: str
+    currency: str
+    tax_breakdown: dict
+    items: List[Dict[str, Any]]
+    issued_at: str
+    expires_at: str
+
+class OrderInvoiceResponse(BaseModel):
+    data: OrderInvoiceData
+    request_id: str

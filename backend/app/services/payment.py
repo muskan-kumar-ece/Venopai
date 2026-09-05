@@ -35,6 +35,9 @@ def generate_order_number(db: Session) -> str:
         candidate = f"VENOPAI-{today_str}-{uuid.uuid4().hex[:4].upper()}"
     return candidate
 
+import threading
+_payment_initiation_lock = threading.Lock()
+
 
 class PaymentService:
     """Centralized payment lifecycle & financial transition service (PAY-001 - PAY-005)."""
@@ -58,186 +61,195 @@ class PaymentService:
                 message="Verified customer account required to initiate payment",
             )
 
-        source_type_normalized = source_type.strip().lower()
-        now = utcnow()
+        with _payment_initiation_lock:
+            source_type_normalized = source_type.strip().lower()
+            now = utcnow()
 
-        # 2. Source-specific validation
-        if source_type_normalized == "checkout_session":
-            try:
-                s_uuid = uuid.UUID(source_id)
-            except ValueError:
-                raise APIException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    code="SESSION_NOT_FOUND",
-                    message="Checkout session not found",
+            # 2. Source-specific validation
+            if source_type_normalized == "checkout_session":
+                try:
+                    s_uuid = uuid.UUID(source_id)
+                except ValueError:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="SESSION_NOT_FOUND",
+                        message="Checkout session not found",
+                    )
+
+                session = db.query(CheckoutSession).filter(
+                    CheckoutSession.id == s_uuid,
+                    CheckoutSession.user_id == user.id,
+                ).with_for_update().first()
+
+                if not session:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="SESSION_NOT_FOUND",
+                        message="Checkout session not found or not owned by user",
+                    )
+
+                if session.status == "completed":
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="SESSION_ALREADY_COMPLETED",
+                        message="This checkout session has already been completed",
+                    )
+
+                if session.status == "expired":
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="SESSION_EXPIRED",
+                        message="Checkout session has expired",
+                    )
+
+                exp = _as_utc(session.reservation_expires_at)
+                if exp and exp <= now:
+                    session.status = "expired"
+                    db.commit()
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="RESERVATION_EXPIRED",
+                        message="Inventory reservation for this checkout session has expired",
+                    )
+
+                amount_paise = session.total_paise
+                checkout_session_id = session.id
+                quote_id = None
+
+                # 3. Idempotency check: Look for existing pending payment for this checkout session
+                existing_payment = db.query(Payment).filter(
+                    Payment.checkout_session_id == session.id,
+                    Payment.status == "pending",
+                ).first()
+
+            elif source_type_normalized == "quote":
+                try:
+                    q_uuid = uuid.UUID(source_id)
+                except ValueError:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="QUOTE_NOT_FOUND",
+                        message="Quote not found",
+                    )
+
+                quote = db.query(Quote).join(Project).filter(
+                    Quote.id == q_uuid,
+                    Project.user_id == user.id,
+                ).with_for_update().first()
+
+                if not quote:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="QUOTE_NOT_FOUND",
+                        message="Quote not found or not owned by user",
+                    )
+
+                # Check latest quote version (QUOTE-001, PAY-005)
+                latest_version = (
+                    db.query(QuoteVersion)
+                    .filter(QuoteVersion.quote_id == quote.id)
+                    .order_by(QuoteVersion.version.desc())
+                    .first()
                 )
 
-            session = db.query(CheckoutSession).filter(
-                CheckoutSession.id == s_uuid,
-                CheckoutSession.user_id == user.id,
-            ).first()
+                if not latest_version:
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_NOT_APPROVED",
+                        message="No valid quote version exists",
+                    )
 
-            if not session:
+                # Check approval status
+                approval = latest_version.approval
+                is_approved = (approval and approval.status == "APPROVED") or (quote.status == "APPROVED")
+                if not is_approved:
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_NOT_APPROVED",
+                        message="Payment cannot be initiated until the quote is Approved by customer",
+                    )
+
+                if quote.status in ("SUPERSEDED", "EXPIRED", "REJECTED"):
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_SUPERSEDED",
+                        message=f"Quote is in {quote.status} state and cannot accept payment",
+                    )
+
+                amount_paise = latest_version.total_amount
+                checkout_session_id = None
+                quote_id = quote.id
+
+                # Idempotency check for quote
+                existing_payment = db.query(Payment).filter(
+                    Payment.quote_id == quote.id,
+                    Payment.status == "pending",
+                ).first()
+
+            else:
                 raise APIException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    code="SESSION_NOT_FOUND",
-                    message="Checkout session not found or not owned by user",
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    code="INVALID_SOURCE_TYPE",
+                    message="source_type must be 'checkout_session' or 'quote'",
                 )
 
-            if session.status == "completed":
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="SESSION_ALREADY_COMPLETED",
-                    message="This checkout session has already been completed",
-                )
+            # 4. If existing pending payment exists, return it (Idempotent reuse)
+            if existing_payment:
+                if not existing_payment.razorpay_order_id:
+                    intent = razorpay_provider.create_payment_intent(
+                        amount=amount_paise,
+                        currency="INR",
+                        reference=str(existing_payment.id),
+                    )
+                    existing_payment.razorpay_order_id = intent.id
+                    db.commit()
+                    db.refresh(existing_payment)
 
-            if session.status == "expired":
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="SESSION_EXPIRED",
-                    message="Checkout session has expired",
-                )
+                return {
+                    "payment_id": str(existing_payment.id),
+                    "provider": "razorpay",
+                    "razorpay_order_id": existing_payment.razorpay_order_id,
+                    "gateway_order_id": existing_payment.razorpay_order_id,
+                    "amount": _rupees(existing_payment.amount),
+                    "amount_paise": existing_payment.amount,
+                    "currency": existing_payment.currency,
+                    "key_id": settings.RAZORPAY_KEY_ID or "rzp_test_mock_key",
+                }
 
-            exp = _as_utc(session.reservation_expires_at)
-            if exp and exp <= now:
-                session.status = "expired"
-                db.commit()
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="RESERVATION_EXPIRED",
-                    message="Inventory reservation for this checkout session has expired",
-                )
-
-            amount_paise = session.total_paise
-            checkout_session_id = session.id
-            quote_id = None
-
-            # 3. Idempotency check: Look for existing pending payment for this checkout session
-            existing_payment = db.query(Payment).filter(
-                Payment.checkout_session_id == session.id,
-                Payment.status == "pending",
-            ).first()
-
-        elif source_type_normalized == "quote":
-            try:
-                q_uuid = uuid.UUID(source_id)
-            except ValueError:
-                raise APIException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    code="QUOTE_NOT_FOUND",
-                    message="Quote not found",
-                )
-
-            quote = db.query(Quote).join(Project).filter(
-                Quote.id == q_uuid,
-                Project.user_id == user.id,
-            ).first()
-
-            if not quote:
-                raise APIException(
-                    status_code=http_status.HTTP_404_NOT_FOUND,
-                    code="QUOTE_NOT_FOUND",
-                    message="Quote not found or not owned by user",
-                )
-
-            # Check latest quote version (QUOTE-001, PAY-005)
-            latest_version = (
-                db.query(QuoteVersion)
-                .filter(QuoteVersion.quote_id == quote.id)
-                .order_by(QuoteVersion.version.desc())
-                .first()
+            # 5. Call RazorpayProvider to create gateway intent first
+            payment_id = uuid.uuid4()
+            intent = razorpay_provider.create_payment_intent(
+                amount=amount_paise,
+                currency="INR",
+                reference=str(payment_id),
             )
 
-            if not latest_version:
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="QUOTE_NOT_APPROVED",
-                    message="No valid quote version exists",
-                )
-
-            # Check approval status
-            approval = latest_version.approval
-            is_approved = (approval and approval.status == "APPROVED") or (quote.status == "APPROVED")
-            if not is_approved:
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="QUOTE_NOT_APPROVED",
-                    message="Payment cannot be initiated until the quote is Approved by customer",
-                )
-
-            if quote.status in ("SUPERSEDED", "EXPIRED", "REJECTED"):
-                raise APIException(
-                    status_code=http_status.HTTP_409_CONFLICT,
-                    code="QUOTE_SUPERSEDED",
-                    message=f"Quote is in {quote.status} state and cannot accept payment",
-                )
-
-            amount_paise = latest_version.total_amount
-            checkout_session_id = None
-            quote_id = quote.id
-
-            # Idempotency check for quote
-            existing_payment = db.query(Payment).filter(
-                Payment.quote_id == quote.id,
-                Payment.status == "pending",
-            ).first()
-
-        else:
-            raise APIException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                code="INVALID_SOURCE_TYPE",
-                message="source_type must be 'checkout_session' or 'quote'",
+            # 6. Create local Payment record with non-null razorpay_order_id in single atomic commit
+            payment = Payment(
+                id=payment_id,
+                user_id=user.id,
+                checkout_session_id=checkout_session_id,
+                quote_id=quote_id,
+                status="pending",
+                amount=amount_paise,
+                currency="INR",
+                razorpay_order_id=intent.id,
+                created_at=now,
             )
+            db.add(payment)
+            db.commit()
+            db.refresh(payment)
 
-        # 4. If existing pending payment exists, return it (Idempotent reuse)
-        if existing_payment and existing_payment.razorpay_order_id:
             return {
-                "payment_id": str(existing_payment.id),
+                "payment_id": str(payment.id),
                 "provider": "razorpay",
-                "razorpay_order_id": existing_payment.razorpay_order_id,
-                "gateway_order_id": existing_payment.razorpay_order_id,
-                "amount": _rupees(existing_payment.amount),
-                "amount_paise": existing_payment.amount,
-                "currency": existing_payment.currency,
-                "key_id": settings.RAZORPAY_KEY_ID or "rzp_test_mock_key",
+                "razorpay_order_id": payment.razorpay_order_id,
+                "gateway_order_id": payment.razorpay_order_id,
+                "amount": _rupees(payment.amount),
+                "amount_paise": payment.amount,
+                "currency": payment.currency,
+                "key_id": intent.key_id or settings.RAZORPAY_KEY_ID or "rzp_test_mock_key",
             }
-
-        # 5. Create new local Payment record
-        payment_id = uuid.uuid4()
-        payment = Payment(
-            id=payment_id,
-            user_id=user.id,
-            checkout_session_id=checkout_session_id,
-            quote_id=quote_id,
-            status="pending",
-            amount=amount_paise,
-            currency="INR",
-            created_at=now,
-        )
-        db.add(payment)
-        db.flush()
-
-        # 6. Call RazorpayProvider to create gateway intent
-        intent = razorpay_provider.create_payment_intent(
-            amount=amount_paise,
-            currency="INR",
-            reference=str(payment_id),
-        )
-
-        payment.razorpay_order_id = intent.id
-        db.commit()
-        db.refresh(payment)
-
-        return {
-            "payment_id": str(payment.id),
-            "provider": "razorpay",
-            "razorpay_order_id": payment.razorpay_order_id,
-            "gateway_order_id": payment.razorpay_order_id,
-            "amount": _rupees(payment.amount),
-            "amount_paise": payment.amount,
-            "currency": payment.currency,
-            "key_id": intent.key_id or settings.RAZORPAY_KEY_ID or "rzp_test_mock_key",
-        }
 
     @classmethod
     def confirm_payment(
@@ -286,6 +298,9 @@ class PaymentService:
             signature=razorpay_signature,
         )
         if not valid:
+            # Security Rule (SEC-PAY-001): Do NOT mutate payment.status to 'failed' on client signature mismatch.
+            # Mutating to 'failed' would allow malicious/forged client confirmation requests to sabotage legitimate
+            # pending payments. The payment remains 'pending' allowing legitimate retries or webhook confirmation.
             raise APIException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 code="INVALID_SIGNATURE",

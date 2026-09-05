@@ -263,9 +263,10 @@ def test_customer_cancel_order_pre_fulfillment_order_api_003():
     cancelled_order = db.query(Order).filter(Order.id == uuid.UUID(order_id)).first()
     assert cancelled_order.status == "cancelled"
 
-    # Verify inventory was restored back to 10
+    # Verify inventory is NOT automatically restocked (Doc 01 §21, Doc 02 §12, ORD-003)
+    # Stock remains decremented at 8; cancellation triggers the refund workflow for Finance.
     inv_after = db.query(Inventory).filter(Inventory.product_id == prod.id).first()
-    assert inv_after.stock_quantity == 10
+    assert inv_after.stock_quantity == 8
 
     # Attempting to cancel an already cancelled order should return 409 Conflict
     cancel_again = client.post(
@@ -277,7 +278,38 @@ def test_customer_cancel_order_pre_fulfillment_order_api_003():
     db.close()
 
 
+def test_customer_get_order_invoice_order_api_004():
+    """ORDER-API-004: Customer can download/view order invoice with TAX-004 breakdown, IDOR protected."""
+    db = TestingSessionLocal()
+    user1, prod, inv, order_data = setup_and_pay_order(db)
+    user2 = create_customer(db, email="intruder_invoice@example.com")
+    headers1 = get_auth_headers(user1)
+    headers2 = get_auth_headers(user2)
+    db.close()
+
+    order_id = order_data["order_id"]
+
+    # 1. Owner gets invoice
+    res_inv = client.get(f"/api/v1/orders/{order_id}/invoice", headers=headers1)
+    assert res_inv.status_code == 200
+    inv_data = res_inv.json()["data"]
+    assert inv_data["order_id"] == order_id
+    assert inv_data["invoice_number"].startswith("INV-")
+    assert "/invoice/download?token=" in inv_data["invoice_url"]
+    assert "tax_breakdown" in inv_data
+    assert len(inv_data["items"]) >= 1
+    assert "expires_at" in inv_data
+
+    # 2. Non-owner receives 404 (IDOR protection per SEC-009)
+    res_other = client.get(f"/api/v1/orders/{order_id}/invoice", headers=headers2)
+    assert res_other.status_code == 404
+
+    # 3. Unauthenticated receives 401
+    assert client.get(f"/api/v1/orders/{order_id}/invoice").status_code == 401
+
+
 def test_order_endpoints_unauthenticated_blocked():
     assert client.get("/api/v1/orders").status_code == 401
     assert client.get(f"/api/v1/orders/{uuid.uuid4()}").status_code == 401
     assert client.post(f"/api/v1/orders/{uuid.uuid4()}/cancel", json={"reason": "test"}).status_code == 401
+    assert client.get(f"/api/v1/orders/{uuid.uuid4()}/invoice").status_code == 401

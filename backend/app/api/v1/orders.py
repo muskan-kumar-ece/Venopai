@@ -9,6 +9,7 @@ from app.schemas.order import (
     OrderDetailResponse,
     OrderListResponse,
     OrderCancelRequest,
+    OrderInvoiceResponse,
 )
 
 router = APIRouter()
@@ -75,6 +76,25 @@ def cancel_order(
     """Customer pre-fulfillment cancellation (ORD-003)."""
     reason = body.reason if body else None
     data = OrderService.cancel_order(db=db, user=current_user, order_id=order_id, reason=reason)
+    return {
+        "data": data,
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@router.get(
+    "/{order_id}/invoice",
+    response_model=OrderInvoiceResponse,
+    status_code=http_status.HTTP_200_OK,
+    summary="ORDER-API-004: Download order invoice",
+)
+def get_order_invoice(
+    order_id: str,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+):
+    """Customer invoice download metadata and short-lived signed file URL (TAX-004, SEC-009)."""
+    data = OrderService.get_order_invoice(db=db, user=current_user, order_id=order_id)
     return {
         "data": data,
         "request_id": str(uuid.uuid4()),

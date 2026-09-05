@@ -19,15 +19,7 @@ def process_razorpay_webhook_event(self, payload: dict):
 
         logger.info(f"Processing Razorpay webhook event: {event} (ID: {event_id})")
 
-        # 1. Deduplication check (PAY-004)
-        existing_event = db.query(ProcessedWebhookEvent).filter(
-            ProcessedWebhookEvent.event_id == event_id
-        ).first()
-        if existing_event:
-            logger.info(f"Webhook event {event_id} already processed. Skipping.")
-            return {"status": "duplicate_ignored"}
-
-        # 2. Extract entities
+        # 1. Extract entities
         payload_data = payload.get("payload", {})
         payment_entity = payload_data.get("payment", {}).get("entity", {})
         refund_entity = payload_data.get("refund", {}).get("entity", {})
@@ -91,17 +83,27 @@ def process_razorpay_webhook_event(self, payload: dict):
                     source="webhook",
                 )
 
-        # 6. Record processed event for durable deduplication
-        processed = ProcessedWebhookEvent(
-            id=uuid.uuid4(),
-            event_id=event_id,
-            event_type=event or "unknown",
-            provider="razorpay",
-            payload=json.dumps(payload),
-            processed_at=datetime.now(timezone.utc),
-        )
-        db.add(processed)
-        db.commit()
+        # 6. Update or record processed event for durable deduplication
+        event_record = db.query(ProcessedWebhookEvent).filter(
+            ProcessedWebhookEvent.event_id == event_id
+        ).first()
+        if event_record:
+            event_record.processed_at = datetime.now(timezone.utc)
+            db.commit()
+        else:
+            try:
+                processed = ProcessedWebhookEvent(
+                    id=uuid.uuid4(),
+                    event_id=event_id,
+                    event_type=event or "unknown",
+                    provider="razorpay",
+                    payload=json.dumps(payload),
+                    processed_at=datetime.now(timezone.utc),
+                )
+                db.add(processed)
+                db.commit()
+            except Exception:
+                db.rollback()
 
         return {"status": "processed", "event_id": event_id}
 

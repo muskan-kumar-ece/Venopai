@@ -1,7 +1,11 @@
+import uuid
 import json
 import logging
+import threading
+from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Header, Depends, status as http_status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, DatabaseError, OperationalError
 
 from app.api.deps import get_db
 from app.core.exceptions import APIException
@@ -11,6 +15,7 @@ from app.workers.tasks.payment import process_razorpay_webhook_event
 
 logger = logging.getLogger("venopai.api.webhooks")
 router = APIRouter()
+_webhook_lock = threading.Lock()
 
 @router.post(
     "/razorpay",
@@ -45,18 +50,39 @@ async def razorpay_webhook(
             message="Malformed webhook JSON payload",
         )
 
-    # 3. Deduplicate by event ID (PAY-004)
+    # 3. Atomic event deduplication by event ID (PAY-004)
+    # Combines fast-path check with atomic DB unique constraint for race-free deduplication
     event_id = payload.get("event_id") or payload.get("id") or request.headers.get("x-razorpay-event-id")
-    if event_id:
+    if not event_id:
+        event_id = f"evt_{uuid.uuid4().hex}"
+    payload["event_id"] = event_id
+    # Fast-path check & atomic reservation
+    with _webhook_lock:
         existing = db.query(ProcessedWebhookEvent).filter(
             ProcessedWebhookEvent.event_id == event_id
         ).first()
         if existing:
-            logger.info(f"Duplicate Razorpay webhook event received: {event_id}. Returning 200.")
+            logger.info(f"Duplicate Razorpay webhook event received (fast-path): {event_id}. Returning 200.")
             return {"status": "duplicate_ignored"}
-        payload["event_id"] = event_id
 
-    # 4. Asynchronous Celery dispatch (lightweight HTTP cycle)
+        # Atomic reservation in DB (handles concurrent race condition where both pass fast-path)
+        processed_entry = ProcessedWebhookEvent(
+            id=uuid.uuid4(),
+            event_id=event_id,
+            event_type=payload.get("event") or "unknown",
+            provider="razorpay",
+            payload=body_bytes.decode("utf-8"),
+            processed_at=datetime.now(timezone.utc),
+        )
+        try:
+            db.add(processed_entry)
+            db.commit()
+        except (IntegrityError, DatabaseError, OperationalError):
+            db.rollback()
+            logger.info(f"Duplicate Razorpay webhook event received (atomic unique constraint / concurrency collision): {event_id}. Returning 200.")
+            return {"status": "duplicate_ignored"}
+
+    # 4. Asynchronous Celery dispatch (dispatched ONLY if atomic INSERT succeeded)
     process_razorpay_webhook_event.delay(payload)
 
     return {"status": "accepted"}

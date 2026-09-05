@@ -1,5 +1,6 @@
 import uuid
 import json
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from fastapi import status as http_status
@@ -189,23 +190,104 @@ class OrderService:
 
         order.status = "cancelled"
 
-        # Restore inventory on cancellation
-        for item in order.items:
-            inv = db.query(Inventory).filter(Inventory.product_id == item.product_id).first()
-            if inv:
-                inv.stock_quantity += item.quantity
+        # Contract compliance (ORD-003, Doc 01 §21, Doc 02 §12):
+        # Post-payment customer cancellation does NOT automatically restock inventory.
+        # Stock remains as sold; cancellation triggers the refund workflow (Finance notification).
+        # Any physical inventory return/adjustment requires explicit admin inventory adjustment.
 
-        # Log audit event
+        # Log audit event triggering refund workflow
         audit = AuditEvent(
             id=uuid.uuid4(),
             user_id=user.id,
             action="ORDER_CANCELLED_BY_CUSTOMER",
             entity_type="Order",
             entity_id=order.id,
-            details=json.dumps({"reason": reason}),
+            details=json.dumps({
+                "reason": reason,
+                "refund_workflow_triggered": True,
+                "order_number": order.order_number,
+                "amount_paise": order.total_paise,
+                "inventory_restocked": False,
+            }),
             created_at=utcnow(),
         )
         db.add(audit)
         db.commit()
 
         return cls.get_order(db, user, str(order.id))
+
+    @classmethod
+    def get_order_invoice(cls, db: Session, user: User, order_id: str) -> Dict[str, Any]:
+        """ORDER-API-004: Download invoice / invoice details with TAX-004 tax breakdown."""
+        try:
+            o_uuid = uuid.UUID(order_id)
+        except ValueError:
+            raise APIException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                code="ORDER_NOT_FOUND",
+                message="Order not found",
+            )
+
+        order = db.query(Order).filter(
+            Order.id == o_uuid,
+            Order.user_id == user.id,
+        ).first()
+
+        if not order:
+            raise APIException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                code="ORDER_NOT_FOUND",
+                message="Order not found or not owned by user",
+            )
+
+        # Tax breakdown per TAX-004
+        tax_breakdown = {
+            "type": order.tax_type or "GST",
+            "amount": _rupees(order.tax_amount_paise or 0),
+            "cgst_amount": _rupees(order.cgst_amount_paise or 0) if order.cgst_amount_paise is not None else None,
+            "sgst_amount": _rupees(order.sgst_amount_paise or 0) if order.sgst_amount_paise is not None else None,
+            "igst_amount": _rupees(order.igst_amount_paise or 0) if order.igst_amount_paise is not None else None,
+        }
+
+        # Item lines
+        items_data = []
+        for it in order.items:
+            unit_p = it.unit_price_paise or it.price_at_time_of_order or 0
+            tot_p = it.total_paise or (unit_p * it.quantity)
+            items_data.append({
+                "product_id": str(it.product_id),
+                "name": it.product_name or (it.product.name if it.product else "Product"),
+                "unit_price": _rupees(unit_p),
+                "quantity": it.quantity,
+                "line_total": _rupees(tot_p),
+            })
+
+        # Generate signed short-lived download URL (Document 04 §14 ORDER-API-004)
+        from app.core.security import create_access_token
+        download_token = create_access_token(
+            subject=str(user.id),
+            role="customer",
+            is_admin=False,
+            audience="customer",
+            expires_delta=timedelta(minutes=15),
+        )
+        invoice_url = f"/api/v1/orders/{order.id}/invoice/download?token={download_token}"
+
+        now_utc = datetime.now(timezone.utc)
+        expires_at = now_utc + timedelta(minutes=15)
+
+        return {
+            "invoice_number": f"INV-{order.order_number}",
+            "order_id": str(order.id),
+            "order_number": order.order_number,
+            "invoice_url": invoice_url,
+            "subtotal": _rupees(order.subtotal_paise or 0),
+            "tax_total": _rupees(order.tax_amount_paise or 0),
+            "shipping_total": _rupees(order.shipping_rate_paise or 0),
+            "total": _rupees(order.total_paise or 0),
+            "currency": "INR",
+            "tax_breakdown": tax_breakdown,
+            "items": items_data,
+            "issued_at": order.paid_at.isoformat() if order.paid_at else order.created_at.isoformat(),
+            "expires_at": expires_at.isoformat(),
+        }

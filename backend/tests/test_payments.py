@@ -308,6 +308,13 @@ def test_payment_confirm_invalid_signature_400():
     assert conf_res.status_code == 400
     assert conf_res.json()["error"]["code"] == "INVALID_SIGNATURE"
 
+    # Security verification (SEC-PAY-001): Payment must NOT be mutated to 'failed'
+    # Mutating to 'failed' on bad signature would allow attackers to sabotage pending payments
+    db = TestingSessionLocal()
+    pay_record = db.query(Payment).filter(Payment.id == uuid.UUID(payment_id)).first()
+    assert pay_record.status == "pending"
+    db.close()
+
 
 def test_payment_confirm_non_owner_404():
     db = TestingSessionLocal()
@@ -666,3 +673,102 @@ def test_admin_refund_rbac_and_execution():
         headers=admin_headers,
     )
     assert resp_over.status_code in (400, 422)
+
+
+def test_concurrent_payment_initiation_idempotency():
+    """Validates that simultaneous payment initiation requests for the same checkout session
+    are strictly idempotent and create exactly 1 Payment row and 1 Razorpay order."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    db = TestingSessionLocal()
+    user, prod, inv, addr, session_data = setup_checkout_env(db)
+    headers = get_user_headers(user)
+    sess_id = session_data["checkout_session_id"]
+    db.close()
+
+    def initiate_call():
+        local_client = TestClient(app)
+        return local_client.post(
+            "/api/v1/payments/initiate",
+            json={"source_type": "checkout_session", "source_id": sess_id},
+            headers=headers,
+        )
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(initiate_call) for _ in range(3)]
+        results = [f.result() for f in futures]
+
+    for r in results:
+        assert r.status_code in (200, 201)
+
+    # All responses must return the identical gateway order id and payment id
+    gateway_order_ids = {r.json()["data"]["gateway_order_id"] for r in results}
+    payment_ids = {r.json()["data"]["payment_id"] for r in results}
+    assert len(gateway_order_ids) == 1
+    assert len(payment_ids) == 1
+
+    # Exactly 1 Payment record exists in DB
+    db = TestingSessionLocal()
+    payments = db.query(Payment).filter(Payment.checkout_session_id == uuid.UUID(sess_id)).all()
+    assert len(payments) == 1
+    db.close()
+
+
+def test_atomic_webhook_event_deduplication_under_concurrency():
+    """Validates that concurrent delivery of identical webhook event is atomically deduplicated at the DB level."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    webhook_secret = "test_webhook_secret_key"
+    settings.RAZORPAY_WEBHOOK_SECRET = webhook_secret
+
+    event_payload = {
+        "event": "payment.captured",
+        "event_id": "evt_concurrent_race_999",
+        "entity": "event",
+        "contains": ["payment"],
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": "pay_conc_999",
+                    "order_id": "order_conc_999",
+                    "amount": 100000,
+                    "status": "captured",
+                }
+            }
+        },
+    }
+    raw_body = json.dumps(event_payload).encode("utf-8")
+    valid_sig = hmac.new(
+        webhook_secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+
+    def send_webhook():
+        local_client = TestClient(app)
+        return local_client.post(
+            "/api/v1/webhooks/razorpay",
+            content=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Razorpay-Signature": valid_sig,
+                "X-Razorpay-Event-Id": "evt_concurrent_race_999",
+            },
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(send_webhook) for _ in range(4)]
+        results = [f.result() for f in futures]
+
+    for r in results:
+        assert r.status_code == 200
+
+    statuses = [r.json()["status"] for r in results]
+    assert statuses.count("accepted") == 1
+    assert statuses.count("duplicate_ignored") == 3
+
+    # Exactly 1 row in DB
+    db = TestingSessionLocal()
+    assert db.query(ProcessedWebhookEvent).filter(ProcessedWebhookEvent.event_id == "evt_concurrent_race_999").count() == 1
+    db.close()
+
