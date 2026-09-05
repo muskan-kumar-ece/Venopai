@@ -1,12 +1,22 @@
-# Celery app placeholder
-# The Celery configuration boundary for background tasks
-
+from celery import Celery
 from app.core.config import settings
 
-# This is a placeholder for Celery setup. 
-# We do not define business logic or actual Celery app yet.
-# In Phase 2, this will be:
-# from celery import Celery
-# celery_app = Celery("venopai", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
+celery_app = Celery(
+    "venopai",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+)
 
-CELERY_BROKER_URL = settings.REDIS_URL
+celery_app.conf.update(
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
+    enable_utc=True,
+    broker_connection_retry_on_startup=False,
+    broker_transport_options={
+        "max_retries": 1,
+        "socket_timeout": 0.5,
+        "socket_connect_timeout": 0.5,
+    },
+)

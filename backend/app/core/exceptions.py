@@ -1,30 +1,94 @@
+import uuid
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError, HTTPException
+from fastapi.encoders import jsonable_encoder
 from app.core.logging import logger
 
+def get_request_id(request: Request) -> str:
+    return getattr(request.state, "request_id", str(uuid.uuid4()))
+
 class APIException(Exception):
-    def __init__(self, message: str, status_code: int = 400):
+    def __init__(self, message: str, code: str = "API_ERROR", status_code: int = 400):
         self.message = message
+        self.code = code
         self.status_code = status_code
 
-async def api_exception_handler(request: Request, exc: APIException):
-    logger.error(f"API Error: {exc.message}")
+async def http_exception_handler(request: Request, exc: HTTPException):
+    request_id = get_request_id(request)
+    # Check if detail is a dictionary with code and message
+    if isinstance(exc.detail, dict):
+        code = exc.detail.get("code", "ERROR")
+        message = exc.detail.get("message", "An error occurred")
+    else:
+        code = "HTTP_ERROR" if exc.status_code != 401 else "UNAUTHORIZED"
+        if exc.status_code == 403:
+            code = "FORBIDDEN"
+        elif exc.status_code == 404:
+            code = "NOT_FOUND"
+        elif exc.status_code == 409:
+            code = "CONFLICT"
+        elif exc.status_code == 429:
+            code = "RATE_LIMIT_EXCEEDED"
+        message = str(exc.detail)
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.message, "status": exc.status_code},
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "request_id": request_id,
+            }
+        },
+    )
+
+async def api_exception_handler(request: Request, exc: APIException):
+    request_id = get_request_id(request)
+    logger.error(f"API Error [{exc.code}]: {exc.message}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message,
+                "request_id": request_id,
+            }
+        },
     )
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = get_request_id(request)
     logger.warning(f"Validation Error: {exc.errors()}")
+    # Extract friendly message
+    errors = exc.errors()
+    first_error = errors[0] if errors else {}
+    loc = ".".join([str(x) for x in first_error.get("loc", []) if str(x) != "body"])
+    msg = first_error.get("msg", "Validation error")
+    formatted_msg = f"{loc}: {msg}" if loc else msg
+
     return JSONResponse(
         status_code=422,
-        content={"error": "Validation error", "details": exc.errors(), "status": 422},
+        content={
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": formatted_msg,
+                "details": jsonable_encoder(errors),
+                "request_id": request_id,
+            }
+        },
     )
 
 async def global_exception_handler(request: Request, exc: Exception):
+    request_id = get_request_id(request)
     logger.exception(f"Unhandled Exception: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal Server Error", "status": 500},
+        content={
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal Server Error",
+                "request_id": request_id,
+            }
+        },
     )
