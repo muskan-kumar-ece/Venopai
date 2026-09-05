@@ -11,24 +11,30 @@ VenopAI is an engineering project realization platform.
 
 ## Local Development Setup
 
-1. **Infrastructure**:
-   ```bash
-   docker-compose up -d
-   ```
+> **Note**: Docker is NOT required for VenopAI development. Use native tools and remote managed instances for lightweight local development.
+
+1. **Infrastructure Requirements**:
+   - **Database**: Local native PostgreSQL installation OR managed PostgreSQL.
+   - **Redis**: Upstash Redis or another lightweight remote Redis instance.
+   - **Celery**: Run local Python process when workers are needed.
+
 2. **Backend**:
    ```bash
    cd backend
    python -m venv venv
-   source venv/Scripts/activate # Windows
+   # Activate virtual environment
+   .\venv\Scripts\activate # Windows PowerShell
    pip install -r requirements.txt
    uvicorn app.main:app --reload
    ```
+
 3. **Client Frontend**:
    ```bash
    cd clientfrontend
    npm install
    npm run dev
    ```
+
 4. **Admin Frontend**:
    ```bash
    cd adminfrontend
