@@ -1,21 +1,23 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from app.db.session import Base
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, index=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="user")
@@ -23,7 +25,6 @@ class User(Base):
 
 class Address(Base):
     __tablename__ = "addresses"
-
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     title = Column(String)
@@ -37,3 +38,13 @@ class Address(Base):
     is_default_billing = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="addresses")
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    action = Column(String, nullable=False)
+    entity_type = Column(String, nullable=False)
+    entity_id = Column(UUID(as_uuid=True), nullable=True)
+    details = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=utcnow)

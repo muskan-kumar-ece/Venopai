@@ -1,6 +1,6 @@
 from app.db.session import Base  # noqa
-from app.models.user import User, Address  # noqa
-from app.models.catalog import Category, Product, Inventory  # noqa
-from app.models.order import Cart, CartItem, Order, OrderItem, Payment, Shipment  # noqa
-from app.models.project import Project, ServiceRequest, Quote, QuoteVersion, File  # noqa
+from app.models.user import User, Address, AuditEvent  # noqa
+from app.models.catalog import Category, Product, Inventory, InventoryReservation  # noqa
+from app.models.order import Cart, CartItem, Order, OrderItem, Payment, Refund, Shipment  # noqa
+from app.models.project import Project, ProjectFile, ManufacturingRequest, ConsultationRequest, DesignRequest, SoftwareRequest, Quote, QuoteVersion, QuoteApproval  # noqa
 from app.models.engagement import Review, Notification  # noqa
