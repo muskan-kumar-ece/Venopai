@@ -41,6 +41,21 @@ export const apiClient = {
     }
     return response.json();
   },
+  patch: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    return response.json();
+  },
   delete: async (endpoint: string, options: RequestInit = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -51,4 +66,5 @@ export const apiClient = {
     }
     return response.json();
   },
+
 };
