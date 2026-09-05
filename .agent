@@ -1,0 +1,56 @@
+# VenopAI Project Index & Agent Guidelines
+
+Welcome to the VenopAI project. This file serves as an index to the core documentation and a set of rules to ensure AI agents (like me) and developers do not make mistakes while coding.
+
+## 📁 Documentation Index (in `/documents`)
+
+When working on this project, ALWAYS reference the appropriate document below before making structural, architectural, or business logic decisions.
+
+### 1. Product & Business Logic
+**File:** `documents/01-core-product-requirements.md`
+**What's inside:**
+- Executive Product Definition & Target Users (Personas)
+- Core Product Modules (Auth, Catalog, Cart, Checkout, Inventory, etc.)
+- Customer Journeys (Purchase, Manufacturing, PCB Design, Consultation, Quotes)
+- Manufacturing Workflow & Quote System
+- Commerce Business Rules (Tax/GST, Shipping, Payments, Files, Reviews)
+- Analytics, Security & Admin Operations Requirements
+
+### 2. Architecture & Technical Requirements
+**File:** `documents/02-technical-requirements-and-architecture.md`
+**What's inside:**
+- System Architecture & Infrastructure
+- Tech Stack & Framework Guidelines
+- Database Schema, Models & Data Requirements
+- Third-party Integrations
+- Deployment & CI/CD Strategy
+
+### 3. Frontend & Design Specs (UI/UX)
+**File:** `documents/03-ui-ux-and-screen-specification.md`
+**What's inside:**
+- Global Design System & Component Library
+- Screen-by-Screen Specifications (Client & Admin)
+- User Flows, States (Loading, Error, Empty)
+- Accessibility & Responsiveness Requirements
+- Micro-interactions & Animation guidelines
+
+### 4. Backend & API Contracts
+**File:** `documents/04-api-contract-specification.md`
+**What's inside:**
+- API Architecture & Conventions (REST/GraphQL, Headers, Auth)
+- Request/Response Payloads & HTTP Methods
+- Detailed Endpoint Specs for: Auth, Users, Product Catalog, Search, Cart, Checkout, Orders, Quotes, Manufacturing
+- Error Codes & Handling
+
+## 🤖 Agent Coding Guidelines
+
+To avoid mistakes while coding, strictly adhere to the following:
+
+1. **Verify Before Coding:** Never guess an API payload or business rule. Always read the relevant section in `documents/04-api-contract-specification.md` or `documents/01-core-product-requirements.md` first.
+2. **Directory Structure Strictness:**
+   - Place all Admin Dashboard code in `/adminfrontend`.
+   - Place all Backend API, Server, and Database code in `/backend`.
+   - Place all Public/Client UI code in `/clientfrontend`.
+   - Keep all requirement docs in `/documents`.
+3. **UI/UX Consistency:** Refer to `documents/03-ui-ux-and-screen-specification.md` when building components to ensure they align with the defined design system.
+4. **Data Integrity:** Do not introduce new database tables or modify schemas without checking `02-technical-requirements-and-architecture.md`.
