@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.models.catalog import Category, Product, Inventory, InventoryReservation
+from app.models.catalog import Category, Product, Inventory, InventoryReservation, ProductCategory
 from app.models.user import AuditEvent
+from app.integrations.cloudinary import cloudinary_provider
 from app.core.exceptions import APIException
 from fastapi import status as http_status
 
@@ -163,22 +164,34 @@ def update_category(db: Session, category_id: uuid.UUID, data: dict, admin_user)
 # Product service
 # ---------------------------------------------------------------------------
 
-def _build_product_fields(data: dict) -> dict:
+def _build_product_fields(data: dict) -> Tuple[dict, Optional[List[uuid.UUID]]]:
     out = {}
+    category_ids = None
+
+    if "category_ids" in data:
+        raw_ids = data["category_ids"] or []
+        cat_uuids = []
+        for cid in raw_ids:
+            if isinstance(cid, str):
+                cat_uuids.append(uuid.UUID(cid))
+            else:
+                cat_uuids.append(cid)
+        category_ids = cat_uuids
+
     for k, v in data.items():
-        if k == "price":
+        if k == "category_ids" or k == "category_id":
+            continue
+        elif k == "price":
             out["price_paise"] = _paise(v)
         elif k == "compare_price":
             out["compare_price_paise"] = _paise(v)
         elif k == "cost_price":
             out["cost_price_paise"] = _paise(v)
-        elif k in ("images", "specifications") and v is not None:
+        elif k in ("images", "specifications", "variant_attributes") and v is not None:
             out[k] = json.dumps(v) if isinstance(v, (list, dict)) else v
-        elif k == "category_id" and isinstance(v, str):
-            out[k] = uuid.UUID(v)
         else:
             out[k] = v
-    return out
+    return out, category_ids
 
 def list_products(
     db: Session,
@@ -191,12 +204,14 @@ def list_products(
     page_size: int = 24,
     admin: bool = False,
 ) -> Tuple[List[Product], int]:
-    """CAT-001: only 'active' products returned to public callers."""
+    """CAT-001: only 'active' products returned to public callers.
+    Supports M:N category filtering via ProductCategory junction.
+    """
     q = db.query(Product)
     if not admin:
         q = q.filter(Product.status == "active")
     if category_id:
-        q = q.filter(Product.category_id == category_id)
+        q = q.filter(Product.categories.any(Category.id == category_id))
     if min_price is not None:
         q = q.filter(Product.price_paise >= _paise(min_price))
     if max_price is not None:
@@ -230,7 +245,9 @@ def get_product(db: Session, product_id: uuid.UUID, admin: bool = False) -> Opti
     return q.first()
 
 def create_product(db: Session, data: dict, admin_user) -> Product:
-    """Admin: create a product in 'draft' status (CAT-001 - not public until activated)."""
+    """Admin: create a product in 'draft' status (CAT-001 - not public until activated).
+    Supports multiple categories (Document 01 CAT-010, Document 02 §10).
+    """
     slug = data.get("slug")
     if slug and db.query(Product).filter(Product.slug == slug).first():
         raise APIException(
@@ -245,21 +262,32 @@ def create_product(db: Session, data: dict, admin_user) -> Product:
             code="SKU_ALREADY_EXISTS",
             message="A product with this SKU already exists",
         )
-    cat_id = data.get("category_id")
-    if isinstance(cat_id, str):
-        cat_id = uuid.UUID(cat_id)
-        data["category_id"] = cat_id
-    if not cat_id or not db.query(Category).filter(Category.id == cat_id).first():
-        raise APIException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            code="CATEGORY_NOT_FOUND",
-            message="Category not found",
-        )
 
-    fields = _build_product_fields(data)
+    fields, category_ids = _build_product_fields(data)
+
+    # Validate categories exist
+    matched_categories = []
+    if category_ids:
+        # Check for duplicates in request
+        if len(category_ids) != len(set(category_ids)):
+            raise APIException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                code="DUPLICATE_CATEGORY_ASSIGNMENT",
+                message="Duplicate category assignment requested",
+            )
+        matched_categories = db.query(Category).filter(Category.id.in_(category_ids)).all()
+        if len(matched_categories) != len(category_ids):
+            raise APIException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                code="CATEGORY_NOT_FOUND",
+                message="One or more specified categories do not exist",
+            )
+
     fields.setdefault("status", "draft")
 
     product = Product(**fields)
+    if matched_categories:
+        product.categories = matched_categories
     db.add(product)
     db.flush()
 
@@ -273,7 +301,12 @@ def create_product(db: Session, data: dict, admin_user) -> Product:
         action="CREATE_PRODUCT",
         entity_type="Product",
         entity_id=product.id,
-        details=json.dumps({"name": product.name, "sku": product.sku, "status": product.status}),
+        details=json.dumps({
+            "name": product.name,
+            "sku": product.sku,
+            "status": product.status,
+            "category_ids": [str(c.id) for c in matched_categories],
+        }),
     )
     db.add(audit)
     db.commit()
@@ -289,7 +322,7 @@ def update_product(db: Session, product_id: uuid.UUID, data: dict, admin_user) -
             message="Product not found",
         )
 
-    fields = _build_product_fields(data)
+    fields, category_ids = _build_product_fields(data)
     if "slug" in fields and fields["slug"] != product.slug:
         if db.query(Product).filter(Product.slug == fields["slug"]).first():
             raise APIException(
@@ -304,13 +337,22 @@ def update_product(db: Session, product_id: uuid.UUID, data: dict, admin_user) -
                 code="SKU_ALREADY_EXISTS",
                 message="A product with this SKU already exists",
             )
-    if "category_id" in fields and fields["category_id"] != product.category_id:
-        if not db.query(Category).filter(Category.id == fields["category_id"]).first():
+
+    if category_ids is not None:
+        if len(category_ids) != len(set(category_ids)):
+            raise APIException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                code="DUPLICATE_CATEGORY_ASSIGNMENT",
+                message="Duplicate category assignment requested",
+            )
+        matched_categories = db.query(Category).filter(Category.id.in_(category_ids)).all()
+        if len(matched_categories) != len(category_ids):
             raise APIException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 code="CATEGORY_NOT_FOUND",
-                message="Category not found",
+                message="One or more specified categories do not exist",
             )
+        product.categories = matched_categories
 
     for k, v in fields.items():
         setattr(product, k, v)
@@ -326,6 +368,104 @@ def update_product(db: Session, product_id: uuid.UUID, data: dict, admin_user) -
     db.commit()
     db.refresh(product)
     return product
+
+# ---------------------------------------------------------------------------
+# Image upload service (ADMIN-CAT-API-004)
+# ---------------------------------------------------------------------------
+
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10MB
+
+def add_product_image(
+    db: Session,
+    product_id: uuid.UUID,
+    file_bytes: bytes,
+    filename: str,
+    admin_user,
+    content_type: Optional[str] = None,
+) -> dict:
+    """ADMIN-CAT-API-004: Upload public product image through Cloudinary provider.
+    Validates product, checks image validity, updates product.images list,
+    and logs AuditEvent.
+    """
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise APIException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            code="PRODUCT_NOT_FOUND",
+            message="Product not found",
+        )
+
+    if not file_bytes or len(file_bytes) == 0:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_IMAGE",
+            message="Image file cannot be empty",
+        )
+
+    if len(file_bytes) > MAX_IMAGE_BYTES:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_IMAGE",
+            message="Image file exceeds maximum permitted size (10MB)",
+        )
+
+    # Validate image extension / content type
+    import os
+    ext = os.path.splitext(filename)[1].lower() if filename else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS and (content_type and content_type not in ALLOWED_IMAGE_MIMES):
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_IMAGE",
+            message=f"Unsupported image type. Allowed extensions: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}",
+        )
+
+    # Upload via Cloudinary provider abstraction
+    try:
+        upload_result = cloudinary_provider.upload(
+            file_bytes=file_bytes,
+            filename=filename or "product_image.jpg",
+            folder="products",
+            access="public",
+        )
+        image_url = upload_result.get("url")
+        if not image_url:
+            raise RuntimeError("Cloudinary did not return a valid image URL")
+    except Exception as e:
+        raise APIException(
+            status_code=http_status.HTTP_502_BAD_GATEWAY,
+            code="IMAGE_UPLOAD_FAILED",
+            message=f"Cloudinary upload failed: {str(e)}",
+        )
+
+    # Update product.images list preserving ordering
+    existing_images = _parse_json_list(product.images)
+    existing_images.append(image_url)
+    product.images = json.dumps(existing_images)
+
+    # Audit
+    audit = AuditEvent(
+        user_id=admin_user.id,
+        action="UPLOAD_PRODUCT_IMAGE",
+        entity_type="Product",
+        entity_id=product.id,
+        details=json.dumps({
+            "image_url": image_url,
+            "filename": filename,
+            "total_images": len(existing_images),
+        }),
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(product)
+
+    return {
+        "product_id": str(product.id),
+        "image_url": image_url,
+        "images": existing_images,
+        "primary_image_url": existing_images[0] if existing_images else None,
+    }
 
 # ---------------------------------------------------------------------------
 # Inventory service
@@ -408,6 +548,9 @@ def build_public_product_dict(product: Product) -> dict:
     inv = product.inventory
     images = _parse_json_list(product.images)
     specs = _parse_json_list(product.specifications)
+    variants = _parse_json_list(product.variant_attributes)
+    category_ids = [str(c.id) for c in (product.categories or [])]
+
     return {
         "id": str(product.id),
         "name": product.name,
@@ -420,7 +563,8 @@ def build_public_product_dict(product: Product) -> dict:
         "primary_image_url": images[0] if images else None,
         "images": images,
         "specifications": specs,
-        "category_id": str(product.category_id),
+        "variant_attributes": variants,
+        "category_ids": category_ids,
         "is_featured": product.is_featured,
         "weight_grams": product.weight_grams,
         "created_at": product.created_at.isoformat() if product.created_at else None,
@@ -430,6 +574,9 @@ def build_admin_product_dict(product: Product) -> dict:
     inv = product.inventory
     images = _parse_json_list(product.images)
     specs = _parse_json_list(product.specifications)
+    variants = _parse_json_list(product.variant_attributes)
+    category_ids = [str(c.id) for c in (product.categories or [])]
+
     inv_data = None
     if inv:
         inv_data = {
@@ -454,7 +601,8 @@ def build_admin_product_dict(product: Product) -> dict:
         "primary_image_url": images[0] if images else None,
         "images": images,
         "specifications": specs,
-        "category_id": str(product.category_id),
+        "variant_attributes": variants,
+        "category_ids": category_ids,
         "weight_grams": product.weight_grams,
         "inventory": inv_data,
         "created_at": product.created_at.isoformat() if product.created_at else None,

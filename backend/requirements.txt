@@ -9,6 +9,7 @@ redis
 celery
 pytest
 httpx
-passlib[bcrypt] 
+passlib[bcrypt]
 PyJWT
-email-validator 
+email-validator
+python-multipart

@@ -70,10 +70,11 @@ class ProductBase(BaseModel):
     slug: str = Field(..., min_length=1, max_length=500)
     sku: Optional[str] = None
     description: Optional[str] = None
-    category_id: uuid.UUID
+    category_ids: List[uuid.UUID] = Field(default_factory=list, description="One or more category UUIDs (CAT-010)")
     is_featured: bool = False
     weight_grams: Optional[int] = None
     specifications: Optional[List[dict]] = None
+    variant_attributes: Optional[List[dict]] = None
     images: Optional[List[str]] = None
 
 class ProductCreate(ProductBase):
@@ -108,7 +109,7 @@ class ProductUpdate(BaseModel):
     slug: Optional[str] = None
     sku: Optional[str] = None
     description: Optional[str] = None
-    category_id: Optional[uuid.UUID] = None
+    category_ids: Optional[List[uuid.UUID]] = None
     price: Optional[str] = None
     compare_price: Optional[str] = None
     cost_price: Optional[str] = None
@@ -116,6 +117,7 @@ class ProductUpdate(BaseModel):
     is_featured: Optional[bool] = None
     weight_grams: Optional[int] = None
     specifications: Optional[List[dict]] = None
+    variant_attributes: Optional[List[dict]] = None
     images: Optional[List[str]] = None
 
     @field_validator("status")
@@ -148,7 +150,8 @@ class ProductPublicResponse(BaseModel):
     primary_image_url: Optional[str] = None
     images: List[str] = []
     specifications: List[dict] = []
-    category_id: uuid.UUID
+    variant_attributes: Optional[List[dict]] = None
+    category_ids: List[uuid.UUID] = []
     is_featured: bool
     weight_grams: Optional[int] = None
     created_at: Optional[datetime] = None
@@ -171,11 +174,20 @@ class ProductAdminResponse(BaseModel):
     primary_image_url: Optional[str] = None
     images: List[str] = []
     specifications: List[dict] = []
-    category_id: uuid.UUID
+    variant_attributes: Optional[List[dict]] = None
+    category_ids: List[uuid.UUID] = []
     weight_grams: Optional[int] = None
     inventory: Optional[InventoryResponse] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductImageUploadResponse(BaseModel):
+    product_id: uuid.UUID
+    image_url: str
+    images: List[str]
+    primary_image_url: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)
 

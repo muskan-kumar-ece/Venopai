@@ -1,11 +1,14 @@
 from typing import Optional
-from fastapi import APIRouter, Request, Depends, Query
+from fastapi import APIRouter, Request, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
 import uuid
 import math
+import json
 
 from app.api.deps import get_db, CurrentAdmin
 from app.services import catalog as catalog_service
+from app.models.user import User, AuditEvent
+from app.models.catalog import Product
 from app.core.exceptions import APIException
 from fastapi import status as http_status
 
@@ -13,6 +16,15 @@ router = APIRouter()
 
 def _request_id(request: Request) -> str:
     return getattr(request.state, "request_id", "")
+
+def _verify_catalog_role(admin: User):
+    """Document 04 §40: Scoped to ORDER_MANAGER, SUPER_ADMIN."""
+    if admin.role not in ("SUPER_ADMIN", "ORDER_MANAGER"):
+        raise APIException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            code="INSUFFICIENT_ROLE",
+            message="Catalog administration requires ORDER_MANAGER or SUPER_ADMIN role",
+        )
 
 # ---------------------------------------------------------------------------
 # ADMIN-CAT-API-001 — GET /api/v1/admin/products
@@ -32,6 +44,7 @@ def admin_list_products(
     page_size: int = Query(24, ge=1, le=100),
 ):
     """ADMIN-CAT-API-001: list including inactive/draft products."""
+    _verify_catalog_role(admin)
     cat_uuid = None
     if category:
         try:
@@ -73,6 +86,7 @@ def admin_create_product(
     db: Session = Depends(get_db),
 ):
     """ADMIN-CAT-API-002: create a product (starts in 'draft')."""
+    _verify_catalog_role(admin)
     product = catalog_service.create_product(db, body, admin)
     return {
         "data": catalog_service.build_admin_product_dict(product),
@@ -92,6 +106,7 @@ def admin_update_product(
     db: Session = Depends(get_db),
 ):
     """ADMIN-CAT-API-003: update product including status transitions."""
+    _verify_catalog_role(admin)
     try:
         pid = uuid.UUID(product_id)
     except ValueError:
@@ -107,6 +122,103 @@ def admin_update_product(
     }
 
 # ---------------------------------------------------------------------------
+# ADMIN-CAT-API-004 — POST /api/v1/admin/products/{id}/images
+# ---------------------------------------------------------------------------
+
+@router.post("/admin/products/{product_id}/images", status_code=201)
+async def admin_upload_product_image(
+    product_id: str,
+    request: Request,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+    file: Optional[UploadFile] = File(None),
+):
+    """ADMIN-CAT-API-004: Upload a public media image (Cloudinary public path, Document 02 §16)."""
+    _verify_catalog_role(admin)
+    try:
+        pid = uuid.UUID(product_id)
+    except ValueError:
+        raise APIException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            code="PRODUCT_NOT_FOUND",
+            message="Product not found",
+        )
+
+    file_bytes = None
+    filename = "image.jpg"
+    content_type = None
+
+    if file is not None:
+        filename = file.filename or "image.jpg"
+        content_type = file.content_type
+        file_bytes = await file.read()
+    else:
+        # Check if sent via JSON payload
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and "image_url" in body:
+                image_url = body["image_url"]
+                if not image_url or not isinstance(image_url, str) or not image_url.startswith("http"):
+                    raise APIException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        code="INVALID_IMAGE",
+                        message="Valid image_url starting with http/https is required",
+                    )
+                product = db.query(Product).filter(Product.id == pid).first()
+                if not product:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="PRODUCT_NOT_FOUND",
+                        message="Product not found",
+                    )
+                existing = catalog_service._parse_json_list(product.images)
+                existing.append(image_url)
+                product.images = json.dumps(existing)
+
+                db.add(AuditEvent(
+                    user_id=admin.id,
+                    action="UPLOAD_PRODUCT_IMAGE",
+                    entity_type="Product",
+                    entity_id=product.id,
+                    details=json.dumps({"image_url": image_url, "filename": "url_reference"}),
+                ))
+                db.commit()
+                db.refresh(product)
+                return {
+                    "data": {
+                        "product_id": str(product.id),
+                        "image_url": image_url,
+                        "images": existing,
+                        "primary_image_url": existing[0],
+                    },
+                    "request_id": _request_id(request),
+                }
+        except APIException:
+            raise
+        except Exception:
+            pass
+
+    if not file_bytes:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_IMAGE",
+            message="Image file is required",
+        )
+
+    result = catalog_service.add_product_image(
+        db,
+        product_id=pid,
+        file_bytes=file_bytes,
+        filename=filename,
+        admin_user=admin,
+        content_type=content_type,
+    )
+    return {
+        "data": result,
+        "request_id": _request_id(request),
+    }
+
+# ---------------------------------------------------------------------------
 # ADMIN-CAT-API-005 — GET /api/v1/admin/categories
 # ---------------------------------------------------------------------------
 
@@ -117,6 +229,7 @@ def admin_list_categories(
     db: Session = Depends(get_db),
 ):
     """ADMIN-CAT-API-005: list all categories including hidden."""
+    _verify_catalog_role(admin)
     categories = catalog_service.list_categories(db, include_inactive=True)
     return {
         "data": [catalog_service.build_category_dict(c) for c in categories],
@@ -135,6 +248,7 @@ def admin_create_category(
     db: Session = Depends(get_db),
 ):
     """ADMIN-CAT-API-006: create category (max 2-level nesting)."""
+    _verify_catalog_role(admin)
     category = catalog_service.create_category(db, body, admin)
     return {
         "data": catalog_service.build_category_dict(category),
@@ -154,6 +268,7 @@ def admin_update_category(
     db: Session = Depends(get_db),
 ):
     """ADMIN-CAT-API-007: edit/hide a category."""
+    _verify_catalog_role(admin)
     try:
         cid = uuid.UUID(category_id)
     except ValueError:
@@ -181,6 +296,7 @@ def admin_list_inventory(
     page_size: int = Query(50, ge=1, le=200),
 ):
     """ADMIN-INV-API-001: list inventory across all products."""
+    _verify_catalog_role(admin)
     from app.models.catalog import Inventory
     q = db.query(Inventory)
     total = q.count()
@@ -218,6 +334,7 @@ def admin_get_inventory(
     db: Session = Depends(get_db),
 ):
     """ADMIN-INV-API-002: single product's inventory detail."""
+    _verify_catalog_role(admin)
     try:
         pid = uuid.UUID(product_id)
     except ValueError:
@@ -259,6 +376,7 @@ def admin_adjust_inventory(
     db: Session = Depends(get_db),
 ):
     """ADMIN-INV-API-003: manual stock adjustment. reason is required (AUDIT-001)."""
+    _verify_catalog_role(admin)
     try:
         pid = uuid.UUID(product_id)
     except ValueError:
@@ -306,6 +424,7 @@ def admin_list_reservations(
     db: Session = Depends(get_db),
 ):
     """ADMIN-INV-API-004: list active reservations for troubleshooting."""
+    _verify_catalog_role(admin)
     try:
         pid = uuid.UUID(product_id)
     except ValueError:

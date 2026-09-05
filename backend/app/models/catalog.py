@@ -10,6 +10,19 @@ from app.db.session import Base
 def utcnow():
     return datetime.now(timezone.utc)
 
+class ProductCategory(Base):
+    """M:N Association between Products and Categories (Document 01 CAT-010, Document 02 Section 10)."""
+    __tablename__ = "product_categories"
+
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+    __table_args__ = (
+        Index("ix_product_categories_product_id", "product_id"),
+        Index("ix_product_categories_category_id", "category_id"),
+    )
+
 class Category(Base):
     __tablename__ = "categories"
 
@@ -26,17 +39,17 @@ class Category(Base):
 
     parent = relationship("Category", back_populates="children", remote_side="Category.id")
     children = relationship("Category", back_populates="parent")
-    products = relationship("Product", back_populates="category")
+    products = relationship("Product", secondary="product_categories", back_populates="categories")
 
 class Product(Base):
     """CAT-001: only active products visible to customers.
     CAT-002: price_paise is authoritative price at time of cart/checkout.
     CAT-003: out-of-stock products remain visible but not purchasable.
+    CAT-010: a product may belong to one or more categories (M:N).
     """
     __tablename__ = "products"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
     name = Column(String(500), nullable=False, index=True)
     slug = Column(String(500), unique=True, index=True, nullable=False)
     sku = Column(String(100), unique=True, nullable=True, index=True)
@@ -46,8 +59,9 @@ class Product(Base):
     cost_price_paise = Column(Integer, nullable=True)
     status = Column(String(50), nullable=False, default="draft", index=True)
     is_featured = Column(Boolean, nullable=False, default=False)
-    images = Column(Text, nullable=True)
-    specifications = Column(Text, nullable=True)
+    images = Column(Text, nullable=True)  # JSON array of image URLs
+    specifications = Column(Text, nullable=True)  # JSON array of {key, value} objects
+    variant_attributes = Column(Text, nullable=True)  # Basic variant representation (Document 02 §9/§11)
     weight_grams = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
@@ -68,7 +82,7 @@ class Product(Base):
         ),
     )
 
-    category = relationship("Category", back_populates="products")
+    categories = relationship("Category", secondary="product_categories", back_populates="products")
     inventory = relationship("Inventory", back_populates="product", uselist=False)
 
 class Inventory(Base):
@@ -102,11 +116,13 @@ class Inventory(Base):
 class InventoryReservation(Base):
     """INV-002: created at checkout entry.
     INV-003: expires after ~15 minutes.
+    Lifecycle: Cart -> Checkout Session -> InventoryReservation -> Payment -> Order
     """
     __tablename__ = "inventory_reservations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     inventory_id = Column(UUID(as_uuid=True), ForeignKey("inventory.id"), nullable=False)
+    checkout_session_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     order_id = Column(UUID(as_uuid=True), nullable=True)
     quantity = Column(Integer, nullable=False)
     status = Column(String(20), nullable=False, default="ACTIVE")
