@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, Text, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -38,12 +38,12 @@ class CheckoutSession(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     cart_id = Column(UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False)
     address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=False)
-    status = Column(String(50), nullable=False, default="open", index=True) # open, completed, expired, cancelled
+    status = Column(String(50), nullable=False, default="open", index=True)  # open, completed, expired, cancelled
     subtotal_paise = Column(Integer, nullable=False)
     shipping_rate_paise = Column(Integer, nullable=False, default=0)
     shipping_eta_min_days = Column(Integer, nullable=False, default=3)
     shipping_eta_max_days = Column(Integer, nullable=False, default=5)
-    tax_type = Column(String(20), nullable=False) # CGST+SGST, IGST
+    tax_type = Column(String(20), nullable=False)  # CGST+SGST, IGST
     tax_amount_paise = Column(Integer, nullable=False, default=0)
     cgst_amount_paise = Column(Integer, nullable=True)
     sgst_amount_paise = Column(Integer, nullable=True)
@@ -56,14 +56,39 @@ class CheckoutSession(Base):
     user = relationship("User")
     cart = relationship("Cart")
     address = relationship("Address")
+    payments = relationship("Payment", back_populates="checkout_session")
 
 
 class Order(Base):
+    """ORD-001: Order created ONLY post-payment (never before).
+    ORD-002: Order status distinct from payment status.
+    ORD-003: Cancellation only allowed pre-fulfillment.
+    Status starts at 'paid' (Document 04 §15).
+    """
     __tablename__ = "orders"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    status = Column(String, default="PENDING", index=True)
-    total_amount = Column(Integer, nullable=False)
+    order_number = Column(String(64), unique=True, index=True, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    checkout_session_id = Column(UUID(as_uuid=True), ForeignKey("checkout_sessions.id"), nullable=True)
+    status = Column(String(50), default="paid", index=True)  # paid, processing, ready_to_ship, shipped, delivered, completed, cancelled
+    
+    # Financial snapshots (ORD snapshotting)
+    subtotal_paise = Column(Integer, nullable=False, default=0)
+    shipping_rate_paise = Column(Integer, nullable=False, default=0)
+    tax_type = Column(String(20), nullable=False, default="GST")  # CGST+SGST | IGST
+    tax_amount_paise = Column(Integer, nullable=False, default=0)
+    cgst_amount_paise = Column(Integer, nullable=True)
+    sgst_amount_paise = Column(Integer, nullable=True)
+    igst_amount_paise = Column(Integer, nullable=True)
+    total_paise = Column(Integer, nullable=False, default=0)
+    total_amount = Column(Integer, nullable=False, default=0)  # for schema compatibility
+    
+    # Shipping & Address snapshot
+    shipping_address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=True)
+    shipping_address_snapshot = Column(Text, nullable=True)  # JSON serialized address
+    
+    # Timestamps
+    paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -72,53 +97,96 @@ class Order(Base):
     payments = relationship("Payment", back_populates="order")
     shipment = relationship("Shipment", back_populates="order", uselist=False)
     refunds = relationship("Refund", back_populates="order")
+    checkout_session = relationship("CheckoutSession")
+    shipping_address = relationship("Address")
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
+    product_name = Column(String(500), nullable=True)  # snapshot
     quantity = Column(Integer, nullable=False)
-    price_at_time_of_order = Column(Integer, nullable=False)
+    price_at_time_of_order = Column(Integer, nullable=False)  # price in paise
+    unit_price_paise = Column(Integer, nullable=True)  # snapshot in paise
+    total_paise = Column(Integer, nullable=True)  # line total in paise
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
 
+
 class Payment(Base):
+    """PAY-001 - PAY-005: Razorpay payment record.
+    Supports CheckoutSession -> Payment, Quote -> Payment, Payment -> Order, Payment -> Refund(s).
+    """
     __tablename__ = "payments"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
-    quote_id = Column(UUID(as_uuid=True), ForeignKey("quotes.id"), nullable=True)
-    razorpay_order_id = Column(String, unique=True)
-    razorpay_payment_id = Column(String, unique=True)
-    status = Column(String, default="PENDING")
-    amount = Column(Integer, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)
+    quote_id = Column(UUID(as_uuid=True), ForeignKey("quotes.id"), nullable=True, index=True)
+    checkout_session_id = Column(UUID(as_uuid=True), ForeignKey("checkout_sessions.id"), nullable=True, index=True)
+    
+    razorpay_order_id = Column(String(100), unique=True, index=True, nullable=True)
+    razorpay_payment_id = Column(String(100), unique=True, index=True, nullable=True)
+    razorpay_signature = Column(String(255), nullable=True)
+    
+    status = Column(String(50), default="pending", index=True)  # pending, successful, failed, refunded, partially_refunded
+    amount = Column(Integer, nullable=False)  # in paise
+    currency = Column(String(10), default="INR")
+    
+    error_code = Column(String(100), nullable=True)
+    error_description = Column(Text, nullable=True)
+    
+    confirmed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    user = relationship("User")
     order = relationship("Order", back_populates="payments")
     quote = relationship("Quote", back_populates="payments")
+    checkout_session = relationship("CheckoutSession", back_populates="payments")
+    refunds = relationship("Refund", back_populates="payment")
+
 
 class Refund(Base):
     __tablename__ = "refunds"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
-    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"), nullable=False)
-    amount = Column(Integer, nullable=False)
-    status = Column(String, default="PENDING")
-    reason = Column(String)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    razorpay_refund_id = Column(String(100), unique=True, index=True, nullable=True)
+    amount = Column(Integer, nullable=False)  # paise
+    status = Column(String(50), default="pending")  # pending, processed, failed
+    reason = Column(String(500), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     order = relationship("Order", back_populates="refunds")
-    payment = relationship("Payment")
+    payment = relationship("Payment", back_populates="refunds")
+
 
 class Shipment(Base):
     __tablename__ = "shipments"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, unique=True)
-    shiprocket_order_id = Column(String)
-    tracking_number = Column(String)
-    status = Column(String, default="PENDING")
+    shiprocket_order_id = Column(String(100), nullable=True)
+    tracking_number = Column(String(100), nullable=True)
+    status = Column(String(50), default="pending")
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     order = relationship("Order", back_populates="shipment")
+
+
+class ProcessedWebhookEvent(Base):
+    """Section 10 & PAY-004: Deduplication of webhook events by provider's event ID."""
+    __tablename__ = "processed_webhook_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(String(255), unique=True, index=True, nullable=False)
+    event_type = Column(String(100), nullable=False)
+    provider = Column(String(50), default="razorpay", nullable=False)
+    payload = Column(Text, nullable=True)
+    processed_at = Column(DateTime(timezone=True), default=utcnow)

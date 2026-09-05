@@ -24,6 +24,10 @@ celery_app.conf.update(
             "task": "inventory.release_expired_reservations",
             "schedule": 60.0, # every 60 seconds (1 minute per Document 02 §12)
         },
+        "reconcile-stale-pending-payments-every-10-minutes": {
+            "task": "payment.reconcile_pending_payments",
+            "schedule": 600.0, # every 10 minutes (Section 22)
+        },
     },
 )
 

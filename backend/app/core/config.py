@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # Integrations
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
     
     SHIPROCKET_EMAIL: str = ""
     SHIPROCKET_PASSWORD: str = ""

@@ -58,6 +58,11 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 
+  // Payment states (Phase 7)
+  const [paymentStatus, setPaymentStatus] = useState<"idle" | "initiating" | "confirming" | "success" | "failed">("idle");
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
+
   // New address form state
   const [formData, setFormData] = useState({
     recipient_name: "",
@@ -218,6 +223,137 @@ export default function CheckoutPage() {
     return `${mins}:${s < 10 ? "0" : ""}${s}`;
   };
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") return resolve(false);
+      if ((window as any).Razorpay) return resolve(true);
+
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleConfirmPayment = async (
+    paymentId: string,
+    razorpayPaymentId: string,
+    razorpayOrderId: string,
+    razorpaySignature: string
+  ) => {
+    setPaymentStatus("confirming");
+    setPaymentError(null);
+    try {
+      const headers = getAuthHeaders();
+      const res = await apiClient.post(
+        `/payments/${paymentId}/confirm`,
+        {
+          razorpay_payment_id: razorpayPaymentId,
+          razorpay_order_id: razorpayOrderId,
+          razorpay_signature: razorpaySignature,
+        },
+        { headers }
+      );
+      if (res?.data?.status === "successful") {
+        setPaymentStatus("success");
+        setConfirmedOrder(res.data);
+      } else {
+        setPaymentStatus("failed");
+        setPaymentError(res?.data?.message || "Payment verification failed.");
+      }
+    } catch (err: unknown) {
+      setPaymentStatus("failed");
+      if (err instanceof Error) {
+        setPaymentError(err.message);
+      } else {
+        setPaymentError("Payment confirmation failed.");
+      }
+    }
+  };
+
+  const handleInitiatePayment = async () => {
+    if (!session) return;
+    setPaymentStatus("initiating");
+    setPaymentError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const initRes = await apiClient.post(
+        "/payments/initiate",
+        {
+          source_type: "checkout_session",
+          source_id: session.checkout_session_id,
+        },
+        { headers }
+      );
+
+      const paymentData = initRes?.data;
+      if (!paymentData) {
+        throw new Error("Failed to initialize payment gateway.");
+      }
+
+      const { payment_id, gateway_order_id, amount_paise, key_id, customer } = paymentData;
+
+      // Check if Razorpay script is accessible
+      const scriptLoaded = await loadRazorpayScript();
+      const isMockGateway = !key_id || key_id.includes("mock");
+
+      if (!scriptLoaded || isMockGateway) {
+        // Fallback simulation for local/testing without live Razorpay secrets
+        await handleConfirmPayment(
+          payment_id,
+          `pay_sim_${Date.now()}`,
+          gateway_order_id,
+          "mock_valid_signature"
+        );
+        return;
+      }
+
+      // Live Razorpay popup modal
+      const options = {
+        key: key_id,
+        amount: amount_paise,
+        currency: "INR",
+        name: "VenopAI",
+        description: `Order Checkout - Session ${session.checkout_session_id.slice(0, 8)}`,
+        order_id: gateway_order_id,
+        prefill: {
+          name: customer?.name || "",
+          email: customer?.email || "",
+          contact: customer?.phone || "",
+        },
+        theme: {
+          color: "#059669",
+        },
+        handler: async function (response: any) {
+          await handleConfirmPayment(
+            payment_id,
+            response.razorpay_payment_id,
+            response.razorpay_order_id,
+            response.razorpay_signature
+          );
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentStatus("failed");
+            setPaymentError("Payment was cancelled. Your items remain reserved until the timer expires.");
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: unknown) {
+      setPaymentStatus("failed");
+      if (err instanceof Error) {
+        setPaymentError(err.message);
+      } else {
+        setPaymentError("Payment initiation failed.");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
@@ -274,6 +410,72 @@ export default function CheckoutPage() {
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Per security policy (CHK-001), please verify your email address before initiating checkout.
         </p>
+      </div>
+    );
+  }
+
+  if (paymentStatus === "success" && confirmedOrder) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+        <div className="rounded-2xl border border-emerald-200 bg-white p-8 shadow-sm dark:border-emerald-950 dark:bg-zinc-900 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            Order Confirmed!
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Payment verified successfully via Razorpay. Your engineering order has been placed.
+          </p>
+
+          <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-mono font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+            <span>Order Number:</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+              {confirmedOrder.order_number || confirmedOrder.order_id}
+            </span>
+          </div>
+
+          <div className="mt-8 border-t border-zinc-200 pt-6 text-left dark:border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Order Details</h3>
+            <div className="mt-3 divide-y divide-zinc-100 rounded-lg border border-zinc-200 p-4 text-sm dark:divide-zinc-800 dark:border-zinc-800">
+              <div className="flex justify-between py-2 text-zinc-600 dark:text-zinc-400">
+                <span>Payment Status</span>
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                  Paid
+                </span>
+              </div>
+              <div className="flex justify-between py-2 text-zinc-600 dark:text-zinc-400">
+                <span>Total Amount Paid</span>
+                <span className="font-semibold text-zinc-900 dark:text-white">
+                  ₹{confirmedOrder.total_amount || confirmedOrder.total || session?.total || "0.00"}
+                </span>
+              </div>
+              {session?.shipping && (
+                <div className="flex justify-between py-2 text-zinc-600 dark:text-zinc-400">
+                  <span>Estimated Delivery</span>
+                  <span className="text-zinc-900 dark:text-white">{session.shipping.eta_description}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/orders"
+              className="w-full sm:w-auto rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+            >
+              View Order in Dashboard
+            </Link>
+            <Link
+              href="/"
+              className="w-full sm:w-auto rounded-lg border border-zinc-300 px-6 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Continue Shopping
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -450,14 +652,43 @@ export default function CheckoutPage() {
               <span>₹{session?.total || "0.00"}</span>
             </div>
 
+            {paymentError && (
+              <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:border-red-900/60 dark:text-red-300">
+                <span className="font-semibold">Payment Error: </span>
+                {paymentError}
+              </div>
+            )}
+
             <button
-              disabled={isSubmitting || session?.status === "expired" || !session}
-              onClick={() => {
-                alert("Phase 6 boundary reached. Payment initiation (Razorpay) will be unlocked in Phase 7!");
-              }}
-              className="mt-6 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+              disabled={
+                isSubmitting ||
+                paymentStatus === "initiating" ||
+                paymentStatus === "confirming" ||
+                session?.status === "expired" ||
+                !session
+              }
+              onClick={handleInitiatePayment}
+              className="mt-6 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
-              Continue to Payment
+              {paymentStatus === "initiating" ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Connecting to Razorpay...</span>
+                </>
+              ) : paymentStatus === "confirming" ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Verifying Payment Signature...</span>
+                </>
+              ) : (
+                <span>Pay ₹{session?.total || "0.00"} via Razorpay</span>
+              )}
             </button>
           </div>
         </div>
