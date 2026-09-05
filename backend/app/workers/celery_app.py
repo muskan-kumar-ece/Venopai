@@ -19,4 +19,11 @@ celery_app.conf.update(
         "socket_timeout": 0.5,
         "socket_connect_timeout": 0.5,
     },
+    beat_schedule={
+        "release-expired-inventory-reservations-every-minute": {
+            "task": "inventory.release_expired_reservations",
+            "schedule": 60.0, # every 60 seconds (1 minute per Document 02 §12)
+        },
+    },
 )
+

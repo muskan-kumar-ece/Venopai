@@ -46,9 +46,14 @@ class Settings(BaseSettings):
     
     SENTRY_DSN: str = ""
 
+    # Tax & Business Operations
+    VENOPAI_STATE_OF_SUPPLY: str = "Telangana"
+    DEFAULT_GST_RATE_PERCENT: int = 18
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
     )
 
 settings = Settings()
+

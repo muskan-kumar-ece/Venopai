@@ -67,18 +67,30 @@ class PasswordResetToken(Base):
 class Address(Base):
     __tablename__ = "addresses"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    title = Column(String)
-    line1 = Column(String, nullable=False)
-    line2 = Column(String)
-    city = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    postal_code = Column(String, nullable=False)
-    country = Column(String, nullable=False)
-    is_default_shipping = Column(Boolean, default=False)
-    is_default_billing = Column(Boolean, default=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    recipient_name = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=False)
+    line1 = Column(String(500), nullable=False)
+    line2 = Column(String(500), nullable=True)
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    pincode = Column(String(20), nullable=False)
+    country = Column(String(50), nullable=False, default="India")
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    # Legacy compatibility properties
+    @property
+    def postal_code(self):
+        return self.pincode
+
+    @property
+    def is_default_shipping(self):
+        return self.is_default
 
     user = relationship("User", back_populates="addresses")
+
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"

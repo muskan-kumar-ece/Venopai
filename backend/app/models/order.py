@@ -27,6 +27,37 @@ class CartItem(Base):
     cart = relationship("Cart", back_populates="items")
     product = relationship("Product")
 
+class CheckoutSession(Base):
+    """Represents the pre-payment checkout session state (CHK-001 - CHK-004).
+    Checkout Session != Order. Order is only created after confirmed payment.
+    Holds calculated totals (subtotal, shipping, tax, total in paise) and reservation expiry.
+    """
+    __tablename__ = "checkout_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    cart_id = Column(UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False)
+    address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=False)
+    status = Column(String(50), nullable=False, default="open", index=True) # open, completed, expired, cancelled
+    subtotal_paise = Column(Integer, nullable=False)
+    shipping_rate_paise = Column(Integer, nullable=False, default=0)
+    shipping_eta_min_days = Column(Integer, nullable=False, default=3)
+    shipping_eta_max_days = Column(Integer, nullable=False, default=5)
+    tax_type = Column(String(20), nullable=False) # CGST+SGST, IGST
+    tax_amount_paise = Column(Integer, nullable=False, default=0)
+    cgst_amount_paise = Column(Integer, nullable=True)
+    sgst_amount_paise = Column(Integer, nullable=True)
+    igst_amount_paise = Column(Integer, nullable=True)
+    total_paise = Column(Integer, nullable=False)
+    reservation_expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user = relationship("User")
+    cart = relationship("Cart")
+    address = relationship("Address")
+
+
 class Order(Base):
     __tablename__ = "orders"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

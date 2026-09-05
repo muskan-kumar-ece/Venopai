@@ -9,10 +9,11 @@ def get_request_id(request: Request) -> str:
     return getattr(request.state, "request_id", str(uuid.uuid4()))
 
 class APIException(Exception):
-    def __init__(self, message: str, code: str = "API_ERROR", status_code: int = 400):
+    def __init__(self, message: str, code: str = "API_ERROR", status_code: int = 400, details: dict = None):
         self.message = message
         self.code = code
         self.status_code = status_code
+        self.details = details
 
 async def http_exception_handler(request: Request, exc: HTTPException):
     request_id = get_request_id(request)
@@ -46,16 +47,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def api_exception_handler(request: Request, exc: APIException):
     request_id = get_request_id(request)
     logger.error(f"API Error [{exc.code}]: {exc.message}")
+    err_content = {
+        "code": exc.code,
+        "message": exc.message,
+        "request_id": request_id,
+    }
+    if exc.details:
+        err_content["details"] = exc.details
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "code": exc.code,
-                "message": exc.message,
-                "request_id": request_id,
-            }
-        },
+        content={"error": err_content},
     )
+
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     request_id = get_request_id(request)

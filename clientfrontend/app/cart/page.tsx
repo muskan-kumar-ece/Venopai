@@ -329,12 +329,15 @@ export default function CartPage() {
               ℹ️ Items aren&apos;t reserved until checkout
             </p>
 
-            <button
-              disabled={cart.items.length === 0}
-              className="mt-4 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+            <Link
+              href="/checkout"
+              className={`mt-4 block w-full text-center rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 transition-colors ${
+                cart.items.length === 0 ? "pointer-events-none opacity-50" : ""
+              }`}
             >
               Proceed to Checkout
-            </button>
+            </Link>
+
           </div>
         </div>
       </div>
