@@ -2,12 +2,8 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.main import app
-from app.db.session import Base
 from app.api.deps import get_db, get_current_admin
 from app.models.user import User, RefreshToken, EmailVerificationToken, PasswordResetToken
 from app.core.security import (
@@ -18,30 +14,13 @@ from app.core.security import (
 )
 from app.schemas.auth import UserCreate
 from app.workers.celery_app import celery_app
+from tests.test_utils import TestingSessionLocal  # shared engine — avoids override conflict
 
 celery_app.conf.task_always_eager = True
 celery_app.conf.task_eager_propagates = True
 
-# SQLite In-Memory Database with StaticPool for deterministic multi-connection testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
 
 @pytest.fixture(autouse=True)
 def clean_db():
