@@ -1,11 +1,50 @@
+from typing import List, Union
+from pydantic import AnyHttpUrl, validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "VenopAI"
     API_V1_STR: str = "/api/v1"
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/venopai"
     
+    # CORS
+    CORS_ORIGINS: List[AnyHttpUrl] | str = []
+    
+    @validator("CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+    
+    # Database
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/venopai"
+    
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # JWT Auth
+    SECRET_KEY: str = "supersecretkey_please_change_in_production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # Integrations
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    
+    SHIPROCKET_EMAIL: str = ""
+    SHIPROCKET_PASSWORD: str = ""
+    
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+    
+    RESEND_API_KEY: str = ""
+    
+    SENTRY_DSN: str = ""
+
     class Config:
         env_file = ".env"
+        case_sensitive = True
 
 settings = Settings()

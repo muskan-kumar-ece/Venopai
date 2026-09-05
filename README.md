@@ -43,3 +43,36 @@ VenopAI is an engineering project realization platform.
    ```
 
 **Current Phase**: PHASE 0 (Foundation)
+
+
+## Local Development (Phase 1)
+
+VenopAI runs locally with three processes. You will need 3 separate terminals:
+
+**Terminal 1: Backend**
+``bash
+cd backend
+python -m venv venv
+# activate venv
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+``
+
+**Terminal 2: Client Frontend**
+``bash
+cd clientfrontend
+npm install
+npm run dev -p 3000
+``
+
+**Terminal 3: Admin Frontend**
+``bash
+cd adminfrontend
+npm install
+npm run dev -p 3001
+``
+
+**Prerequisites:**
+- PostgreSQL running on localhost:5432
+- Redis running on localhost:6379 (e.g. Upstash or native)
+
