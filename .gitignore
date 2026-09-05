@@ -24,3 +24,5 @@ alembic.ini
 venv/
 env/
 .venv/
+.AGENTS.md
+.CLAUDE.md
