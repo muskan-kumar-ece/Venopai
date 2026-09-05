@@ -1,15 +1,18 @@
 import uuid
 import json
 from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.core.config import settings
 from app.models.user import User, Address
 from app.models.catalog import Product, Inventory, InventoryReservation
 from app.models.order import Cart, CartItem, CheckoutSession
 from app.core.security import get_password_hash, create_access_token
 from app.services.checkout import release_expired_reservations
+from app.services.tax import TaxService, TaxPricingMode
 from tests.test_utils import TestingSessionLocal
 
 client = TestClient(app)
@@ -498,3 +501,51 @@ def test_checkout_session_ownership_isolation():
     bob_res = client.get(f"/api/v1/checkout/sessions/{s_id}", headers=headers_b)
     assert bob_res.status_code == 404
     assert bob_res.json()["error"]["code"] == "SESSION_NOT_FOUND"
+
+
+def test_checkout_calls_tax_service_centralized():
+    """Section 9: Prove checkout calls TaxService rather than duplicating GST calculation."""
+    db = TestingSessionLocal()
+    user = create_customer(db)
+    prod = create_product(db, price_paise=100000, stock=5)
+    add_to_cart(db, user, prod, 1)
+    addr = create_address(db, user, state="Telangana")
+    headers = get_auth_headers(user)
+    addr_id = str(addr.id)
+    db.close()
+
+    with patch.object(TaxService, "calculate_tax", wraps=TaxService.calculate_tax) as mock_tax:
+        res = client.post("/api/v1/checkout/sessions", json={"address_id": addr_id}, headers=headers)
+        assert res.status_code == 201
+        assert mock_tax.called
+        assert mock_tax.call_count >= 1
+        args, kwargs = mock_tax.call_args
+        assert kwargs.get("destination_state") == "Telangana"
+        assert kwargs.get("merchandise_amount_paise") == 100000
+
+
+def test_checkout_respects_tax_pricing_mode_configuration():
+    """Section 9: Prove checkout respects TAX_PRICING_MODE configuration."""
+    db = TestingSessionLocal()
+    user = create_customer(db)
+    # Price = 1180.00 (118000 paise)
+    prod = create_product(db, price_paise=118000, stock=5)
+    add_to_cart(db, user, prod, 1)
+    addr = create_address(db, user, state="Telangana")
+    headers = get_auth_headers(user)
+    addr_id = str(addr.id)
+    db.close()
+
+    # Configure TAX_INCLUSIVE mode
+    with patch.object(settings, "TAX_PRICING_MODE", "TAX_INCLUSIVE"):
+        res = client.post("/api/v1/checkout/sessions", json={"address_id": addr_id}, headers=headers)
+        assert res.status_code == 201
+        data = res.json()["data"]
+        # Subtotal: 1180.00, Shipping: 60.00 (intra-state)
+        # In inclusive mode, Total = Subtotal + Shipping = 1240.00 (tax is extracted from subtotal, not added on top)
+        assert data["subtotal"] == "1180.00"
+        assert data["shipping"]["rate"] == "60.00"
+        assert data["total"] == "1240.00"
+        assert data["tax"]["pricing_mode"] == "TAX_INCLUSIVE"
+        assert data["tax"]["taxable_amount"] == "1000.00"
+        assert data["tax"]["amount"] == "180.00"

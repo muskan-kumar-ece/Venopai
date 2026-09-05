@@ -9,7 +9,7 @@ from app.models.user import User, Address
 from app.models.order import Cart, CartItem, CheckoutSession
 from app.models.catalog import Product, Inventory, InventoryReservation
 from app.services.catalog import _rupees, _paise
-from app.services.tax import calculate_gst
+from app.services.tax import calculate_gst, TaxService, TaxPricingMode
 from app.integrations.shiprocket import shiprocket_provider
 from app.core.exceptions import APIException
 
@@ -76,12 +76,16 @@ def _serialize_checkout_session(
                     "unit_price": _rupees(prod.price_paise),
                 })
 
+    is_inclusive = session.total_paise == (session.subtotal_paise + session.shipping_rate_paise)
+    taxable_paise = (session.subtotal_paise - session.tax_amount_paise) if is_inclusive else session.subtotal_paise
     tax_data = {
         "type": session.tax_type,
         "amount": _rupees(session.tax_amount_paise),
+        "taxable_amount": _rupees(taxable_paise),
         "cgst_amount": _rupees(session.cgst_amount_paise) if session.cgst_amount_paise is not None else None,
         "sgst_amount": _rupees(session.sgst_amount_paise) if session.sgst_amount_paise is not None else None,
         "igst_amount": _rupees(session.igst_amount_paise) if session.igst_amount_paise is not None else None,
+        "pricing_mode": "TAX_INCLUSIVE" if is_inclusive else "TAX_EXCLUSIVE",
     }
 
     shipping_data = {
@@ -259,12 +263,17 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
     eta_min = shipping_quote["eta_days_min"]
     eta_max = shipping_quote["eta_days_max"]
 
-    tax_calc = calculate_gst(
-        taxable_amount_paise=subtotal_paise,
+    tax_calc = TaxService.calculate_tax(
+        merchandise_amount_paise=subtotal_paise,
         destination_state=address.state,
+        shipping_amount_paise=shipping_rate_paise,
     )
-    tax_amount_paise = tax_calc["total_tax_paise"]
-    total_paise = subtotal_paise + shipping_rate_paise + tax_amount_paise
+    tax_amount_paise = tax_calc.total_tax_paise
+
+    if tax_calc.pricing_mode == TaxPricingMode.TAX_INCLUSIVE.value:
+        total_paise = subtotal_paise + shipping_rate_paise
+    else:
+        total_paise = subtotal_paise + shipping_rate_paise + tax_amount_paise
 
     # 8. Create CheckoutSession and reserve stock
     session_id = uuid.uuid4()
@@ -280,11 +289,11 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
         shipping_rate_paise=shipping_rate_paise,
         shipping_eta_min_days=eta_min,
         shipping_eta_max_days=eta_max,
-        tax_type=tax_calc["type"],
+        tax_type=tax_calc.tax_type,
         tax_amount_paise=tax_amount_paise,
-        cgst_amount_paise=tax_calc["cgst_paise"],
-        sgst_amount_paise=tax_calc["sgst_paise"],
-        igst_amount_paise=tax_calc["igst_paise"],
+        cgst_amount_paise=tax_calc.cgst_paise,
+        sgst_amount_paise=tax_calc.sgst_paise,
+        igst_amount_paise=tax_calc.igst_paise,
         total_paise=total_paise,
         reservation_expires_at=expires_at,
     )
@@ -416,22 +425,28 @@ def change_checkout_address(db: Session, user: User, session_id: str, new_addres
     )
     shipping_rate_paise = shipping_quote["rate_paise"]
 
-    tax_calc = calculate_gst(
-        taxable_amount_paise=session.subtotal_paise,
+    tax_calc = TaxService.calculate_tax(
+        merchandise_amount_paise=session.subtotal_paise,
         destination_state=new_addr.state,
+        shipping_amount_paise=shipping_rate_paise,
     )
-    tax_amount_paise = tax_calc["total_tax_paise"]
+    tax_amount_paise = tax_calc.total_tax_paise
 
     session.address_id = new_addr.id
     session.shipping_rate_paise = shipping_rate_paise
     session.shipping_eta_min_days = shipping_quote["eta_days_min"]
     session.shipping_eta_max_days = shipping_quote["eta_days_max"]
-    session.tax_type = tax_calc["type"]
+    session.tax_type = tax_calc.tax_type
     session.tax_amount_paise = tax_amount_paise
-    session.cgst_amount_paise = tax_calc["cgst_paise"]
-    session.sgst_amount_paise = tax_calc["sgst_paise"]
-    session.igst_amount_paise = tax_calc["igst_paise"]
-    session.total_paise = session.subtotal_paise + shipping_rate_paise + tax_amount_paise
+    session.cgst_amount_paise = tax_calc.cgst_paise
+    session.sgst_amount_paise = tax_calc.sgst_paise
+    session.igst_amount_paise = tax_calc.igst_paise
+
+    if tax_calc.pricing_mode == TaxPricingMode.TAX_INCLUSIVE.value:
+        session.total_paise = session.subtotal_paise + shipping_rate_paise
+    else:
+        session.total_paise = session.subtotal_paise + shipping_rate_paise + tax_amount_paise
+
 
     db.commit()
     db.refresh(session)

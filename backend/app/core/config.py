@@ -46,8 +46,18 @@ class Settings(BaseSettings):
     
     SENTRY_DSN: str = ""
 
-    # Tax & Business Operations
+    # Tax & Business Operations (TAX-001 - TAX-005)
+    # TAX-002: Business State of Supply for determining intra-state vs inter-state GST.
+    # Configurable via environment variable VENOPAI_STATE_OF_SUPPLY.
     VENOPAI_STATE_OF_SUPPLY: str = "Telangana"
+
+    # TAX-003: Tax display/pricing mode: "TAX_EXCLUSIVE" (default) or "TAX_INCLUSIVE".
+    # Configurable via environment variable TAX_PRICING_MODE.
+    TAX_PRICING_MODE: str = "TAX_EXCLUSIVE"
+
+    # TAX-005: Centrally controlled tax calculation rate.
+    # Note: Document 01 intentionally does NOT lock tax rates as a permanent business rule.
+    # DEFAULT_GST_RATE_PERCENT is an operational configuration value, NOT an immutable business policy.
     DEFAULT_GST_RATE_PERCENT: int = 18
 
     model_config = SettingsConfigDict(

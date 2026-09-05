@@ -33,9 +33,11 @@ class ShippingQuoteResponse(BaseModel):
 class TaxBreakdownResponse(BaseModel):
     type: str # "CGST+SGST" or "IGST"
     amount: str
+    taxable_amount: Optional[str] = None
     cgst_amount: Optional[str] = None
     sgst_amount: Optional[str] = None
     igst_amount: Optional[str] = None
+    pricing_mode: Optional[str] = None
 
 class CheckoutSessionData(BaseModel):
     checkout_session_id: str

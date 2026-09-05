@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 
 interface Address {
@@ -50,7 +49,6 @@ interface CheckoutSessionData {
 }
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [session, setSession] = useState<CheckoutSessionData | null>(null);
@@ -159,7 +157,7 @@ export default function CheckoutPage() {
       if (res?.data) {
         setSession(res.data);
       }
-    } catch (err: unknown) {
+    } catch {
       alert("Failed to update shipping address for this session");
     } finally {
       setIsSubmitting(false);
