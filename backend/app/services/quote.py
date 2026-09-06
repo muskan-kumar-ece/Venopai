@@ -7,12 +7,28 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import APIException
 from app.models.user import User, AuditEvent, Address
-from app.models.project import Quote, QuoteVersion, QuoteApproval, ManufacturingRequest
+from app.models.project import (
+    Quote,
+    QuoteVersion,
+    QuoteApproval,
+    ManufacturingRequest,
+    DesignRequest,
+    SoftwareRequest,
+    ConsultationRequest,
+)
 from app.services.catalog import _paise, _rupees
 from app.services.tax import TaxService
 
 def utcnow():
     return datetime.now(timezone.utc)
+
+ALLOWED_QUOTE_ROLES = (
+    "SUPER_ADMIN",
+    "MANUFACTURING_MANAGER",
+    "DESIGN_MANAGER",
+    "SOFTWARE_MANAGER",
+    "CONSULTATION_MANAGER",
+)
 
 
 class QuoteService:
@@ -47,11 +63,11 @@ class QuoteService:
         scope_summary: Optional[str] = None,
     ) -> Quote:
         """ADMIN-QUOTE-API-001: Create initial quote in draft state."""
-        if getattr(admin_user, "role", "") not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
-                message="Only SUPER_ADMIN or MANUFACTURING_MANAGER can create quotes",
+                message="Authorized engineering manager or super admin required to create quotes",
             )
 
         try:
@@ -63,17 +79,35 @@ class QuoteService:
                 message="Request not found",
             )
 
-        # Lookup manufacturing request
-        mfg_req = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == req_uuid).first()
-        if not mfg_req:
+        norm_type = (request_type or "manufacturing").strip().lower()
+        if norm_type == "manufacturing":
+            req = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == req_uuid).first()
+            msg = "Manufacturing request not found"
+        elif norm_type == "design":
+            req = db.query(DesignRequest).filter(DesignRequest.id == req_uuid).first()
+            msg = "Design request not found"
+        elif norm_type == "software":
+            req = db.query(SoftwareRequest).filter(SoftwareRequest.id == req_uuid).first()
+            msg = "Software request not found"
+        elif norm_type == "consultation":
+            req = db.query(ConsultationRequest).filter(ConsultationRequest.id == req_uuid).first()
+            msg = "Consultation request not found"
+        else:
+            raise APIException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                code="INVALID_REQUEST_TYPE",
+                message="request_type must be manufacturing, design, software, or consultation",
+            )
+
+        if not req:
             raise APIException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 code="REQUEST_NOT_FOUND",
-                message="Manufacturing request not found",
+                message=msg,
             )
 
-        user_id = mfg_req.user_id
-        project_id = mfg_req.project_id
+        user_id = req.user_id
+        project_id = req.project_id
 
         # Calculate subtotal and shipping
         subtotal_paise = sum(_paise(item["amount"]) for item in line_items)
@@ -103,8 +137,8 @@ class QuoteService:
             id=quote_id,
             user_id=user_id,
             project_id=project_id,
-            request_type=request_type.lower(),
-            request_id=mfg_req.id,
+            request_type=norm_type,
+            request_id=req.id,
             status="draft",
             created_at=utcnow(),
         )
@@ -116,7 +150,7 @@ class QuoteService:
             quote_id=quote.id,
             version=1,
             status="draft",
-            scope_summary=scope_summary or mfg_req.title,
+            scope_summary=scope_summary or getattr(req, "title", getattr(req, "topic", "Service Scope")),
             line_items=json.dumps(line_items),
             subtotal_paise=subtotal_paise,
             tax_paise=tax_paise,
@@ -137,7 +171,7 @@ class QuoteService:
             action="QUOTE_DRAFT_CREATED",
             entity_type="Quote",
             entity_id=quote.id,
-            details=json.dumps({"request_id": str(mfg_req.id), "version": 1, "total_paise": total_paise}),
+            details=json.dumps({"request_id": str(req.id), "request_type": norm_type, "version": 1, "total_paise": total_paise}),
             created_at=utcnow(),
         )
         db.add(audit)
@@ -161,11 +195,11 @@ class QuoteService:
         scope_summary: Optional[str] = None,
     ) -> QuoteVersion:
         """ADMIN-QUOTE-API-002: Edit an unsent draft version in place (the only permitted in-place mutation)."""
-        if getattr(admin_user, "role", "") not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
-                message="Only SUPER_ADMIN or MANUFACTURING_MANAGER can edit quote drafts",
+                message="Authorized engineering manager or super admin required to edit quote drafts",
             )
 
         try:
@@ -252,11 +286,11 @@ class QuoteService:
     @classmethod
     def send_quote(cls, db: Session, admin_user: User, quote_id: str) -> Quote:
         """ADMIN-QUOTE-API-003: Send quote to customer (draft -> sent, request -> quote_ready)."""
-        if getattr(admin_user, "role", "") not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
-                message="Only SUPER_ADMIN or MANUFACTURING_MANAGER can send quotes",
+                message="Authorized engineering manager or super admin required to send quotes",
             )
 
         try:
@@ -283,11 +317,17 @@ class QuoteService:
         quote.updated_at = now
 
         # Associated request transitions to quote_ready (Section 22)
-        if quote.request_id and quote.request_type == "manufacturing":
-            mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
-            if mfg:
-                mfg.status = "quote_ready"
-                mfg.updated_at = now
+        if quote.request_id:
+            req_obj = None
+            if quote.request_type == "manufacturing":
+                req_obj = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
+            elif quote.request_type == "design":
+                req_obj = db.query(DesignRequest).filter(DesignRequest.id == quote.request_id).first()
+            elif quote.request_type == "software":
+                req_obj = db.query(SoftwareRequest).filter(SoftwareRequest.id == quote.request_id).first()
+            if req_obj and hasattr(req_obj, "status"):
+                req_obj.status = "quote_ready"
+                req_obj.updated_at = now
 
         audit = AuditEvent(
             id=uuid.uuid4(),
@@ -321,11 +361,11 @@ class QuoteService:
         """ADMIN-QUOTE-API-004: Create a new version, superseding previous version atomically.
         Contract (Section 33): Never revise an approved or paid quote. Creates new version in 'sent'.
         """
-        if getattr(admin_user, "role", "") not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
-                message="Only SUPER_ADMIN or MANUFACTURING_MANAGER can revise quotes",
+                message="Authorized engineering manager or super admin required to revise quotes",
             )
 
         try:
@@ -403,12 +443,18 @@ class QuoteService:
         quote.status = "sent"
         quote.updated_at = now
 
-        # Associated manufacturing request remains in quote_ready
-        if quote.request_id and quote.request_type == "manufacturing":
-            mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
-            if mfg:
-                mfg.status = "quote_ready"
-                mfg.updated_at = now
+        # Associated request remains in quote_ready
+        if quote.request_id:
+            req_obj = None
+            if quote.request_type == "manufacturing":
+                req_obj = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
+            elif quote.request_type == "design":
+                req_obj = db.query(DesignRequest).filter(DesignRequest.id == quote.request_id).first()
+            elif quote.request_type == "software":
+                req_obj = db.query(SoftwareRequest).filter(SoftwareRequest.id == quote.request_id).first()
+            if req_obj and hasattr(req_obj, "status"):
+                req_obj.status = "quote_ready"
+                req_obj.updated_at = now
 
         audit = AuditEvent(
             id=uuid.uuid4(),
@@ -580,12 +626,18 @@ class QuoteService:
         )
         db.add(approval)
 
-        # 3. Associated manufacturing request transitions quote_ready -> payment_pending
-        if quote.request_id and quote.request_type == "manufacturing":
-            mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
-            if mfg:
-                mfg.status = "payment_pending"
-                mfg.updated_at = now
+        # 3. Associated request transitions quote_ready -> payment_pending
+        if quote.request_id:
+            req_obj = None
+            if quote.request_type == "manufacturing":
+                req_obj = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == quote.request_id).first()
+            elif quote.request_type == "design":
+                req_obj = db.query(DesignRequest).filter(DesignRequest.id == quote.request_id).first()
+            elif quote.request_type == "software":
+                req_obj = db.query(SoftwareRequest).filter(SoftwareRequest.id == quote.request_id).first()
+            if req_obj and hasattr(req_obj, "status"):
+                req_obj.status = "payment_pending"
+                req_obj.updated_at = now
 
         audit = AuditEvent(
             id=uuid.uuid4(),
@@ -685,11 +737,11 @@ class QuoteService:
     @classmethod
     def cancel_quote(cls, db: Session, admin_user: User, quote_id: str) -> Quote:
         """ADMIN-QUOTE-API-006: Cancel a pre-approval quote."""
-        if getattr(admin_user, "role", "") not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
-                message="Only SUPER_ADMIN or MANUFACTURING_MANAGER can cancel quotes",
+                message="Authorized engineering manager or super admin required to cancel quotes",
             )
 
         try:

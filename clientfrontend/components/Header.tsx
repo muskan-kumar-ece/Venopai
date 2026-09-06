@@ -33,6 +33,15 @@ export function Header() {
             <Link href="/manufacturing" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
               Manufacturing
             </Link>
+            <Link href="/design" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+              PCB Design
+            </Link>
+            <Link href="/software" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Software & Firmware
+            </Link>
+            <Link href="/consultations" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+              Consultation
+            </Link>
             <Link href="/projects" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
               Projects
             </Link>

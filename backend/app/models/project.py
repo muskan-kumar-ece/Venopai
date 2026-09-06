@@ -83,7 +83,7 @@ class ManufacturingRequest(Base):
     project = relationship("Project", back_populates="manufacturing_requests")
     clarifications = relationship("ManufacturingClarification", back_populates="manufacturing_request", cascade="all, delete-orphan", order_by="ManufacturingClarification.raised_at.asc()")
     status_updates = relationship("ManufacturingStatusUpdate", back_populates="manufacturing_request", cascade="all, delete-orphan", order_by="ManufacturingStatusUpdate.created_at.asc()")
-    quotes = relationship("Quote", back_populates="manufacturing_request", foreign_keys="[Quote.request_id]")
+    quotes = relationship("Quote", primaryjoin="and_(Quote.request_id==ManufacturingRequest.id, Quote.request_type=='manufacturing')", foreign_keys="[Quote.request_id]", viewonly=True)
 
 
 class ManufacturingClarification(Base):
@@ -117,39 +117,164 @@ class ManufacturingStatusUpdate(Base):
 
 
 class ConsultationRequest(Base):
+    """Sections 7.14, 25, 45: Asynchronous, structured consultation engagement."""
     __tablename__ = "consultation_requests"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
-    status = Column(String, default="SUBMITTED", index=True)
-    requirements = Column(Text)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
+    
+    topic = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    
+    status = Column(String(50), default="submitted", index=True, nullable=False)  # submitted, in_progress, responded, completed, closed
+    converted_quote_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    admin_response = Column(Text, nullable=True)
+    internal_notes = Column(Text, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    user = relationship("User")
     project = relationship("Project", back_populates="consultation_requests")
+    clarifications = relationship("ConsultationClarification", back_populates="consultation_request", cascade="all, delete-orphan", order_by="ConsultationClarification.raised_at.asc()")
+    quotes = relationship("Quote", primaryjoin="and_(Quote.request_id==ConsultationRequest.id, Quote.request_type=='consultation')", foreign_keys="[Quote.request_id]", viewonly=True)
+
+
+class ConsultationClarification(Base):
+    """Section 25: Clarification item for consultation requests."""
+    __tablename__ = "consultation_clarifications"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("consultation_requests.id"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    raised_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    raised_at = Column(DateTime(timezone=True), default=utcnow)
+    status = Column(String(50), default="awaiting_response", nullable=False)  # awaiting_response, resolved
+    response_text = Column(Text, nullable=True)
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    attached_file_ids = Column(Text, nullable=True)  # JSON list of UUID strings
+
+    consultation_request = relationship("ConsultationRequest", back_populates="clarifications")
+    raised_by = relationship("User", foreign_keys=[raised_by_id])
 
 
 class DesignRequest(Base):
+    """Sections 7.15, 26, 43: PCB / Electronics Design service request."""
     __tablename__ = "design_requests"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
-    status = Column(String, default="SUBMITTED", index=True)
-    requirements = Column(Text)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
+    
+    title = Column(String(255), nullable=False)
+    project_overview = Column(Text, nullable=False)
+    design_scope = Column(String(50), nullable=False, default="pcb_layout")  # schematic_only, pcb_layout, both
+    additional_notes = Column(Text, nullable=True)
+    
+    status = Column(String(50), default="submitted", index=True, nullable=False)
+    # submitted, under_review, clarification_needed, requirements_confirmed, quote_ready, payment_pending, in_progress, completed_execution, delivered, completed, cancelled
+    
+    cancellation_requested = Column(Boolean, default=False, nullable=False)
+    cancellation_reason = Column(Text, nullable=True)
+    cancellation_decision = Column(String(50), nullable=True)  # approve, decline
+    cancellation_refund_paise = Column(Integer, nullable=True)
+    cancellation_notes = Column(Text, nullable=True)
+    internal_notes = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    user = relationship("User")
     project = relationship("Project", back_populates="design_requests")
+    clarifications = relationship("DesignClarification", back_populates="design_request", cascade="all, delete-orphan", order_by="DesignClarification.raised_at.asc()")
+    status_updates = relationship("DesignStatusUpdate", back_populates="design_request", cascade="all, delete-orphan", order_by="DesignStatusUpdate.created_at.asc()")
+    quotes = relationship("Quote", primaryjoin="and_(Quote.request_id==DesignRequest.id, Quote.request_type=='design')", foreign_keys="[Quote.request_id]", viewonly=True)
+
+
+class DesignClarification(Base):
+    __tablename__ = "design_clarifications"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("design_requests.id"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    raised_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    raised_at = Column(DateTime(timezone=True), default=utcnow)
+    status = Column(String(50), default="awaiting_response", nullable=False)  # awaiting_response, resolved
+    response_text = Column(Text, nullable=True)
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    attached_file_ids = Column(Text, nullable=True)
+
+    design_request = relationship("DesignRequest", back_populates="clarifications")
+    raised_by = relationship("User", foreign_keys=[raised_by_id])
+
+
+class DesignStatusUpdate(Base):
+    __tablename__ = "design_status_updates"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("design_requests.id"), nullable=False, index=True)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    note = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    design_request = relationship("DesignRequest", back_populates="status_updates")
+    author = relationship("User", foreign_keys=[author_id])
 
 
 class SoftwareRequest(Base):
+    """Sections 7.15, 27, 43: Software / Firmware development service request."""
     __tablename__ = "software_requests"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
-    status = Column(String, default="SUBMITTED", index=True)
-    requirements = Column(Text)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
+    
+    title = Column(String(255), nullable=False)
+    project_description = Column(Text, nullable=False)
+    requirements = Column(Text, nullable=False)
+    platform_technology = Column(String(255), nullable=True)
+    additional_notes = Column(Text, nullable=True)
+    
+    status = Column(String(50), default="submitted", index=True, nullable=False)
+    
+    cancellation_requested = Column(Boolean, default=False, nullable=False)
+    cancellation_reason = Column(Text, nullable=True)
+    cancellation_decision = Column(String(50), nullable=True)  # approve, decline
+    cancellation_refund_paise = Column(Integer, nullable=True)
+    cancellation_notes = Column(Text, nullable=True)
+    internal_notes = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    user = relationship("User")
     project = relationship("Project", back_populates="software_requests")
+    clarifications = relationship("SoftwareClarification", back_populates="software_request", cascade="all, delete-orphan", order_by="SoftwareClarification.raised_at.asc()")
+    status_updates = relationship("SoftwareStatusUpdate", back_populates="software_request", cascade="all, delete-orphan", order_by="SoftwareStatusUpdate.created_at.asc()")
+    quotes = relationship("Quote", primaryjoin="and_(Quote.request_id==SoftwareRequest.id, Quote.request_type=='software')", foreign_keys="[Quote.request_id]", viewonly=True)
+
+
+class SoftwareClarification(Base):
+    __tablename__ = "software_clarifications"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("software_requests.id"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    raised_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    raised_at = Column(DateTime(timezone=True), default=utcnow)
+    status = Column(String(50), default="awaiting_response", nullable=False)  # awaiting_response, resolved
+    response_text = Column(Text, nullable=True)
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    attached_file_ids = Column(Text, nullable=True)
+
+    software_request = relationship("SoftwareRequest", back_populates="clarifications")
+    raised_by = relationship("User", foreign_keys=[raised_by_id])
+
+
+class SoftwareStatusUpdate(Base):
+    __tablename__ = "software_status_updates"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("software_requests.id"), nullable=False, index=True)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    note = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    software_request = relationship("SoftwareRequest", back_populates="status_updates")
+    author = relationship("User", foreign_keys=[author_id])
 
 
 class Quote(Base):
@@ -159,14 +284,17 @@ class Quote(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
     request_type = Column(String(50), default="manufacturing", nullable=False)
-    request_id = Column(UUID(as_uuid=True), ForeignKey("manufacturing_requests.id"), nullable=True, index=True)
+    request_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     status = Column(String(50), default="draft", nullable=False)  # draft, sent, viewed, approved, rejected, expired, superseded, cancelled
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user = relationship("User")
     project = relationship("Project", back_populates="quotes")
-    manufacturing_request = relationship("ManufacturingRequest", back_populates="quotes")
+    manufacturing_request = relationship("ManufacturingRequest", primaryjoin="and_(Quote.request_id==ManufacturingRequest.id, Quote.request_type=='manufacturing')", foreign_keys="[Quote.request_id]", viewonly=True)
+    design_request = relationship("DesignRequest", primaryjoin="and_(Quote.request_id==DesignRequest.id, Quote.request_type=='design')", foreign_keys="[Quote.request_id]", viewonly=True)
+    software_request = relationship("SoftwareRequest", primaryjoin="and_(Quote.request_id==SoftwareRequest.id, Quote.request_type=='software')", foreign_keys="[Quote.request_id]", viewonly=True)
+    consultation_request = relationship("ConsultationRequest", primaryjoin="and_(Quote.request_id==ConsultationRequest.id, Quote.request_type=='consultation')", foreign_keys="[Quote.request_id]", viewonly=True)
     versions = relationship("QuoteVersion", back_populates="quote", cascade="all, delete-orphan", order_by="QuoteVersion.version.asc()")
     payments = relationship("Payment", back_populates="quote")
 

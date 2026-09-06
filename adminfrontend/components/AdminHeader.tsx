@@ -8,7 +8,10 @@ export function AdminHeader() {
 
   const navLinks = [
     { href: "/admin/manufacturing", label: "Manufacturing Queue" },
-    { href: "/admin/manufacturing/cancellation-review", label: "Cancellation Reviews" },
+    { href: "/admin/design", label: "PCB Design Queue" },
+    { href: "/admin/software", label: "Software Queue" },
+    { href: "/admin/consultations", label: "Consultations" },
+    { href: "/admin/manufacturing/cancellation-review", label: "Cancellations" },
   ];
 
   return (

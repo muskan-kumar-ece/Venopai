@@ -86,39 +86,42 @@ class ProjectService:
         # 2. Design requests
         design_reqs = db.query(DesignRequest).filter(
             DesignRequest.project_id == project.id,
+            DesignRequest.user_id == user.id,
         ).all()
         for r in design_reqs:
             linked_requests.append({
                 "type": "design",
                 "id": str(r.id),
                 "status": r.status,
-                "title": f"Design Request {str(r.id)[:8]}",
+                "title": r.title,
                 "created_at": r.created_at.isoformat() if r.created_at else "",
             })
 
         # 3. Consultation requests
         consult_reqs = db.query(ConsultationRequest).filter(
             ConsultationRequest.project_id == project.id,
+            ConsultationRequest.user_id == user.id,
         ).all()
         for r in consult_reqs:
             linked_requests.append({
                 "type": "consultation",
                 "id": str(r.id),
                 "status": r.status,
-                "title": f"Consultation {str(r.id)[:8]}",
+                "title": r.topic,
                 "created_at": r.created_at.isoformat() if r.created_at else "",
             })
 
         # 4. Software requests
         sw_reqs = db.query(SoftwareRequest).filter(
             SoftwareRequest.project_id == project.id,
+            SoftwareRequest.user_id == user.id,
         ).all()
         for r in sw_reqs:
             linked_requests.append({
                 "type": "software",
                 "id": str(r.id),
                 "status": r.status,
-                "title": f"Software Request {str(r.id)[:8]}",
+                "title": r.title,
                 "created_at": r.created_at.isoformat() if r.created_at else "",
             })
 
@@ -222,20 +225,53 @@ class ProjectService:
             ).update({"project_id": project.id})
 
         elif norm_type == "design":
-            d_req = db.query(DesignRequest).filter(DesignRequest.id == req_uuid).first()
+            d_req = db.query(DesignRequest).filter(
+                DesignRequest.id == req_uuid,
+                DesignRequest.user_id == user.id,
+            ).first()
             if not d_req:
-                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Design request not found")
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Design request not found or not owned by caller")
+            if d_req.project_id == project.id:
+                raise APIException(status_code=http_status.HTTP_409_CONFLICT, code="ALREADY_LINKED", message="Request is already linked to this project")
             d_req.project_id = project.id
+            d_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == d_req.id,
+                ProjectFile.association_type == "design",
+            ).update({"project_id": project.id})
+
         elif norm_type == "consultation":
-            c_req = db.query(ConsultationRequest).filter(ConsultationRequest.id == req_uuid).first()
+            c_req = db.query(ConsultationRequest).filter(
+                ConsultationRequest.id == req_uuid,
+                ConsultationRequest.user_id == user.id,
+            ).first()
             if not c_req:
-                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Consultation request not found")
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Consultation request not found or not owned by caller")
+            if c_req.project_id == project.id:
+                raise APIException(status_code=http_status.HTTP_409_CONFLICT, code="ALREADY_LINKED", message="Request is already linked to this project")
             c_req.project_id = project.id
+            c_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == c_req.id,
+                ProjectFile.association_type == "consultation",
+            ).update({"project_id": project.id})
+
         elif norm_type == "software":
-            s_req = db.query(SoftwareRequest).filter(SoftwareRequest.id == req_uuid).first()
+            s_req = db.query(SoftwareRequest).filter(
+                SoftwareRequest.id == req_uuid,
+                SoftwareRequest.user_id == user.id,
+            ).first()
             if not s_req:
-                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Software request not found")
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Software request not found or not owned by caller")
+            if s_req.project_id == project.id:
+                raise APIException(status_code=http_status.HTTP_409_CONFLICT, code="ALREADY_LINKED", message="Request is already linked to this project")
             s_req.project_id = project.id
+            s_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == s_req.id,
+                ProjectFile.association_type == "software",
+            ).update({"project_id": project.id})
+
         else:
             raise APIException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -272,17 +308,56 @@ class ProjectService:
                 raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_LINKED", message="Request is not linked to this project")
             req.project_id = None
             req.updated_at = utcnow()
-            # Clear project_id from files
             db.query(ProjectFile).filter(
                 ProjectFile.association_id == req.id,
                 ProjectFile.association_type == "manufacturing",
             ).update({"project_id": None})
+
         elif norm_type == "design":
-            db.query(DesignRequest).filter(DesignRequest.id == req_uuid, DesignRequest.project_id == project.id).update({"project_id": None})
+            d_req = db.query(DesignRequest).filter(
+                DesignRequest.id == req_uuid,
+                DesignRequest.project_id == project.id,
+                DesignRequest.user_id == user.id,
+            ).first()
+            if not d_req:
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_LINKED", message="Request is not linked to this project")
+            d_req.project_id = None
+            d_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == d_req.id,
+                ProjectFile.association_type == "design",
+            ).update({"project_id": None})
+
         elif norm_type == "consultation":
-            db.query(ConsultationRequest).filter(ConsultationRequest.id == req_uuid, ConsultationRequest.project_id == project.id).update({"project_id": None})
+            c_req = db.query(ConsultationRequest).filter(
+                ConsultationRequest.id == req_uuid,
+                ConsultationRequest.project_id == project.id,
+                ConsultationRequest.user_id == user.id,
+            ).first()
+            if not c_req:
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_LINKED", message="Request is not linked to this project")
+            c_req.project_id = None
+            c_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == c_req.id,
+                ProjectFile.association_type == "consultation",
+            ).update({"project_id": None})
+
         elif norm_type == "software":
-            db.query(SoftwareRequest).filter(SoftwareRequest.id == req_uuid, SoftwareRequest.project_id == project.id).update({"project_id": None})
+            s_req = db.query(SoftwareRequest).filter(
+                SoftwareRequest.id == req_uuid,
+                SoftwareRequest.project_id == project.id,
+                SoftwareRequest.user_id == user.id,
+            ).first()
+            if not s_req:
+                raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_LINKED", message="Request is not linked to this project")
+            s_req.project_id = None
+            s_req.updated_at = utcnow()
+            db.query(ProjectFile).filter(
+                ProjectFile.association_id == s_req.id,
+                ProjectFile.association_type == "software",
+            ).update({"project_id": None})
+
         else:
             raise APIException(status_code=http_status.HTTP_400_BAD_REQUEST, code="INVALID_REQUEST_TYPE", message="Invalid request type")
 

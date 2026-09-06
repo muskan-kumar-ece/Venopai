@@ -18,6 +18,12 @@ from app.api.v1 import (
     projects,
     quotes,
     files,
+    consultations,
+    admin_consultations,
+    design,
+    admin_design,
+    software,
+    admin_software,
 )
 
 api_router = APIRouter()
@@ -44,3 +50,11 @@ api_router.include_router(quotes.router, prefix="/quotes", tags=["quotes"])
 api_router.include_router(quotes.admin_router, prefix="/admin/quotes", tags=["admin-quotes"])
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(files.admin_router, prefix="/admin", tags=["admin-files"])
+
+# Phase 9: Consultation, Design / PCB, Software / Firmware
+api_router.include_router(consultations.router, prefix="/consultations", tags=["consultations"])
+api_router.include_router(admin_consultations.router, prefix="/admin/consultations", tags=["admin-consultations"])
+api_router.include_router(design.router, prefix="/design/requests", tags=["design"])
+api_router.include_router(admin_design.router, prefix="/admin/design/requests", tags=["admin-design"])
+api_router.include_router(software.router, prefix="/software/requests", tags=["software"])
+api_router.include_router(admin_software.router, prefix="/admin/software/requests", tags=["admin-software"])

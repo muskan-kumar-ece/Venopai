@@ -28,6 +28,10 @@ celery_app.conf.update(
             "task": "payment.reconcile_pending_payments",
             "schedule": 600.0, # every 10 minutes (Section 22)
         },
+        "check-consultation-inactivity-daily": {
+            "task": "consultation.check_inactivity_auto_close",
+            "schedule": 86400.0, # daily (Document 02 §19)
+        },
     },
 )
 

@@ -189,3 +189,118 @@ export const filesApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 };
+
+// Phase 9 Domain APIs
+export const consultationsApi = {
+  createRequest: (data: { topic: string; description: string; file_ids?: string[]; project_id?: string }, token?: string) =>
+    apiClient.post('/consultations', data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listRequests: (params?: { page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/consultations${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  getRequest: (id: string, token?: string) =>
+    apiClient.get(`/consultations/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  resolveRequest: (id: string, token?: string) =>
+    apiClient.post(`/consultations/${id}/resolve`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listClarifications: (id: string, token?: string) =>
+    apiClient.get(`/consultations/${id}/clarifications`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  respondClarification: (id: string, clarificationId: string, text: string, attachedFileIds?: string[], token?: string) =>
+    apiClient.post(`/consultations/${id}/clarifications/${clarificationId}/respond`, { text, attached_file_ids: attachedFileIds }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+};
+
+export const designApi = {
+  createRequest: (data: unknown, token?: string) =>
+    apiClient.post('/design/requests', data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listRequests: (params?: { page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/design/requests${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  getRequest: (id: string, token?: string) =>
+    apiClient.get(`/design/requests/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  cancelRequest: (id: string, reason?: string, token?: string) =>
+    apiClient.post(`/design/requests/${id}/cancel`, { reason }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  completeRequest: (id: string, token?: string) =>
+    apiClient.post(`/design/requests/${id}/complete`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  startManufacturing: (id: string, token?: string) =>
+    apiClient.post(`/design/requests/${id}/start-manufacturing`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listClarifications: (id: string, token?: string) =>
+    apiClient.get(`/design/requests/${id}/clarifications`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  respondClarification: (id: string, clarificationId: string, text: string, attachedFileIds?: string[], token?: string) =>
+    apiClient.post(`/design/requests/${id}/clarifications/${clarificationId}/respond`, { text, attached_file_ids: attachedFileIds }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  getHistory: (id: string, token?: string) =>
+    apiClient.get(`/design/requests/${id}/history`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+};
+
+export const softwareApi = {
+  createRequest: (data: unknown, token?: string) =>
+    apiClient.post('/software/requests', data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listRequests: (params?: { page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/software/requests${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  getRequest: (id: string, token?: string) =>
+    apiClient.get(`/software/requests/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  cancelRequest: (id: string, reason?: string, token?: string) =>
+    apiClient.post(`/software/requests/${id}/cancel`, { reason }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  completeRequest: (id: string, token?: string) =>
+    apiClient.post(`/software/requests/${id}/complete`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listClarifications: (id: string, token?: string) =>
+    apiClient.get(`/software/requests/${id}/clarifications`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  respondClarification: (id: string, clarificationId: string, text: string, attachedFileIds?: string[], token?: string) =>
+    apiClient.post(`/software/requests/${id}/clarifications/${clarificationId}/respond`, { text, attached_file_ids: attachedFileIds }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  getHistory: (id: string, token?: string) =>
+    apiClient.get(`/software/requests/${id}/history`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+};
+
