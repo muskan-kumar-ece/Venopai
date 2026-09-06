@@ -8,8 +8,11 @@ import { EmptyState } from '@/components/account/EmptyState';
 
 interface Review {
   id: string;
-  product_id: string;
+  target_type: string;
+  target_id: string;
+  product_id?: string | null;
   rating: number;
+  text?: string | null;
   comment?: string | null;
   is_visible: boolean;
   created_at: string;
@@ -18,15 +21,17 @@ interface Review {
 function AccountReviewsContent() {
 
   const searchParams = useSearchParams();
-  const prefillProductId = searchParams?.get('product_id') || '';
+  const prefillTargetType = searchParams?.get('target_type') || (searchParams?.get('product_id') ? 'order_item' : 'order_item');
+  const prefillTargetId = searchParams?.get('target_id') || searchParams?.get('product_id') || '';
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // New review state
-  const [showCreateModal, setShowCreateModal] = useState(!!prefillProductId);
-  const [productId, setProductId] = useState(prefillProductId);
+  const [showCreateModal, setShowCreateModal] = useState(!!prefillTargetId);
+  const [targetType, setTargetType] = useState(prefillTargetType);
+  const [targetId, setTargetId] = useState(prefillTargetId);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -61,14 +66,14 @@ function AccountReviewsContent() {
 
   const handleCreateReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productId) return;
+    if (!targetId) return;
     setSubmitting(true);
     setCreateError(null);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
-      await reviewsApi.createReview({ product_id: productId, rating, comment }, token);
+      await reviewsApi.createReview({ target_type: targetType, target_id: targetId, rating, text: comment, comment }, token);
       setShowCreateModal(false);
-      setProductId('');
+      setTargetId('');
       setComment('');
       loadReviews();
     } catch (err: unknown) {
@@ -81,7 +86,7 @@ function AccountReviewsContent() {
   const openEditModal = (r: Review) => {
     setEditId(r.id);
     setEditRating(r.rating);
-    setEditComment(r.comment || '');
+    setEditComment(r.comment || r.text || '');
     setEditError(null);
     setEditing(true);
   };
@@ -93,7 +98,7 @@ function AccountReviewsContent() {
     setEditError(null);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
-      await reviewsApi.updateReview(editId, { rating: editRating, comment: editComment }, token);
+      await reviewsApi.updateReview(editId, { rating: editRating, text: editComment, comment: editComment }, token);
       setEditing(false);
       loadReviews();
     } catch (err: unknown) {
@@ -124,7 +129,7 @@ function AccountReviewsContent() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Your Reviews & Feedback</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage your submitted ratings and feedback on delivered components and completed hardware projects.
+            Manage your submitted ratings and feedback on delivered components and completed engineering projects.
           </p>
         </div>
       </div>
@@ -136,7 +141,7 @@ function AccountReviewsContent() {
       {reviews.length === 0 ? (
         <EmptyState
           title="No reviews submitted yet"
-          message="Once your parts or boards are delivered, you can submit product ratings and engineering feedback directly from your order detail page."
+          message="Once your parts are delivered or your engineering service is completed, you can submit ratings and feedback directly from your order or request page."
           icon="⭐"
         />
       ) : (
@@ -182,14 +187,22 @@ function AccountReviewsContent() {
                 </div>
               </div>
 
-              {r.comment && (
+              {(r.comment || r.text) && (
                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                  {r.comment}
+                  {r.comment || r.text}
                 </p>
               )}
 
-              <div className="pt-2 border-t border-gray-100 text-xs text-gray-400 font-mono">
-                Product ID: {r.product_id}
+              <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs text-gray-400 font-mono">
+                <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-sans font-medium text-[11px]">
+                  {r.target_type === 'order_item' ? 'Component / Order Item' :
+                   r.target_type === 'manufacturing_request' ? 'Manufacturing Service' :
+                   r.target_type === 'design_request' ? 'Design Service' :
+                   r.target_type === 'software_request' ? 'Software Service' :
+                   r.target_type === 'consultation_request' ? 'Consultation Engagement' : r.target_type}
+                </span>
+                <span>Target ID: {r.target_id}</span>
+                {r.product_id && <span>Product ID: {r.product_id}</span>}
               </div>
             </div>
           ))}
@@ -202,7 +215,7 @@ function AccountReviewsContent() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Write a Review</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Share your feedback on the delivered hardware component or board.
+              Share your feedback on delivered components or completed engineering services.
             </p>
 
             {createError && (
@@ -213,14 +226,29 @@ function AccountReviewsContent() {
 
             <form onSubmit={handleCreateReview} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Product ID *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Target Type *</label>
+                <select
+                  value={targetType}
+                  onChange={(e) => setTargetType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="order_item">Delivered Component / Order Item</option>
+                  <option value="manufacturing_request">Manufacturing Service Request</option>
+                  <option value="design_request">Electronics Design Service Request</option>
+                  <option value="software_request">Software / Firmware Service Request</option>
+                  <option value="consultation_request">Technical Consultation Engagement</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Target ID *</label>
                 <input
                   type="text"
                   required
-                  value={productId}
-                  onChange={(e) => setProductId(e.target.value)}
+                  value={targetId}
+                  onChange={(e) => setTargetId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs"
-                  placeholder="UUID of product..."
+                  placeholder="UUID of delivered order item or completed request..."
                 />
               </div>
 
@@ -247,7 +275,7 @@ function AccountReviewsContent() {
                   onChange={(e) => setComment(e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="Review the quality, dimensional tolerances, and electrical performance..."
+                  placeholder="Review the quality, tolerances, delivery, and engineering performance..."
                 />
               </div>
 
@@ -261,7 +289,7 @@ function AccountReviewsContent() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !productId}
+                  disabled={submitting || !targetId}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
                 >
                   {submitting ? 'Submitting...' : 'Submit Review'}

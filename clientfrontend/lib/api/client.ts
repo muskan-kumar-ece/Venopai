@@ -313,10 +313,10 @@ export const notificationsApi = {
 
 export const reviewsApi = {
   listMyReviews: (token?: string) =>
-    apiClient.get('/reviews/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  createReview: (data: { product_id: string; rating: number; comment?: string }, token?: string) =>
+    apiClient.get('/reviews/mine', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  createReview: (data: { target_type?: string; target_id?: string; product_id?: string; rating: number; text?: string; comment?: string }, token?: string) =>
     apiClient.post('/reviews', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  updateReview: (id: string, data: { rating?: number; comment?: string }, token?: string) =>
+  updateReview: (id: string, data: { rating?: number; text?: string; comment?: string }, token?: string) =>
     apiClient.patch(`/reviews/${id}`, data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
   deleteReview: (id: string, token?: string) =>
     apiClient.delete(`/reviews/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),

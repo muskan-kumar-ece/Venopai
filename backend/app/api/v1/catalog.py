@@ -212,8 +212,11 @@ def get_product_reviews(
             {
                 "id": str(r.id),
                 "user_id": str(r.user_id),
-                "product_id": str(r.product_id),
+                "target_type": r.target_type,
+                "target_id": str(r.target_id),
+                "product_id": str(r.product_id) if r.product_id else None,
                 "rating": r.rating,
+                "text": r.comment,
                 "comment": r.comment,
                 "is_visible": r.is_visible,
                 "created_at": r.created_at.isoformat() if r.created_at else None,

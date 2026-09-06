@@ -9,10 +9,24 @@ from app.core.exceptions import get_request_id
 from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewOut
 from app.models.engagement import Review
 from app.models.order import Order, OrderItem
+from app.models.project import (
+    ManufacturingRequest,
+    DesignRequest,
+    ConsultationRequest,
+    SoftwareRequest,
+)
 
 router = APIRouter()
 
 REVIEW_EDIT_WINDOW_DAYS = 7
+
+VALID_TARGET_TYPES = {
+    "order_item",
+    "manufacturing_request",
+    "design_request",
+    "consultation_request",
+    "software_request",
+}
 
 
 def _verify_review_window_and_visibility(review: Review):
@@ -43,44 +57,115 @@ def create_review(
     review_in: ReviewCreate,
     db: Session = Depends(get_db),
 ):
-    """Submit a review. Requires a qualifying delivered order item (REV-001).
-    One review per customer+product pair — duplicate returns 409 REVIEW_ALREADY_EXISTS."""
-    # 1. Eligibility Check: Customer must have a qualifying delivered order containing this product
-    qualifying_delivered_item = (
-        db.query(OrderItem)
-        .join(Order, OrderItem.order_id == Order.id)
-        .filter(
-            Order.user_id == current_user.id,
-            OrderItem.product_id == review_in.product_id,
-            Order.status == "delivered",
-        )
-        .first()
-    )
-    if not qualifying_delivered_item:
+    """Submit a target-specific review (REV-001 / REV-002).
+    Supported target_types: order_item, manufacturing_request, design_request, consultation_request, software_request.
+    One review per (customer, target) pair — duplicate returns 409 REVIEW_ALREADY_EXISTS."""
+
+    target_type = review_in.target_type.strip().lower() if review_in.target_type else ""
+    if target_type not in VALID_TARGET_TYPES:
         raise HTTPException(
-            status_code=403,
+            status_code=400,
             detail={
-                "code": "NOT_ELIGIBLE",
-                "message": "Only customers with a delivered order for this product may submit a review.",
+                "code": "INVALID_TARGET_TYPE",
+                "message": f"Unsupported target_type: '{review_in.target_type}'. Must be one of: {', '.join(sorted(VALID_TARGET_TYPES))}",
             },
         )
 
-    # 2. Duplicate check: 1 review per (customer, product) pair
+    product_id = None
+
+    # 1. Target-specific verification & eligibility
+    if target_type == "order_item":
+        order_item = db.query(OrderItem).filter(OrderItem.id == review_in.target_id).first()
+        if not order_item:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        
+        order = db.query(Order).filter(Order.id == order_item.order_id).first()
+        if not order or order.user_id != current_user.id:
+            # Foreign customer's OrderItem -> 404
+            raise HTTPException(status_code=404, detail="Order item not found")
+        
+        if (order.status or "").lower() != "delivered":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "NOT_ELIGIBLE",
+                    "message": "Only delivered order items may be reviewed.",
+                },
+            )
+        product_id = order_item.product_id
+
+    elif target_type == "manufacturing_request":
+        mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == review_in.target_id).first()
+        if not mfg or mfg.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Manufacturing request not found")
+        if (mfg.status or "").lower() != "completed":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "NOT_ELIGIBLE",
+                    "message": "Only completed manufacturing requests may be reviewed.",
+                },
+            )
+
+    elif target_type == "design_request":
+        design = db.query(DesignRequest).filter(DesignRequest.id == review_in.target_id).first()
+        if not design or design.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Design request not found")
+        if (design.status or "").lower() != "completed":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "NOT_ELIGIBLE",
+                    "message": "Only completed design requests may be reviewed.",
+                },
+            )
+
+    elif target_type == "software_request":
+        sw = db.query(SoftwareRequest).filter(SoftwareRequest.id == review_in.target_id).first()
+        if not sw or sw.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Software request not found")
+        if (sw.status or "").lower() != "completed":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "NOT_ELIGIBLE",
+                    "message": "Only completed software requests may be reviewed.",
+                },
+            )
+
+    elif target_type == "consultation_request":
+        consult = db.query(ConsultationRequest).filter(ConsultationRequest.id == review_in.target_id).first()
+        if not consult or consult.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Consultation request not found")
+        if (consult.status or "").lower() != "completed":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "NOT_ELIGIBLE",
+                    "message": "Only completed consultation requests may be reviewed.",
+                },
+            )
+
+    # 2. Duplicate check: 1 review per (customer, target_type, target_id) pair
     existing = db.query(Review).filter(
         Review.user_id == current_user.id,
-        Review.product_id == review_in.product_id,
+        Review.target_type == target_type,
+        Review.target_id == review_in.target_id,
     ).first()
     if existing:
         raise HTTPException(
             status_code=409,
-            detail={"code": "REVIEW_ALREADY_EXISTS", "message": "You have already reviewed this product."},
+            detail={"code": "REVIEW_ALREADY_EXISTS", "message": "You have already reviewed this item."},
         )
 
+    review_text = review_in.text if review_in.text is not None else review_in.comment
     review = Review(
         user_id=current_user.id,
-        product_id=review_in.product_id,
+        target_type=target_type,
+        target_id=review_in.target_id,
+        product_id=product_id,
         rating=review_in.rating,
-        comment=review_in.comment,
+        comment=review_text,
         is_visible=True,
     )
     db.add(review)
@@ -93,14 +178,13 @@ def create_review(
 
 
 @router.get("/mine", summary="REVIEW-API-002: The customer's own reviews")
-@router.get("/me", summary="REVIEW-API-002: The customer's own reviews (alias)")
 def get_my_reviews(
     current_user: CurrentUser,
     request: Request,
     db: Session = Depends(get_db),
 ):
     """List the authenticated customer's own reviews (all, including hidden)."""
-    reviews = db.query(Review).filter(Review.user_id == current_user.id).all()
+    reviews = db.query(Review).filter(Review.user_id == current_user.id).order_by(Review.created_at.desc()).all()
     return {
         "data": [ReviewOut.model_validate(r) for r in reviews],
         "request_id": get_request_id(request),
@@ -124,8 +208,9 @@ def update_review(
 
     if review_in.rating is not None:
         review.rating = review_in.rating
-    if review_in.comment is not None:
-        review.comment = review_in.comment
+    new_text = review_in.text if review_in.text is not None else review_in.comment
+    if new_text is not None:
+        review.comment = new_text
 
     db.commit()
     db.refresh(review)

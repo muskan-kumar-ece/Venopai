@@ -216,7 +216,7 @@ export default function OrderDetailPage() {
                 <span className="font-bold text-sm text-gray-900">₹{item.total_price}</span>
                 {order.status === 'delivered' && (
                   <Link
-                    href={`/account/reviews?product_id=${item.product_id}`}
+                    href={`/account/reviews?target_type=order_item&target_id=${item.id}&product_id=${item.product_id}`}
                     className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100"
                   >
                     ★ Review
