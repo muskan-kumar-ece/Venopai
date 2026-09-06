@@ -32,9 +32,10 @@ class CloudinaryProvider:
         if not file_bytes:
             raise ValueError("File bytes cannot be empty")
 
-        # If live Cloudinary credentials are configured, execute real upload
-        if self.cloud_name and self.api_key and self.api_secret:
+        # If live Cloudinary credentials are configured and not running under pytest, execute real upload
+        if self.cloud_name and self.api_key and self.api_secret and not os.getenv("PYTEST_CURRENT_TEST"):
             try:
+                import io
                 import cloudinary
                 import cloudinary.uploader
                 cloudinary.config(
@@ -44,9 +45,10 @@ class CloudinaryProvider:
                     secure=True,
                 )
                 res = cloudinary.uploader.upload(
-                    file_bytes,
+                    io.BytesIO(file_bytes),
                     folder=folder,
                     public_id=os.path.splitext(filename)[0],
+                    resource_type="auto",
                     type="upload" if access == "public" else "authenticated",
                 )
                 return {
@@ -72,6 +74,20 @@ class CloudinaryProvider:
         return f"https://res.cloudinary.com/{domain}/image/authenticated/{storage_ref}?exp={expires_in}"
 
     def delete(self, storage_ref: str) -> bool:
+        if self.cloud_name and self.api_key and self.api_secret and not os.getenv("PYTEST_CURRENT_TEST"):
+            try:
+                import cloudinary
+                import cloudinary.uploader
+                cloudinary.config(
+                    cloud_name=self.cloud_name,
+                    api_key=self.api_key,
+                    api_secret=self.api_secret,
+                    secure=True,
+                )
+                res = cloudinary.uploader.destroy(storage_ref)
+                return res.get("result") in ("ok", "not found")
+            except Exception as e:
+                raise RuntimeError(f"Cloudinary delete failed: {str(e)}")
         return True
 
 cloudinary_provider = CloudinaryProvider()

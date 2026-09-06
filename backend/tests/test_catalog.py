@@ -408,11 +408,13 @@ def test_admin_product_image_upload_multipart_success():
     prod_id = prod.id
     db.close()
 
-    fake_image_bytes = b"\xff\xd8\xff\xe0" + b"\x00" * 100  # JPEG magic bytes
+    valid_image_bytes = (
+        b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+    )
     res = client.post(
         f"/api/v1/admin/products/{prod_id}/images",
         headers=headers,
-        files={"file": ("board_front.jpg", fake_image_bytes, "image/jpeg")},
+        files={"file": ("board_front.gif", valid_image_bytes, "image/gif")},
     )
     assert res.status_code == 201
     data = res.json()["data"]

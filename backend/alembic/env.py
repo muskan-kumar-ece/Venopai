@@ -59,6 +59,9 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+import sqlalchemy as sa
+
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
@@ -73,6 +76,21 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            connection.execute(
+                sa.text(
+                    "CREATE TABLE IF NOT EXISTS alembic_version ("
+                    "  version_num VARCHAR(255) NOT NULL PRIMARY KEY"
+                    ");"
+                )
+            )
+            connection.execute(
+                sa.text(
+                    "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255);"
+                )
+            )
+            connection.commit()
+
         context.configure(
             connection=connection, target_metadata=target_metadata
         )

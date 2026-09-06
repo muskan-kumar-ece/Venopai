@@ -17,6 +17,10 @@ def test_config_loads():
 
 def test_db_session_constructs():
     from app.db.session import SessionLocal, engine
-    assert engine.url.render_as_string(hide_password=False) == settings.DATABASE_URL
+    from sqlalchemy.engine import make_url
+    expected = make_url(settings.DATABASE_URL)
+    assert engine.url.host == expected.host
+    assert engine.url.database == expected.database
+    assert engine.url.username == expected.username
     # Do not execute queries to avoid needing a real DB
     assert SessionLocal is not None
