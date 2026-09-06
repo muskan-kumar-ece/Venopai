@@ -55,7 +55,7 @@ def create_customer(db, email="customer@example.com", is_verified=True):
     return user, token
 
 
-def create_admin(db, email="admin@venopai.com", role="CONSULTATION_MANAGER"):
+def create_admin(db, email="admin@venopai.com", role="MANUFACTURING_MANAGER"):
     user = User(
         id=uuid.uuid4(),
         email=email,
@@ -303,8 +303,8 @@ def test_consultation_inactivity_auto_close_task():
     db.add(fresh_req)
     db.commit()
 
-    # Run auto-close task
-    closed_count = check_inactivity_auto_close(days=14)
+    # Run auto-close task using settings default
+    closed_count = check_inactivity_auto_close()
     assert closed_count == 1
 
     db.refresh(old_req)
@@ -312,3 +312,41 @@ def test_consultation_inactivity_auto_close_task():
     assert old_req.status == "closed"
     assert fresh_req.status == "responded"
     db.close()
+
+
+def test_consultation_rbac_and_no_invented_roles():
+    """Verify Section 2: V1 5-role model enforcement on consultation admin endpoints.
+    - SUPER_ADMIN and MANUFACTURING_MANAGER are permitted (200).
+    - ORDER_MANAGER, FINANCE_MANAGER, SUPPORT_EXECUTIVE are forbidden (403).
+    - Invented role CONSULTATION_MANAGER is forbidden (403).
+    """
+    db = TestingSessionLocal()
+
+    # 1. Allowed roles
+    mfg_mgr, mfg_token = create_admin(db, email="mfg_mgr@venopai.com", role="MANUFACTURING_MANAGER")
+    res_mfg = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {mfg_token}"})
+    assert res_mfg.status_code == 200
+
+    super_adm, super_token = create_admin(db, email="super_adm@venopai.com", role="SUPER_ADMIN")
+    res_super = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {super_token}"})
+    assert res_super.status_code == 200
+
+    # 2. Canonical non-engineering roles must be rejected with 403
+    order_mgr, order_token = create_admin(db, email="order_mgr@venopai.com", role="ORDER_MANAGER")
+    res_order = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {order_token}"})
+    assert res_order.status_code == 403
+
+    finance_mgr, fin_token = create_admin(db, email="fin_mgr@venopai.com", role="FINANCE_MANAGER")
+    res_fin = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {fin_token}"})
+    assert res_fin.status_code == 403
+
+    supp_exec, supp_token = create_admin(db, email="supp_exec@venopai.com", role="SUPPORT_EXECUTIVE")
+    res_supp = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {supp_token}"})
+    assert res_supp.status_code == 403
+
+    # 3. Invented role CONSULTATION_MANAGER must be rejected with 403
+    inv_adm, inv_token = create_admin(db, email="inv_admin@venopai.com", role="CONSULTATION_MANAGER")
+    res_inv = client.get("/api/v1/admin/consultations", headers={"Authorization": f"Bearer {inv_token}"})
+    assert res_inv.status_code == 403
+    db.close()
+

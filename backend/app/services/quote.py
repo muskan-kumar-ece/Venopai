@@ -25,9 +25,6 @@ def utcnow():
 ALLOWED_QUOTE_ROLES = (
     "SUPER_ADMIN",
     "MANUFACTURING_MANAGER",
-    "DESIGN_MANAGER",
-    "SOFTWARE_MANAGER",
-    "CONSULTATION_MANAGER",
 )
 
 
@@ -63,7 +60,7 @@ class QuoteService:
         scope_summary: Optional[str] = None,
     ) -> Quote:
         """ADMIN-QUOTE-API-001: Create initial quote in draft state."""
-        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES:
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
@@ -195,7 +192,7 @@ class QuoteService:
         scope_summary: Optional[str] = None,
     ) -> QuoteVersion:
         """ADMIN-QUOTE-API-002: Edit an unsent draft version in place (the only permitted in-place mutation)."""
-        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES:
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
@@ -286,7 +283,7 @@ class QuoteService:
     @classmethod
     def send_quote(cls, db: Session, admin_user: User, quote_id: str) -> Quote:
         """ADMIN-QUOTE-API-003: Send quote to customer (draft -> sent, request -> quote_ready)."""
-        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES:
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
@@ -361,7 +358,7 @@ class QuoteService:
         """ADMIN-QUOTE-API-004: Create a new version, superseding previous version atomically.
         Contract (Section 33): Never revise an approved or paid quote. Creates new version in 'sent'.
         """
-        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES:
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
@@ -737,7 +734,7 @@ class QuoteService:
     @classmethod
     def cancel_quote(cls, db: Session, admin_user: User, quote_id: str) -> Quote:
         """ADMIN-QUOTE-API-006: Cancel a pre-approval quote."""
-        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES and not getattr(admin_user, "is_superuser", False):
+        if getattr(admin_user, "role", "") not in ALLOWED_QUOTE_ROLES:
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",

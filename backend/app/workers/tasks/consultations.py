@@ -7,11 +7,17 @@ from app.models.project import ConsultationRequest
 from app.models.user import AuditEvent
 
 
+from app.core.config import settings
+
+
 @celery_app.task(name="consultation.check_inactivity_auto_close")
-def check_inactivity_auto_close(days: int = 14, db=None):
+def check_inactivity_auto_close(days: int = None, db=None):
     """Document 01 §34 & Document 02 §19:
-    Auto-close consultations after 14 days of customer inactivity.
+    Auto-close consultations past the inactivity threshold (configured via settings).
     """
+    if days is None:
+        days = getattr(settings, "CONSULTATION_INACTIVITY_DAYS", 14)
+
     close_db = False
     if db is None:
         try:

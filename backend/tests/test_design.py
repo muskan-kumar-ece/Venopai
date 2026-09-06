@@ -54,7 +54,7 @@ def create_customer(db, email="customer@example.com", is_verified=True):
     return user, token
 
 
-def create_admin(db, email="admin@venopai.com", role="DESIGN_MANAGER"):
+def create_admin(db, email="admin@venopai.com", role="MANUFACTURING_MANAGER"):
     user = User(
         id=uuid.uuid4(),
         email=email,
@@ -304,8 +304,8 @@ def test_design_start_manufacturing_convenience_draft():
     )
     design_id = res_sub.json()["data"]["id"]
 
-    # Call start-manufacturing convenience endpoint
-    res_draft = client.get(
+    # Call start-manufacturing convenience endpoint (DESIGN-API-006: POST)
+    res_draft = client.post(
         f"/api/v1/design/requests/{design_id}/start-manufacturing",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -316,9 +316,29 @@ def test_design_start_manufacturing_convenience_draft():
     assert draft_data["source_design_request_id"] == design_id
     assert "prefill" in draft_data
 
-    # INVARIANT CHECK: No ManufacturingRequest must have been created in the database!
-    mfg_count = db.query(ManufacturingRequest).count()
-    assert mfg_count == 0
+    # INVARIANT CHECK 1: No ManufacturingRequest must have been created in the database!
+    mfg_count_initial = db.query(ManufacturingRequest).count()
+    assert mfg_count_initial == 0
+
+    # Step 2: Customer reviews and explicitly submits the prefilled draft payload to MFG-API-001
+    res_mfg_submit = client.post(
+        "/api/v1/manufacturing/requests",
+        json={
+            "title": draft_data["title"],
+            "project_overview": draft_data["project_overview"],
+            "prototype_type": draft_data["prototype_type"],
+            "quantity": draft_data["quantity"],
+            "file_ids": draft_data["reference_file_ids"],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_mfg_submit.status_code == 201
+    assert res_mfg_submit.json()["data"]["title"] == draft_data["title"]
+
+    # INVARIANT CHECK 2: Now exactly one ManufacturingRequest exists in the database
+    mfg_count_after = db.query(ManufacturingRequest).count()
+    assert mfg_count_after == 1
+    db.close()
 
 
 def test_design_cancellation_flow():
@@ -360,3 +380,42 @@ def test_design_cancellation_flow():
     )
     assert res_c_dec.status_code == 200
     assert res_c_dec.json()["data"]["status"] == "cancelled"
+    db.close()
+
+
+def test_design_rbac_and_no_invented_roles():
+    """Verify Section 2: V1 5-role model enforcement on design admin endpoints.
+    - SUPER_ADMIN and MANUFACTURING_MANAGER are permitted (200).
+    - ORDER_MANAGER, FINANCE_MANAGER, SUPPORT_EXECUTIVE are forbidden (403).
+    - Invented role DESIGN_MANAGER is forbidden (403).
+    """
+    db = TestingSessionLocal()
+
+    # 1. Allowed roles
+    mfg_mgr, mfg_token = create_admin(db, email="mfg_mgr_d@venopai.com", role="MANUFACTURING_MANAGER")
+    res_mfg = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {mfg_token}"})
+    assert res_mfg.status_code == 200
+
+    super_adm, super_token = create_admin(db, email="super_adm_d@venopai.com", role="SUPER_ADMIN")
+    res_super = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {super_token}"})
+    assert res_super.status_code == 200
+
+    # 2. Canonical non-engineering roles must be rejected with 403
+    order_mgr, order_token = create_admin(db, email="order_mgr_d@venopai.com", role="ORDER_MANAGER")
+    res_order = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {order_token}"})
+    assert res_order.status_code == 403
+
+    finance_mgr, fin_token = create_admin(db, email="fin_mgr_d@venopai.com", role="FINANCE_MANAGER")
+    res_fin = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {fin_token}"})
+    assert res_fin.status_code == 403
+
+    supp_exec, supp_token = create_admin(db, email="supp_exec_d@venopai.com", role="SUPPORT_EXECUTIVE")
+    res_supp = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {supp_token}"})
+    assert res_supp.status_code == 403
+
+    # 3. Invented role DESIGN_MANAGER must be rejected with 403
+    inv_adm, inv_token = create_admin(db, email="inv_admin_d@venopai.com", role="DESIGN_MANAGER")
+    res_inv = client.get("/api/v1/admin/design/requests", headers={"Authorization": f"Bearer {inv_token}"})
+    assert res_inv.status_code == 403
+    db.close()
+

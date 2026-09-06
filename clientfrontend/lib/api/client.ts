@@ -259,10 +259,6 @@ export const designApi = {
     apiClient.post(`/design/requests/${id}/clarifications/${clarificationId}/respond`, { text, attached_file_ids: attachedFileIds }, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
-  getHistory: (id: string, token?: string) =>
-    apiClient.get(`/design/requests/${id}/history`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }),
 };
 
 export const softwareApi = {
@@ -296,10 +292,6 @@ export const softwareApi = {
     }),
   respondClarification: (id: string, clarificationId: string, text: string, attachedFileIds?: string[], token?: string) =>
     apiClient.post(`/software/requests/${id}/clarifications/${clarificationId}/respond`, { text, attached_file_ids: attachedFileIds }, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }),
-  getHistory: (id: string, token?: string) =>
-    apiClient.get(`/software/requests/${id}/history`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 };

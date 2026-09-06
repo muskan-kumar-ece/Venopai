@@ -43,8 +43,34 @@ export default function ManufacturingIntakePage() {
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check for prefilled draft payload from Design -> Manufacturing convenience flow
+    try {
+      const draftRaw = sessionStorage.getItem("venopai_mfg_draft");
+      if (draftRaw) {
+        const draft = JSON.parse(draftRaw);
+        if (draft.title) setTitle(draft.title);
+        if (draft.project_overview) setProjectOverview(draft.project_overview);
+        if (draft.prototype_type) setPrototypeType(draft.prototype_type);
+        if (draft.quantity) setQuantity(Number(draft.quantity));
+        if (draft.reference_file_ids && Array.isArray(draft.reference_file_ids)) {
+          const initialFiles: UploadedFileMeta[] = draft.reference_file_ids.map((fid: string, idx: number) => ({
+            id: fid,
+            filename: `delivered_design_asset_${idx + 1}.zip`,
+            size_bytes: 0,
+            scan_status: "clean",
+          }));
+          setUploadedFiles(initialFiles);
+        }
+        setDraftNotice("Form prefilled from your completed PCB Design Request. Review and adjust details before submitting.");
+        sessionStorage.removeItem("venopai_mfg_draft");
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
     // Load existing projects for grouping
     projectsApi
       .listProjects()
@@ -158,6 +184,19 @@ export default function ManufacturingIntakePage() {
             Provide your hardware specifications. Our engineering staff will review stackups, generate an authoritative quote, and initiate manufacturing.
           </p>
         </div>
+
+        {draftNotice && (
+          <div className="mb-8 p-4 rounded-lg bg-cyan-950/50 border border-cyan-800 text-cyan-300 text-sm flex items-center justify-between">
+            <span>{draftNotice}</span>
+            <button
+              type="button"
+              onClick={() => setDraftNotice(null)}
+              className="text-xs text-cyan-400 hover:text-cyan-200 underline ml-4"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-8 p-4 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-sm">

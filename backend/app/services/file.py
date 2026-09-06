@@ -38,13 +38,7 @@ class FileService:
             return
 
         req_type = (request_type or "").lower()
-        if req_type == "manufacturing" and user_role == "MANUFACTURING_MANAGER":
-            return
-        if req_type == "design" and user_role == "DESIGN_MANAGER":
-            return
-        if req_type == "software" and user_role == "SOFTWARE_MANAGER":
-            return
-        if req_type == "consultation" and user_role == "CONSULTATION_MANAGER":
+        if req_type in ("manufacturing", "design", "software", "consultation") and user_role == "MANUFACTURING_MANAGER":
             return
 
         raise APIException(
@@ -169,8 +163,7 @@ class FileService:
             )
 
         is_admin = getattr(user, "is_superuser", False) or getattr(user, "is_admin", False) or getattr(user, "role", "") in (
-            "SUPER_ADMIN", "MANUFACTURING_MANAGER", "DESIGN_MANAGER", "SOFTWARE_MANAGER", "CONSULTATION_MANAGER",
-            "ORDER_MANAGER", "SUPPORT_EXECUTIVE", "FINANCE_MANAGER"
+            "SUPER_ADMIN", "MANUFACTURING_MANAGER", "ORDER_MANAGER", "SUPPORT_EXECUTIVE", "FINANCE_MANAGER"
         )
         
         file_record = db.query(ProjectFile).filter(ProjectFile.id == f_uuid).first()

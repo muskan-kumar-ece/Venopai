@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     # DEFAULT_GST_RATE_PERCENT is an operational configuration value, NOT an immutable business policy.
     DEFAULT_GST_RATE_PERCENT: int = 18
 
+    # Document 01 §34 Open Questions & Document 02 §19: Consultation Inactivity Thresholds
+    # Configurable operational defaults: 14 days auto-close, 10 days reminder notification
+    CONSULTATION_INACTIVITY_DAYS: int = 14
+    CONSULTATION_REMINDER_DAYS: int = 10
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True

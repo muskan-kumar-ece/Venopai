@@ -144,13 +144,7 @@ def _check_admin_file_role(admin: User, request_type: str):
     if user_role == "SUPER_ADMIN":
         return
     norm_req = request_type.strip().lower()
-    if norm_req == "manufacturing" and user_role == "MANUFACTURING_MANAGER":
-        return
-    if norm_req == "design" and user_role == "DESIGN_MANAGER":
-        return
-    if norm_req == "software" and user_role == "SOFTWARE_MANAGER":
-        return
-    if norm_req == "consultation" and user_role == "CONSULTATION_MANAGER":
+    if norm_req in ("manufacturing", "design", "software", "consultation") and user_role == "MANUFACTURING_MANAGER":
         return
     raise APIException(
         status_code=http_status.HTTP_403_FORBIDDEN,

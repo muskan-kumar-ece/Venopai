@@ -137,14 +137,15 @@ export default function DesignRequestDetailPage() {
   };
 
   const handleStartManufacturing = async () => {
-    if (!confirm("This will create a draft Manufacturing Request linked to these completed PCB design deliverables. Proceed?")) return;
+    if (!confirm("Start a Manufacturing Request using these completed PCB design deliverables?")) return;
     setIsStartingMfg(true);
     try {
       const res = await designApi.startManufacturing(id);
-      if (res?.data?.manufacturing_request_id) {
-        router.push(`/manufacturing/requests/${res.data.manufacturing_request_id}`);
+      if (res?.data) {
+        sessionStorage.setItem("venopai_mfg_draft", JSON.stringify(res.data));
+        router.push("/manufacturing/request?source=design");
       } else {
-        router.push("/manufacturing/requests");
+        router.push("/manufacturing/request");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to initiate manufacturing";

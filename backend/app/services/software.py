@@ -24,8 +24,7 @@ class SoftwareService:
     @classmethod
     def _check_admin_role(cls, admin_user: User):
         role = getattr(admin_user, "role", "")
-        is_super = getattr(admin_user, "is_superuser", False) or getattr(admin_user, "is_admin", False)
-        if not is_super and role not in ("SUPER_ADMIN", "SOFTWARE_MANAGER", "MANUFACTURING_MANAGER"):
+        if role not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
             raise APIException(
                 status_code=http_status.HTTP_403_FORBIDDEN,
                 code="INSUFFICIENT_PERMISSIONS",
