@@ -119,6 +119,20 @@ function AccountReviewsContent() {
     }
   };
 
+  const isWithin7Days = (createdAt: string) => {
+    if (!createdAt) return false;
+    const created = new Date(createdAt).getTime();
+    return (Date.now() - created) <= 7 * 24 * 60 * 60 * 1000;
+  };
+
+  const getRemainingDays = (createdAt: string) => {
+    if (!createdAt) return 0;
+    const created = new Date(createdAt).getTime();
+    const diffMs = (created + 7 * 24 * 60 * 60 * 1000) - Date.now();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+  };
+
   if (loading) {
     return <LoadingState message="Loading your submitted reviews..." />;
   }
@@ -130,6 +144,9 @@ function AccountReviewsContent() {
           <h1 className="text-2xl font-bold text-gray-900">Your Reviews & Feedback</h1>
           <p className="text-sm text-gray-500 mt-1">
             Manage your submitted ratings and feedback on delivered components and completed engineering projects.
+          </p>
+          <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-md px-2.5 py-1 mt-2 inline-block font-medium">
+            ℹ️ Policy: Reviews can be edited or deleted within 7 days of submission, or until moderated by an administrator.
           </p>
         </div>
       </div>
@@ -146,46 +163,63 @@ function AccountReviewsContent() {
         />
       ) : (
         <div className="space-y-4">
-          {reviews.map((r) => (
-            <div
-              key={r.id}
-              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex text-amber-400 text-base">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <span key={i}>{i < r.rating ? '★' : '☆'}</span>
-                      ))}
-                    </div>
-                    <span className="text-xs font-semibold text-gray-900">{r.rating} / 5</span>
-                    {!r.is_visible && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        Under Moderation
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    Submitted on {r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
-                  </div>
-                </div>
+          {reviews.map((r) => {
+            const withinWindow = isWithin7Days(r.created_at);
+            const canModify = r.is_visible && withinWindow;
+            const remaining = getRemainingDays(r.created_at);
 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => openEditModal(r)}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteReview(r.id)}
-                    className="text-xs font-medium text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
+            return (
+              <div
+                key={r.id}
+                className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex text-amber-400 text-base">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i}>{i < r.rating ? '★' : '☆'}</span>
+                        ))}
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900">{r.rating} / 5</span>
+                      {!r.is_visible ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                          Under Moderation — Locked
+                        </span>
+                      ) : !withinWindow ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200">
+                          Window Expired
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+                          Editable ({remaining}d left)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Submitted on {r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
+                    </div>
+                  </div>
+
+                  {canModify ? (
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => openEditModal(r)}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReview(r.id)}
+                        className="text-xs font-medium text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Locked</span>
+                  )}
                 </div>
-              </div>
 
               {(r.comment || r.text) && (
                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
@@ -204,8 +238,9 @@ function AccountReviewsContent() {
                 <span>Target ID: {r.target_id}</span>
                 {r.product_id && <span>Product ID: {r.product_id}</span>}
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 

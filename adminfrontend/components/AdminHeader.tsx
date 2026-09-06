@@ -7,10 +7,12 @@ export function AdminHeader() {
   const pathname = usePathname();
 
   const navLinks = [
+    { href: "/admin/products", label: "Catalog" },
     { href: "/admin/manufacturing", label: "Manufacturing Queue" },
     { href: "/admin/design", label: "PCB Design Queue" },
     { href: "/admin/software", label: "Software Queue" },
     { href: "/admin/consultations", label: "Consultations" },
+    { href: "/admin/reviews", label: "Reviews" },
     { href: "/admin/manufacturing/cancellation-review", label: "Cancellations" },
   ];
 

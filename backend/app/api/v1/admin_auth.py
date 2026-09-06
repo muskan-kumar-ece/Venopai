@@ -38,7 +38,8 @@ def admin_login(user_in: AdminLogin, request: Request, response: Response, db: S
             detail={"code": "INVALID_ADMIN_CREDENTIALS", "message": "Invalid admin credentials."},
         )
 
-    if not user.is_superuser and user.role not in ["SUPER_ADMIN", "ADMIN", "ORDER_MANAGER", "MANUFACTURING_MANAGER"]:
+    ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "ORDER_MANAGER", "MANUFACTURING_MANAGER", "SUPPORT_EXECUTIVE", "FINANCE_MANAGER"]
+    if not user.is_superuser and user.role not in ADMIN_ROLES:
         raise HTTPException(
             status_code=401,
             detail={"code": "INVALID_ADMIN_CREDENTIALS", "message": "Invalid admin credentials."},

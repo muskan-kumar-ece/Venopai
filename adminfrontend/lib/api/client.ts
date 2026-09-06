@@ -484,3 +484,41 @@ export const adminReviewsApi = {
     }),
 };
 
+export const adminCatalogApi = {
+  listProducts: (params?: { category?: string; page?: number; page_size?: number }, token?: string) => {
+    const q = new URLSearchParams();
+    if (params?.category) q.append('category', params.category);
+    if (params?.page) q.append('page', String(params.page));
+    if (params?.page_size) q.append('page_size', String(params.page_size));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return apiClient.get(`/admin/products${qs}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  createProduct: (data: unknown, token?: string) =>
+    apiClient.post('/admin/products', data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  updateProduct: (id: string, data: unknown, token?: string) =>
+    apiClient.patch(`/admin/products/${id}`, data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  uploadProductImage: (id: string, formData: FormData, token?: string) =>
+    apiClient.upload(`/admin/products/${id}/images`, formData, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  listCategories: (token?: string) =>
+    apiClient.get('/admin/categories', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  createCategory: (data: unknown, token?: string) =>
+    apiClient.post('/admin/categories', data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+  updateCategory: (id: string, data: unknown, token?: string) =>
+    apiClient.patch(`/admin/categories/${id}`, data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+};
+
+

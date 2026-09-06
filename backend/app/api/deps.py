@@ -87,7 +87,15 @@ def get_current_admin(db: SessionDep, token: TokenDep) -> User:
     except Exception:
         user_uuid = user_id
     user = db.query(User).filter(User.id == user_uuid).first()
-    if not user or not user.is_superuser:
+    ADMIN_ROLES = {
+        "SUPER_ADMIN",
+        "ADMIN",
+        "ORDER_MANAGER",
+        "MANUFACTURING_MANAGER",
+        "SUPPORT_EXECUTIVE",
+        "FINANCE_MANAGER",
+    }
+    if not user or (not user.is_superuser and user.role not in ADMIN_ROLES):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "FORBIDDEN", "message": "Admin privileges required"},

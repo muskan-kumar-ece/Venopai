@@ -831,3 +831,104 @@ def test_admin_list_reservations_empty():
     res = client.get(f"/api/v1/admin/inventory/{prod_id}/reservations", headers=headers)
     assert res.status_code == 200
     assert res.json()["data"] == []
+
+
+def test_admin_catalog_rbac_matrix():
+    """Document 04 §40: ADMIN-CAT-API Scoped to ORDER_MANAGER and SUPER_ADMIN.
+    1. SUPER_ADMIN can access catalog operations.
+    2. ORDER_MANAGER can access catalog operations.
+    3. SUPPORT_EXECUTIVE is denied (403).
+    4. MANUFACTURING_MANAGER is denied (403).
+    5. FINANCE_MANAGER is denied (403).
+    6. Customers are denied (403).
+    """
+    db = TestingSessionLocal()
+    cat = create_test_category(db)
+    cat_id = str(cat.id)
+
+    super_admin = create_test_admin(db, role="SUPER_ADMIN")
+    order_mgr = User(
+        id=uuid.uuid4(),
+        email=f"ordermgr_{uuid.uuid4().hex[:6]}@venopai.com",
+        hashed_password=get_password_hash("Pass123!"),
+        full_name="Order Manager",
+        status="verified",
+        role="ORDER_MANAGER",
+        is_active=True,
+        is_superuser=False,
+    )
+    support_exec = User(
+        id=uuid.uuid4(),
+        email=f"support_{uuid.uuid4().hex[:6]}@venopai.com",
+        hashed_password=get_password_hash("Pass123!"),
+        full_name="Support Executive",
+        status="verified",
+        role="SUPPORT_EXECUTIVE",
+        is_active=True,
+        is_superuser=False,
+    )
+    mfg_mgr = User(
+        id=uuid.uuid4(),
+        email=f"mfg_{uuid.uuid4().hex[:6]}@venopai.com",
+        hashed_password=get_password_hash("Pass123!"),
+        full_name="Manufacturing Manager",
+        status="verified",
+        role="MANUFACTURING_MANAGER",
+        is_active=True,
+        is_superuser=False,
+    )
+    fin_mgr = User(
+        id=uuid.uuid4(),
+        email=f"fin_{uuid.uuid4().hex[:6]}@venopai.com",
+        hashed_password=get_password_hash("Pass123!"),
+        full_name="Finance Manager",
+        status="verified",
+        role="FINANCE_MANAGER",
+        is_active=True,
+        is_superuser=False,
+    )
+    customer = create_test_customer(db)
+    db.add_all([order_mgr, support_exec, mfg_mgr, fin_mgr])
+    db.commit()
+
+    # 1. SUPER_ADMIN -> Allowed (200)
+    res_sa = client.get("/api/v1/admin/products", headers=get_admin_headers(super_admin))
+    assert res_sa.status_code == 200
+
+    # 2. ORDER_MANAGER -> Allowed (200 & 201)
+    res_om = client.get("/api/v1/admin/products", headers=get_admin_headers(order_mgr))
+    assert res_om.status_code == 200
+
+    res_om_create = client.post(
+        "/api/v1/admin/products",
+        headers=get_admin_headers(order_mgr),
+        json={
+            "name": "OM Created Product",
+            "slug": "om-created-product",
+            "category_ids": [cat_id],
+            "price": "299.00",
+        },
+    )
+    assert res_om_create.status_code == 201
+
+    # 3. SUPPORT_EXECUTIVE -> 403 Forbidden
+    res_se = client.get("/api/v1/admin/products", headers=get_admin_headers(support_exec))
+    assert res_se.status_code == 403
+    assert res_se.json()["error"]["code"] == "INSUFFICIENT_ROLE"
+
+    # 4. MANUFACTURING_MANAGER -> 403 Forbidden
+    res_mm = client.get("/api/v1/admin/products", headers=get_admin_headers(mfg_mgr))
+    assert res_mm.status_code == 403
+    assert res_mm.json()["error"]["code"] == "INSUFFICIENT_ROLE"
+
+    # 5. FINANCE_MANAGER -> 403 Forbidden
+    res_fm = client.get("/api/v1/admin/products", headers=get_admin_headers(fin_mgr))
+    assert res_fm.status_code == 403
+    assert res_fm.json()["error"]["code"] == "INSUFFICIENT_ROLE"
+
+    # 6. Customer -> 403 Forbidden
+    res_cust = client.get("/api/v1/admin/products", headers=get_customer_headers(customer))
+    assert res_cust.status_code == 403
+
+    db.close()
+

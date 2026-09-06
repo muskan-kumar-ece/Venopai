@@ -19,12 +19,16 @@ def _request_id(request: Request) -> str:
 
 def _verify_catalog_role(admin: User):
     """Document 04 §40: Scoped to ORDER_MANAGER, SUPER_ADMIN."""
-    if admin.role not in ("SUPER_ADMIN", "ORDER_MANAGER"):
-        raise APIException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            code="INSUFFICIENT_ROLE",
-            message="Catalog administration requires ORDER_MANAGER or SUPER_ADMIN role",
-        )
+    role = getattr(admin, "role", None)
+    if role in ("SUPER_ADMIN", "ORDER_MANAGER"):
+        return
+    if not role and getattr(admin, "is_superuser", False):
+        return
+    raise APIException(
+        status_code=http_status.HTTP_403_FORBIDDEN,
+        code="INSUFFICIENT_ROLE",
+        message="Catalog administration requires ORDER_MANAGER or SUPER_ADMIN role",
+    )
 
 # ---------------------------------------------------------------------------
 # ADMIN-CAT-API-001 — GET /api/v1/admin/products
