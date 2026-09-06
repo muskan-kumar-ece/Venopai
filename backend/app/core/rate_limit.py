@@ -12,11 +12,18 @@ def get_redis_client() -> Optional[redis.Redis]:
     global _redis_client
     if _redis_client is None:
         try:
+            extra_kwargs = {}
+            if settings.REDIS_URL.startswith("rediss://"):
+                import ssl
+                extra_kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+                extra_kwargs["ssl_check_hostname"] = True
+
             _redis_client = redis.from_url(
                 settings.REDIS_URL,
                 socket_timeout=1.5,
                 socket_connect_timeout=1.5,
                 decode_responses=True,
+                **extra_kwargs,
             )
             # Ping test with short timeout
             _redis_client.ping()

@@ -19,9 +19,9 @@ def upgrade() -> None:
     insp = sa.inspect(bind)
     tables = insp.get_table_names()
 
-    # 1. Service requests project_id must be nullable
-    service_tables = ['manufacturing_requests', 'consultation_requests', 'design_requests', 'software_requests']
-    for tbl in service_tables:
+    # 1. Service requests, project_files, and quotes project_id must be nullable
+    tables_to_reconcile = ['manufacturing_requests', 'consultation_requests', 'design_requests', 'software_requests', 'project_files', 'quotes']
+    for tbl in tables_to_reconcile:
         if tbl in tables:
             cols = [c['name'] for c in insp.get_columns(tbl)]
             if 'project_id' in cols:
@@ -38,6 +38,16 @@ def upgrade() -> None:
                 op.alter_column('addresses', 'postal_code', existing_type=sa.String(), nullable=True)
             except Exception:
                 pass
+
+    # 3. Project_files legacy name and s3_key columns must be nullable
+    if 'project_files' in tables:
+        pf_cols = [c['name'] for c in insp.get_columns('project_files')]
+        for c in ['name', 's3_key']:
+            if c in pf_cols:
+                try:
+                    op.alter_column('project_files', c, existing_type=sa.String(), nullable=True)
+                except Exception:
+                    pass
 
 def downgrade() -> None:
     pass

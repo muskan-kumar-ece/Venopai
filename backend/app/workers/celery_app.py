@@ -1,3 +1,4 @@
+import os
 import ssl
 from celery import Celery
 from app.core.config import settings
@@ -8,7 +9,10 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
 )
 
-ssl_options = {"ssl_cert_reqs": ssl.CERT_NONE} if settings.REDIS_URL.startswith("rediss://") else None
+ssl_options = {
+    "ssl_cert_reqs": ssl.CERT_REQUIRED,
+    "ssl_check_hostname": True,
+} if settings.REDIS_URL.startswith("rediss://") else None
 
 celery_app.conf.update(
     task_serializer="json",
@@ -27,7 +31,7 @@ celery_app.conf.update(
     beat_schedule={
         "release-expired-inventory-reservations-every-minute": {
             "task": "inventory.release_expired_reservations",
-            "schedule": 60.0, # every 60 seconds (1 minute per Document 02 §12)
+            "schedule": float(os.environ.get("CELERY_BEAT_INVENTORY_INTERVAL", "60.0")), # every 60 seconds (1 minute per Document 02 §12)
         },
         "reconcile-stale-pending-payments-every-10-minutes": {
             "task": "payment.reconcile_pending_payments",
