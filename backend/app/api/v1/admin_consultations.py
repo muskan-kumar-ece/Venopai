@@ -128,63 +128,6 @@ def admin_respond_consultation(
 
 
 @router.post(
-    "/{id}/clarifications",
-    status_code=http_status.HTTP_201_CREATED,
-    summary="Admin raise consultation clarification question",
-)
-def admin_raise_consultation_clarification(
-    id: str,
-    body: Dict[str, Any],
-    admin: CurrentAdmin,
-    db: Session = Depends(get_db),
-):
-    question = body.get("question", "")
-    clar = ConsultationService.raise_clarification(
-        db=db,
-        admin_user=admin,
-        consultation_id=id,
-        question=question,
-    )
-    return {
-        "data": {
-            "id": str(clar.id),
-            "request_id": str(clar.request_id),
-            "question": clar.question,
-            "status": clar.status,
-            "created_at": clar.raised_at.isoformat() if clar.raised_at else "",
-        },
-        "request_id": str(uuid.uuid4()),
-    }
-
-
-@router.post(
-    "/{id}/clarifications/{clarification_id}/resolve",
-    status_code=http_status.HTTP_200_OK,
-    summary="Admin resolve consultation clarification",
-)
-def admin_resolve_consultation_clarification(
-    id: str,
-    clarification_id: str,
-    admin: CurrentAdmin,
-    db: Session = Depends(get_db),
-):
-    clar = ConsultationService.resolve_clarification(
-        db=db,
-        admin_user=admin,
-        consultation_id=id,
-        clarification_id=clarification_id,
-    )
-    return {
-        "data": {
-            "id": str(clar.id),
-            "request_id": str(clar.request_id),
-            "status": clar.status,
-        },
-        "request_id": str(uuid.uuid4()),
-    }
-
-
-@router.post(
     "/{id}/convert-to-quote",
     status_code=http_status.HTTP_201_CREATED,
     summary="ADMIN-CONSULT-API-002: Convert consultation to billable quote",

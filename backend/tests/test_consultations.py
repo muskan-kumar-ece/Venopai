@@ -153,47 +153,6 @@ def test_consultation_idor_isolation():
     assert res_idor.json()["error"]["code"] == "CONSULTATION_NOT_FOUND"
 
 
-def test_consultation_clarification_flow():
-    """Admin raises clarification, customer responds, admin resolves."""
-    db = TestingSessionLocal()
-    customer, cust_token = create_customer(db)
-    admin, admin_token = create_admin(db)
-
-    # 1. Submit
-    payload = {"topic": "RF Antenna Placement", "description": "Guidance on 2.4GHz ceramic chip vs trace antenna."}
-    res_sub = client.post("/api/v1/consultations", json=payload, headers={"Authorization": f"Bearer {cust_token}"})
-    consult_id = res_sub.json()["data"]["id"]
-
-    # 2. Admin raises clarification
-    res_clar = client.post(
-        f"/api/v1/admin/consultations/{consult_id}/clarifications",
-        json={"question": "What is the ground plane clearance available on layer 1?"},
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-    assert res_clar.status_code == 201
-    clar_id = res_clar.json()["data"]["id"]
-
-    # Check request status transitioned to in_progress
-    res_chk = client.get(f"/api/v1/consultations/{consult_id}", headers={"Authorization": f"Bearer {cust_token}"})
-    assert res_chk.json()["data"]["status"] == "in_progress"
-
-    # 3. Customer responds
-    res_resp = client.post(
-        f"/api/v1/consultations/{consult_id}/clarifications/{clar_id}/respond",
-        json={"response_text": "We have 5mm ground clearance around the antenna feed point."},
-        headers={"Authorization": f"Bearer {cust_token}"},
-    )
-    assert res_resp.status_code == 200
-    assert res_resp.json()["data"]["status"] in ("resolved", "awaiting_response")
-
-    # 4. Admin resolves clarification
-    res_res = client.post(
-        f"/api/v1/admin/consultations/{consult_id}/clarifications/{clar_id}/resolve",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-    assert res_res.status_code == 200
-    assert res_res.json()["data"]["status"] == "resolved"
-
 
 def test_consultation_admin_respond_and_close():
     """Admin provides technical answer and customer closes consultation."""
