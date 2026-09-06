@@ -468,24 +468,19 @@ export const adminSoftwareApi = {
 };
 
 export const adminReviewsApi = {
-  listQueue: (status?: string, page?: number, pageSize?: number, token?: string) => {
-    const q = new URLSearchParams();
-    if (status) q.append('status', status);
-    if (page) q.append('page', String(page));
-    if (pageSize) q.append('page_size', String(pageSize));
-    const qs = q.toString() ? `?${q.toString()}` : '';
-    return apiClient.get(`/admin/reviews${qs}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  },
-
-  getReview: (id: string, token?: string) =>
-    apiClient.get(`/admin/reviews/${id}`, {
+  listQueue: (token?: string) =>
+    apiClient.get('/admin/reviews', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 
-  moderateReview: (id: string, action: 'hide' | 'restore', notes?: string, token?: string) =>
-    apiClient.post(`/admin/reviews/${id}/moderate`, { action, notes }, {
+  hideReview: (id: string, reason: string, token?: string) =>
+    apiClient.post(`/admin/reviews/${id}/hide`, { reason }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+
+  restoreReview: (id: string, token?: string) =>
+    apiClient.post(`/admin/reviews/${id}/restore`, {}, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 };
+

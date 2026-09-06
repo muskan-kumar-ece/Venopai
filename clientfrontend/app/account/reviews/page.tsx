@@ -1,1 +1,348 @@
-export default function ReviewsPage() { return <div>Reviews</div>; }
+'use client';
+
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { reviewsApi } from '@/lib/api/client';
+import { LoadingState } from '@/components/account/LoadingState';
+import { EmptyState } from '@/components/account/EmptyState';
+
+interface Review {
+  id: string;
+  product_id: string;
+  rating: number;
+  comment?: string | null;
+  is_visible: boolean;
+  created_at: string;
+}
+
+function AccountReviewsContent() {
+
+  const searchParams = useSearchParams();
+  const prefillProductId = searchParams?.get('product_id') || '';
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // New review state
+  const [showCreateModal, setShowCreateModal] = useState(!!prefillProductId);
+  const [productId, setProductId] = useState(prefillProductId);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Edit review state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(5);
+  const [editComment, setEditComment] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const loadReviews = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const res = await reviewsApi.listMyReviews(token);
+      if (res?.data) {
+        setReviews(res.data);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load reviews');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReviews();
+  }, []);
+
+  const handleCreateReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productId) return;
+    setSubmitting(true);
+    setCreateError(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      await reviewsApi.createReview({ product_id: productId, rating, comment }, token);
+      setShowCreateModal(false);
+      setProductId('');
+      setComment('');
+      loadReviews();
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = (r: Review) => {
+    setEditId(r.id);
+    setEditRating(r.rating);
+    setEditComment(r.comment || '');
+    setEditError(null);
+    setEditing(true);
+  };
+
+  const handleUpdateReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId) return;
+    setSubmitting(true);
+    setEditError(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      await reviewsApi.updateReview(editId, { rating: editRating, comment: editComment }, token);
+      setEditing(false);
+      loadReviews();
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this review?')) return;
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      await reviewsApi.deleteReview(id, token);
+      loadReviews();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete review');
+    }
+  };
+
+  if (loading) {
+    return <LoadingState message="Loading your submitted reviews..." />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Your Reviews & Feedback</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage your submitted ratings and feedback on delivered components and completed hardware projects.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+      )}
+
+      {reviews.length === 0 ? (
+        <EmptyState
+          title="No reviews submitted yet"
+          message="Once your parts or boards are delivered, you can submit product ratings and engineering feedback directly from your order detail page."
+          icon="⭐"
+        />
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex text-amber-400 text-base">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i}>{i < r.rating ? '★' : '☆'}</span>
+                      ))}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-900">{r.rating} / 5</span>
+                    {!r.is_visible && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Under Moderation
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Submitted on {r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => openEditModal(r)}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteReview(r.id)}
+                    className="text-xs font-medium text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {r.comment && (
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {r.comment}
+                </p>
+              )}
+
+              <div className="pt-2 border-t border-gray-100 text-xs text-gray-400 font-mono">
+                Product ID: {r.product_id}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Review Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Write a Review</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Share your feedback on the delivered hardware component or board.
+            </p>
+
+            {createError && (
+              <div className="p-3 mb-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateReview} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Product ID *</label>
+                <input
+                  type="text"
+                  required
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs"
+                  placeholder="UUID of product..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Rating (1 to 5 Stars) *</label>
+                <div className="flex gap-2 text-2xl cursor-pointer text-amber-400">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className="hover:scale-110 transition"
+                    >
+                      {star <= rating ? '★' : '☆'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Feedback / Comments (Optional)</label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="Review the quality, dimensional tolerances, and electrical performance..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || !productId}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Review Modal */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Edit Review</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              You may edit your review within the permitted window (7 days).
+            </p>
+
+            {editError && (
+              <div className="p-3 mb-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateReview} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Rating *</label>
+                <div className="flex gap-2 text-2xl cursor-pointer text-amber-400">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onClick={() => setEditRating(star)}
+                      className="hover:scale-110 transition"
+                    >
+                      {star <= editRating ? '★' : '☆'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Feedback / Comments</label>
+                <textarea
+                  value={editComment}
+                  onChange={(e) => setEditComment(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                >
+                  {submitting ? 'Updating...' : 'Update Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AccountReviewsPage() {
+  return (
+    <Suspense fallback={<LoadingState message="Loading reviews..." />}>
+      <AccountReviewsContent />
+    </Suspense>
+  );
+}
+

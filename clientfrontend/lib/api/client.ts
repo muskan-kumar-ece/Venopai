@@ -291,28 +291,78 @@ export const softwareApi = {
 
 export const profileApi = {
   getProfile: (token?: string) =>
-    apiClient.get('/profile', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  updateProfile: (data: unknown, token?: string) =>
-    apiClient.put('/profile', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+    apiClient.get('/users/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  updateProfile: (data: { name?: string; phone?: string }, token?: string) =>
+    apiClient.patch('/users/me', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  changePassword: (data: { current_password?: string; new_password?: string }, token?: string) =>
+    apiClient.post('/users/me/password-change', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  changeEmail: (data: { new_email: string }, token?: string) =>
+    apiClient.post('/users/me/email-change', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
 };
 
 export const notificationsApi = {
-  listNotifications: (token?: string) =>
-    apiClient.get('/notifications', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  markRead: (id: string, token?: string) =>
-    apiClient.post(`/notifications/${id}/read`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  listNotifications: (params?: { page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/notifications${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
 };
 
 export const reviewsApi = {
-  listReviews: (token?: string) =>
-    apiClient.get('/reviews', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  createReview: (data: unknown, token?: string) =>
+  listMyReviews: (token?: string) =>
+    apiClient.get('/reviews/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  createReview: (data: { product_id: string; rating: number; comment?: string }, token?: string) =>
     apiClient.post('/reviews', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  updateReview: (id: string, data: { rating?: number; comment?: string }, token?: string) =>
+    apiClient.patch(`/reviews/${id}`, data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  deleteReview: (id: string, token?: string) =>
+    apiClient.delete(`/reviews/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  getProductReviews: (productId: string) =>
+    apiClient.get(`/products/${productId}/reviews`),
 };
 
 export const paymentsApi = {
-  listPayments: (token?: string) =>
-    apiClient.get('/payments', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-  createPayment: (data: unknown, token?: string) =>
-    apiClient.post('/payments', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  listPayments: (params?: { page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/payments${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  getPayment: (id: string, token?: string) =>
+    apiClient.get(`/payments/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
 };
+
+export const ordersApi = {
+  listOrders: (params?: { status?: string; page?: number; page_size?: number }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.page) qs.set('page', params.page.toString());
+    if (params?.page_size) qs.set('page_size', params.page_size.toString());
+    return apiClient.get(`/orders${qs.toString() ? `?${qs.toString()}` : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+  getOrderDetail: (id: string, token?: string) =>
+    apiClient.get(`/orders/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  cancelOrder: (id: string, reason?: string, token?: string) =>
+    apiClient.post(`/orders/${id}/cancel`, { reason }, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  getInvoice: (id: string, token?: string) =>
+    apiClient.get(`/orders/${id}/invoice`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};
+
+export const addressesApi = {
+  listAddresses: (token?: string) =>
+    apiClient.get('/addresses', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  createAddress: (data: unknown, token?: string) =>
+    apiClient.post('/addresses', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  updateAddress: (id: string, data: unknown, token?: string) =>
+    apiClient.patch(`/addresses/${id}`, data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  deleteAddress: (id: string, token?: string) =>
+    apiClient.delete(`/addresses/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};
+
