@@ -17,7 +17,7 @@ class Review(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     target_type = Column(String(50), nullable=False, default="order_item", index=True)
-    target_id = Column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4, index=True)
+    target_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True, index=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=True)

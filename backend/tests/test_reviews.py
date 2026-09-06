@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from datetime import datetime, timezone, timedelta
 import pytest
 from fastapi.testclient import TestClient
@@ -707,3 +707,113 @@ def test_admin_hide_and_restore_review():
     actions = [a.action for a in audits]
     assert "review.hide" in actions
     assert "review.restore" in actions
+
+
+# ---------------------------------------------------------------------------
+# 8. DATABASE-LEVEL CONSTRAINT VERIFICATION
+# ---------------------------------------------------------------------------
+
+def test_db_level_target_id_not_null_constraint():
+    """Verify at the database layer that target_id = NULL is rejected with an IntegrityError."""
+    from sqlalchemy.exc import IntegrityError
+    db = TestingSessionLocal()
+    user, _ = create_user(db)
+
+    review = Review(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        target_type="order_item",
+        target_id=None,
+        rating=5,
+    )
+    db.add(review)
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
+
+
+def test_db_level_unique_constraint_same_user_same_target():
+    """Verify at the database layer that (user_id, target_type, target_id) uniqueness is strictly enforced."""
+    from sqlalchemy.exc import IntegrityError
+    db = TestingSessionLocal()
+    user, _ = create_user(db)
+    target_id = uuid.uuid4()
+
+    r1 = Review(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        target_type="order_item",
+        target_id=target_id,
+        rating=5,
+    )
+    db.add(r1)
+    db.commit()
+
+    r2 = Review(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        target_type="order_item",
+        target_id=target_id,
+        rating=4,
+    )
+    db.add(r2)
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
+
+
+def test_db_level_same_user_different_target_allowed():
+    """Verify at the database layer that the same user can review different targets independently."""
+    db = TestingSessionLocal()
+    user, _ = create_user(db)
+
+    r1 = Review(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        target_type="order_item",
+        target_id=uuid.uuid4(),
+        rating=5,
+    )
+    r2 = Review(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        target_type="order_item",
+        target_id=uuid.uuid4(),
+        rating=4,
+    )
+    db.add(r1)
+    db.add(r2)
+    db.commit()
+
+    saved = db.query(Review).filter(Review.user_id == user.id).all()
+    assert len(saved) == 2
+
+
+def test_db_level_different_user_same_target_allowed():
+    """Verify at the database layer that distinct users reviewing the same target does not violate uniqueness."""
+    db = TestingSessionLocal()
+    user1, _ = create_user(db, "u1@dbtest.com")
+    user2, _ = create_user(db, "u2@dbtest.com")
+    target_id = uuid.uuid4()
+
+    r1 = Review(
+        id=uuid.uuid4(),
+        user_id=user1.id,
+        target_type="order_item",
+        target_id=target_id,
+        rating=5,
+    )
+    r2 = Review(
+        id=uuid.uuid4(),
+        user_id=user2.id,
+        target_type="order_item",
+        target_id=target_id,
+        rating=4,
+    )
+    db.add(r1)
+    db.add(r2)
+    db.commit()
+
+    saved = db.query(Review).filter(Review.target_id == target_id).all()
+    assert len(saved) == 2
+
