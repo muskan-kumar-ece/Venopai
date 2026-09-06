@@ -24,6 +24,9 @@ from app.api.v1 import (
     admin_design,
     software,
     admin_software,
+    reviews,
+    admin_reviews,
+    notifications,
 )
 
 api_router = APIRouter()
@@ -58,3 +61,8 @@ api_router.include_router(design.router, prefix="/design/requests", tags=["desig
 api_router.include_router(admin_design.router, prefix="/admin/design/requests", tags=["admin-design"])
 api_router.include_router(software.router, prefix="/software/requests", tags=["software"])
 api_router.include_router(admin_software.router, prefix="/admin/software/requests", tags=["admin-software"])
+
+# Phase 10: Reviews and Notifications
+api_router.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
+api_router.include_router(admin_reviews.router, prefix="/admin/reviews", tags=["admin-reviews"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])

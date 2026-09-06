@@ -288,3 +288,31 @@ export const softwareApi = {
     }),
 };
 
+
+export const profileApi = {
+  getProfile: (token?: string) =>
+    apiClient.get('/profile', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  updateProfile: (data: unknown, token?: string) =>
+    apiClient.put('/profile', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};
+
+export const notificationsApi = {
+  listNotifications: (token?: string) =>
+    apiClient.get('/notifications', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  markRead: (id: string, token?: string) =>
+    apiClient.post(`/notifications/${id}/read`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};
+
+export const reviewsApi = {
+  listReviews: (token?: string) =>
+    apiClient.get('/reviews', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  createReview: (data: unknown, token?: string) =>
+    apiClient.post('/reviews', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};
+
+export const paymentsApi = {
+  listPayments: (token?: string) =>
+    apiClient.get('/payments', { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+  createPayment: (data: unknown, token?: string) =>
+    apiClient.post('/payments', data, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+};

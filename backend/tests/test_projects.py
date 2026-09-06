@@ -209,3 +209,31 @@ def test_project_idor_isolation():
         headers={"Authorization": f"Bearer {token2}"},
     )
     assert patch_res.status_code == 404
+
+def test_cross_customer_request_linking_rejected():
+    db = TestingSessionLocal()
+    user1, token1 = create_customer(db, "user1@example.com")
+    user2, token2 = create_customer(db, "user2@example.com")
+
+    proj1 = Project(id=uuid.uuid4(), user_id=user1.id, name="Project 1")
+    db.add(proj1)
+    
+    mfg2 = ManufacturingRequest(
+        id=uuid.uuid4(),
+        user_id=user2.id,
+        title="Meter Enclosure 2",
+        project_overview="Weatherproof casing",
+        prototype_type="3d_printing",
+        quantity=5,
+        status="under_review",
+    )
+    db.add(mfg2)
+    db.commit()
+
+    # User 1 attempts to link User 2's request -> 403/404
+    link_res = client.post(
+        f"/api/v1/projects/{proj1.id}/link",
+        json={"request_type": "manufacturing", "request_id": str(mfg2.id)},
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+    assert link_res.status_code in [403, 404]
