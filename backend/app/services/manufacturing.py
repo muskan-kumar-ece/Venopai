@@ -1033,3 +1033,96 @@ class ManufacturingService:
         db.commit()
         db.refresh(req)
         return req
+
+    @classmethod
+    def get_history(
+        cls,
+        db: Session,
+        user: User,
+        request_id: str,
+    ) -> List[Dict[str, Any]]:
+        """MFG-API-007: Return status/timeline history for request (IDOR 404 protected)."""
+        try:
+            r_uuid = uuid.UUID(request_id)
+        except ValueError:
+            raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Request not found")
+
+        is_admin = getattr(user, "is_superuser", False) or getattr(user, "is_admin", False) or getattr(user, "role", "") in (
+            "SUPER_ADMIN", "MANUFACTURING_MANAGER"
+        )
+        query = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == r_uuid)
+        if not is_admin:
+            query = query.filter(ManufacturingRequest.user_id == user.id)
+
+        req = query.first()
+        if not req:
+            raise APIException(status_code=http_status.HTTP_404_NOT_FOUND, code="REQUEST_NOT_FOUND", message="Request not found")
+
+        events = []
+
+        # 1. Submission event
+        events.append({
+            "type": "status_transition",
+            "title": "Request Submitted",
+            "description": f"Manufacturing request for {req.prototype_type} (qty: {req.quantity}) submitted.",
+            "timestamp": req.created_at.isoformat() if req.created_at else "",
+            "actor": "customer",
+        })
+
+        # 2. AuditEvents related to this request
+        audit_events = (
+            db.query(AuditEvent)
+            .filter(
+                AuditEvent.entity_type == "ManufacturingRequest",
+                AuditEvent.entity_id == req.id,
+            )
+            .order_by(AuditEvent.created_at.asc())
+            .all()
+        )
+        for a in audit_events:
+            actor = "admin" if (
+                a.action.startswith("MANUFACTURING_REQUIREMENTS")
+                or a.action.startswith("CLARIFICATION")
+                or a.action.startswith("MANUFACTURING_CANCELLATION_")
+                or a.action == "MANUFACTURING_REQUEST_COMPLETED"
+                or a.action == "MANUFACTURING_EXECUTION_COMPLETED"
+            ) else "customer"
+            title = a.action.replace("_", " ").title()
+            desc = None
+            if a.details:
+                try:
+                    d = json.loads(a.details)
+                    desc = d.get("notes") or d.get("reason") or d.get("question") or str(d)
+                except Exception:
+                    desc = a.details
+
+            events.append({
+                "type": "audit_event",
+                "title": title,
+                "description": desc,
+                "timestamp": a.created_at.isoformat() if a.created_at else "",
+                "actor": actor,
+            })
+
+        # 3. Status updates posted by team
+        status_updates = (
+            db.query(ManufacturingStatusUpdate)
+            .filter(ManufacturingStatusUpdate.request_id == req.id)
+            .order_by(ManufacturingStatusUpdate.created_at.asc())
+            .all()
+        )
+        for su in status_updates:
+            author_name = "Engineer"
+            if su.author and hasattr(su.author, "full_name") and su.author.full_name:
+                author_name = su.author.full_name
+            events.append({
+                "type": "status_update",
+                "title": "Production Milestone",
+                "description": su.note,
+                "timestamp": su.created_at.isoformat() if su.created_at else "",
+                "actor": author_name,
+            })
+
+        # Sort all events chronologically
+        events.sort(key=lambda x: x["timestamp"] or "")
+        return events

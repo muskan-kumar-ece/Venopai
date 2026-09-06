@@ -347,3 +347,84 @@ def test_mfg_admin_operational_queue_and_status_updates():
     events = history_res.json()["data"]
     assert len(events) >= 2
     assert any("SMT pick and place" in e.get("description", "") for e in events)
+
+
+def test_mfg_history_idor_isolation():
+    """MFG-API-007 & SEC-009: History endpoint returns 404 for non-owner."""
+    db = TestingSessionLocal()
+    user1, token1 = create_customer(db, "owner@example.com")
+    user2, token2 = create_customer(db, "intruder@example.com")
+
+    res = client.post(
+        "/api/v1/manufacturing/requests",
+        json={"title": "Private Project", "project_overview": "Confidential hardware", "prototype_type": "cnc_machining", "quantity": 1},
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+    req_id = res.json()["data"]["id"]
+
+    # Owner can access history -> 200
+    hist_owner = client.get(
+        f"/api/v1/manufacturing/requests/{req_id}/history",
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+    assert hist_owner.status_code == 200
+
+    # Non-owner receives 404
+    hist_intruder = client.get(
+        f"/api/v1/manufacturing/requests/{req_id}/history",
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert hist_intruder.status_code == 404
+    assert hist_intruder.json()["error"]["code"] == "REQUEST_NOT_FOUND"
+
+
+def test_mfg_canonical_11_states_enforcement():
+    """CORRECTION 2: Verify strictly 11 canonical states and reject obsolete states."""
+    db = TestingSessionLocal()
+    user, user_token = create_customer(db, "states_cust@example.com")
+    admin, admin_token = create_admin(db, "states_admin@venopai.com")
+
+    # 11 Canonical States:
+    canonical_states = {
+        "submitted",
+        "under_review",
+        "clarification_needed",
+        "requirements_confirmed",
+        "quote_ready",
+        "payment_pending",
+        "in_progress",
+        "completed_execution",
+        "delivered",
+        "completed",
+        "cancelled",
+    }
+    assert len(canonical_states) == 11
+
+    # Obsolete states must NOT be in canonical set
+    assert "quote_issued" not in canonical_states
+    assert "quote_accepted" not in canonical_states
+
+    # Create request -> starts in submitted
+    res = client.post(
+        "/api/v1/manufacturing/requests",
+        json={"title": "States Test", "project_overview": "Overview", "prototype_type": "3d_printing", "quantity": 1},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    req_id = res.json()["data"]["id"]
+    assert res.json()["data"]["status"] == "submitted"
+
+    # Admin queries operational queue for obsolete states -> yields 0 items
+    q_issued = client.get(
+        "/api/v1/admin/manufacturing/requests?status=quote_issued",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert q_issued.status_code == 200
+    assert q_issued.json()["pagination"]["total"] == 0
+
+    q_accepted = client.get(
+        "/api/v1/admin/manufacturing/requests?status=quote_accepted",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert q_accepted.status_code == 200
+    assert q_accepted.json()["pagination"]["total"] == 0
+

@@ -45,6 +45,9 @@ class AdminQuoteReviseRequest(BaseModel):
 class CustomerQuoteRejectRequest(BaseModel):
     reason: Optional[str] = None
 
+class CustomerQuoteApproveRequest(BaseModel):
+    version_number: Optional[int] = None
+
 class QuoteTaxDetail(BaseModel):
     type: str  # "IGST" or "CGST+SGST"
     amount: str

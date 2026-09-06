@@ -12,6 +12,7 @@ from app.schemas.quote import (
     AdminQuoteDraftUpdateRequest,
     AdminQuoteReviseRequest,
     CustomerQuoteRejectRequest,
+    CustomerQuoteApproveRequest,
     QuoteDetailResponse,
     QuoteListResponse,
     QuoteVersionListResponse,
@@ -190,11 +191,13 @@ def get_specific_version_detail(
 )
 def approve_quote(
     quote_id: str,
-    current_user: CurrentUser,
+    body: Optional[CustomerQuoteApproveRequest] = None,
+    current_user: CurrentUser = None,
     db: Session = Depends(get_db),
 ):
     """Customer approves the current version (transitions request quote_ready -> payment_pending)."""
-    quote, version = QuoteService.approve_quote(db=db, user=current_user, quote_id=quote_id)
+    v_num = body.version_number if body else None
+    quote, version = QuoteService.approve_quote(db=db, user=current_user, quote_id=quote_id, version_number=v_num)
     line_items = json.loads(version.line_items) if version.line_items else []
     return {
         "data": {
@@ -371,3 +374,76 @@ def admin_revise_quote(
         },
         "request_id": str(uuid.uuid4()),
     }
+
+
+@admin_router.patch(
+    "/{quote_id}/draft",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-QUOTE-API-002: Edit an unsent draft version in place",
+)
+def admin_update_draft_quote(
+    quote_id: str,
+    body: AdminQuoteDraftUpdateRequest,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """Edit an unsent draft quote in place (only permitted mutation on a version)."""
+    items_dump = [item.model_dump() for item in body.line_items] if body.line_items is not None else None
+    v = QuoteService.update_draft_quote(
+        db=db,
+        admin_user=admin,
+        quote_id=quote_id,
+        line_items=items_dump,
+        shipping_amount=body.shipping_amount,
+        estimated_timeline=body.estimated_timeline,
+        valid_until=body.valid_until,
+        terms=body.terms,
+        scope_summary=body.scope_summary,
+    )
+    return {
+        "data": {
+            "id": str(v.id),
+            "version_number": v.version,
+            "status": v.status,
+            "subtotal": _rupees(v.subtotal_paise),
+            "total": _rupees(v.total_amount),
+        },
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@admin_router.get(
+    "/{quote_id}/approvals",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-QUOTE-API-005: Full approval/rejection history across all versions",
+)
+def admin_list_quote_approvals(
+    quote_id: str,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """List full approval and rejection history for a quote across versions."""
+    approvals = QuoteService.list_quote_approvals(db=db, user=admin, quote_id=quote_id)
+    return {
+        "data": approvals,
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@admin_router.post(
+    "/{quote_id}/cancel",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-QUOTE-API-006: Cancel a pre-approval quote",
+)
+def admin_cancel_quote(
+    quote_id: str,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """Cancel a pre-approval quote."""
+    quote = QuoteService.cancel_quote(db=db, admin_user=admin, quote_id=quote_id)
+    return {
+        "data": {"id": str(quote.id), "status": quote.status},
+        "request_id": str(uuid.uuid4()),
+    }
+

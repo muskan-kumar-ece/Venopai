@@ -46,8 +46,6 @@ export default function ManufacturingRequestsListPage() {
       clarification_needed: { label: "Action Required", color: "bg-orange-950 text-orange-400 border-orange-800 animate-pulse" },
       requirements_confirmed: { label: "Requirements Confirmed", color: "bg-cyan-950 text-cyan-400 border-cyan-800" },
       quote_ready: { label: "Quote Ready", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-      quote_issued: { label: "Quote Issued", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-      quote_accepted: { label: "Quote Accepted", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
       payment_pending: { label: "Payment Pending", color: "bg-purple-950 text-purple-400 border-purple-800 animate-pulse" },
       in_progress: { label: "In Production", color: "bg-cyan-950 text-cyan-400 border-cyan-800" },
       completed_execution: { label: "Execution Complete", color: "bg-indigo-950 text-indigo-400 border-indigo-800" },

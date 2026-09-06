@@ -242,6 +242,32 @@ export const adminQuotesApi = {
     apiClient.post(`/admin/quotes/${id}/revise`, data, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
+
+  updateDraftQuote: (
+    id: string,
+    data: {
+      line_items?: Array<{ description: string; amount: string }>;
+      shipping_amount?: string;
+      estimated_timeline?: string;
+      valid_until?: string;
+      terms?: string;
+      scope_summary?: string;
+    },
+    token?: string
+  ) =>
+    apiClient.patch(`/admin/quotes/${id}/draft`, data, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+
+  listQuoteApprovals: (id: string, token?: string) =>
+    apiClient.get(`/admin/quotes/${id}/approvals`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
+
+  cancelQuote: (id: string, token?: string) =>
+    apiClient.post(`/admin/quotes/${id}/cancel`, {}, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }),
 };
 
 export const adminFilesApi = {

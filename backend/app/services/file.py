@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import APIException
 from app.models.user import User
-from app.models.project import Project, ProjectFile
+from app.models.project import Project, ProjectFile, ManufacturingRequest
 from app.integrations.cloudinary import cloudinary_provider
 
 ALLOWED_MIME_TYPES = {
@@ -31,6 +31,29 @@ class FileService:
     """Sections 16, 29-31: ProjectFile lifecycle, scan status, and signed downloads."""
 
     @classmethod
+    def check_admin_role_for_service(cls, admin: User, request_type: Optional[str]) -> None:
+        """Enforce Document 04 §30 / Section 45: Admin access to files is role-scoped."""
+        user_role = getattr(admin, "role", "")
+        if user_role == "SUPER_ADMIN":
+            return
+
+        req_type = (request_type or "").lower()
+        if req_type == "manufacturing" and user_role == "MANUFACTURING_MANAGER":
+            return
+        if req_type == "design" and user_role == "DESIGN_MANAGER":
+            return
+        if req_type == "software" and user_role == "SOFTWARE_MANAGER":
+            return
+        if req_type == "consultation" and user_role == "CONSULTATION_MANAGER":
+            return
+
+        raise APIException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            code="FORBIDDEN_FILE_ACCESS",
+            message="Role does not have permission to access files for this service type",
+        )
+
+    @classmethod
     def upload_file(
         cls,
         db: Session,
@@ -40,7 +63,9 @@ class FileService:
         association_id: Optional[str] = None,
         source: str = "customer_upload",
     ) -> ProjectFile:
-        """FILES-API-001: Uploads file bytes via Cloudinary abstraction and records ProjectFile."""
+        """FILES-API-001: Uploads file bytes via Cloudinary abstraction and records ProjectFile.
+        Contract: Upload initializes scan_status as 'pending_scan' and enqueues malware scan task.
+        """
         # 1. Read file bytes
         file_bytes = upload_file.file.read()
         size_bytes = len(file_bytes)
@@ -64,7 +89,10 @@ class FileService:
 
         # Check extension or MIME
         ext = filename.split(".")[-1].lower() if "." in filename else ""
-        cad_extensions = {"step", "stp", "stl", "dxf", "dwg", "gerber", "gbr", "pcb", "sch", "zip", "pdf", "png", "jpg", "jpeg"}
+        cad_extensions = {
+            "step", "stp", "stl", "dxf", "dwg", "gerber", "gbr", "pcb", "sch",
+            "kicad_pcb", "kicad_sch", "kicad_pro", "zip", "pdf", "png", "jpg", "jpeg", "csv"
+        }
         
         if content_type not in ALLOWED_MIME_TYPES and ext not in cad_extensions:
             raise APIException(
@@ -83,27 +111,24 @@ class FileService:
         )
         storage_ref = res.get("public_id") or res.get("url")
 
-        # 3. Associate with project if association_id belongs to a known project or request
+        # 3. Associate with request if association_id belongs to a known request
         assoc_uuid = None
-        proj_uuid = None
         if association_id:
             try:
                 assoc_uuid = uuid.UUID(association_id)
             except ValueError:
                 pass
 
-        # 4. Create ProjectFile record
-        # In test/dev environment, default scan_status to clean so file can be downloaded
+        # 4. Create ProjectFile record in 'pending_scan' status (mandatory per Document 04 §31)
         file_id = uuid.uuid4()
         project_file = ProjectFile(
             id=file_id,
             owner_id=user.id,
-            project_id=proj_uuid,
             filename=filename,
             content_type=content_type,
             size_bytes=size_bytes,
             storage_ref=storage_ref,
-            scan_status="clean",  # In prod: pending_scan -> clean via async worker
+            scan_status="pending_scan",  # MUST start in pending_scan
             source=source,
             association_type=association_type,
             association_id=assoc_uuid,
@@ -113,6 +138,17 @@ class FileService:
         db.add(project_file)
         db.commit()
         db.refresh(project_file)
+
+        # 5. Enqueue Celery malware scan task
+        try:
+            from app.workers.celery_app import celery_app
+            if not getattr(celery_app.conf, "task_always_eager", False):
+                from app.workers.tasks.files import scan_file_malware
+                scan_file_malware.delay(str(project_file.id))
+        except Exception:
+            # If celery broker offline in test/dev, task can be invoked manually or runs via worker
+            pass
+
         return project_file
 
     @classmethod
@@ -132,19 +168,43 @@ class FileService:
                 message="File not found",
             )
 
-        is_admin = getattr(user, "is_superuser", False) or getattr(user, "role", "") in ("SUPER_ADMIN", "MANUFACTURING_MANAGER")
+        is_admin = getattr(user, "is_superuser", False) or getattr(user, "is_admin", False) or getattr(user, "role", "") in (
+            "SUPER_ADMIN", "MANUFACTURING_MANAGER", "DESIGN_MANAGER", "SOFTWARE_MANAGER", "CONSULTATION_MANAGER",
+            "ORDER_MANAGER", "SUPPORT_EXECUTIVE", "FINANCE_MANAGER"
+        )
         
-        query = db.query(ProjectFile).filter(ProjectFile.id == f_uuid)
-        if not is_admin:
-            query = query.filter(ProjectFile.owner_id == user.id)
-
-        file_record = query.first()
+        file_record = db.query(ProjectFile).filter(ProjectFile.id == f_uuid).first()
         if not file_record:
             raise APIException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 code="FILE_NOT_FOUND",
                 message="File not found",
             )
+
+        if not is_admin:
+            # Customer ownership check: either direct owner or customer owns associated request
+            if file_record.owner_id != user.id:
+                # Check if it's a team deliverable for customer's request
+                is_owned_request = False
+                if file_record.association_type == "manufacturing" and file_record.association_id:
+                    mfg = db.query(ManufacturingRequest).filter(
+                        ManufacturingRequest.id == file_record.association_id,
+                        ManufacturingRequest.user_id == user.id,
+                    ).first()
+                    if mfg:
+                        is_owned_request = True
+                
+                if not is_owned_request:
+                    # Strict IDOR (SEC-009): return 404, never 403
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="FILE_NOT_FOUND",
+                        message="File not found",
+                    )
+        else:
+            # Role scoping check for admin
+            cls.check_admin_role_for_service(user, file_record.association_type)
+
         return file_record
 
     @classmethod
@@ -154,9 +214,18 @@ class FileService:
         user: User,
         file_id: str,
     ) -> Dict[str, Any]:
-        """FILES-API-003: Generate short-lived signed download URL with IDOR and scan checks."""
+        """FILES-API-003: Generate short-lived signed download URL with IDOR and scan checks.
+        Contract (Document 04 §29, §31):
+        - Unauthorized customer -> 404 (IDOR safe)
+        - pending_scan -> 409 FILE_NOT_YET_AVAILABLE
+        - flagged -> 410 FILE_FLAGGED
+        - failed -> 410 FILE_SCAN_FAILED
+        - clean -> 200 signed Cloudinary URL (5 min expiry)
+        """
+        # Step 1: Enforce identity & IDOR check before any scan status evaluation
         file_record = cls.get_file_metadata(db=db, user=user, file_id=file_id)
 
+        # Step 2: Enforce malware scan gating
         if file_record.scan_status == "pending_scan":
             raise APIException(
                 status_code=http_status.HTTP_409_CONFLICT,
@@ -169,6 +238,20 @@ class FileService:
                 status_code=http_status.HTTP_410_GONE,
                 code="FILE_FLAGGED",
                 message="File failed security scanning and has been permanently blocked",
+            )
+
+        if file_record.scan_status == "failed":
+            raise APIException(
+                status_code=http_status.HTTP_410_GONE,
+                code="FILE_SCAN_FAILED",
+                message="File scan process failed and file is not available for download",
+            )
+
+        if file_record.scan_status != "clean":
+            raise APIException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                code="FILE_NOT_AVAILABLE",
+                message="File is not available for download",
             )
 
         expires_in = 300  # 5 minutes

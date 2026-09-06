@@ -19,3 +19,9 @@ def override_get_db():
 
 # Set override once here — all test modules benefit from this
 app.dependency_overrides[get_db] = override_get_db
+
+from app.workers.celery_app import celery_app
+celery_app.conf.task_always_eager = True
+celery_app.conf.task_eager_propagates = True
+celery_app.conf.broker_url = "memory://"
+celery_app.conf.result_backend = "cache+memory://"

@@ -293,12 +293,14 @@ class ProjectService:
         """PROJECT-API-007: Aggregated file list across every linked request (Doc 03 §32 & Doc 04 §28)."""
         project, linked_requests = cls.get_project(db=db, user=user, project_id=project_id)
 
-        linked_req_ids = [uuid.UUID(r["id"]) for r in linked_requests]
+        linked_req_ids = [uuid.UUID(r["id"]) for r in linked_requests if r.get("id")]
+        if not linked_req_ids:
+            return []
 
-        # Files linked directly via project_id OR associated with linked requests
+        # Aggregated files strictly from all linked requests under this project
         files = db.query(ProjectFile).filter(
             ProjectFile.owner_id == user.id,
-            (ProjectFile.project_id == project.id) | (ProjectFile.association_id.in_(linked_req_ids)),
+            ProjectFile.association_id.in_(linked_req_ids),
         ).order_by(ProjectFile.created_at.desc()).all()
 
         results = []

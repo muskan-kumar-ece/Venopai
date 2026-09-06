@@ -496,7 +496,8 @@ class PaymentService:
                 .first()
             )
             if quote:
-                quote.status = "PAID"
+                quote.status = "approved"
+                quote.updated_at = now
 
                 # Unlock linked requests (by direct request_id or project_id)
                 if getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "manufacturing":

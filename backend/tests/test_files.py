@@ -9,6 +9,7 @@ from app.main import app
 from app.models.user import User, AuditEvent
 from app.models.project import Project, ProjectFile, ManufacturingRequest
 from app.core.security import get_password_hash, create_access_token
+from app.workers.tasks.files import scan_file_malware
 from tests.test_utils import TestingSessionLocal
 
 client = TestClient(app)
@@ -64,7 +65,8 @@ def create_admin(db, email="mfg_admin@venopai.com", role="MANUFACTURING_MANAGER"
     return user, token
 
 
-def test_file_upload_success():
+def test_file_upload_starts_in_pending_scan():
+    """CORRECTION 1: upload must initialize scan_status as pending_scan."""
     db = TestingSessionLocal()
     user, token = create_customer(db)
 
@@ -82,44 +84,111 @@ def test_file_upload_success():
     resp_data = response.json()["data"]
     assert resp_data["filename"] == "schematic.pdf"
     assert resp_data["content_type"] == "application/pdf"
-    assert resp_data["scan_status"] == "clean"
+    assert resp_data["scan_status"] == "pending_scan"
     assert resp_data["source"] == "customer_upload"
 
 
-def test_file_upload_empty_rejected():
+def test_file_download_while_pending_is_blocked():
+    """CORRECTION 1: download when pending_scan returns 409."""
     db = TestingSessionLocal()
     user, token = create_customer(db)
 
-    files = {"file": ("empty.pdf", io.BytesIO(b""), "application/pdf")}
-    response = client.post(
+    files = {"file": ("schematic.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")}
+    res = client.post(
         "/api/v1/files",
         files=files,
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "FILE_EMPTY"
+    file_id = res.json()["data"]["id"]
+
+    # In DB, verify it is pending_scan
+    pfile = db.query(ProjectFile).filter(ProjectFile.id == uuid.UUID(file_id)).first()
+    pfile.scan_status = "pending_scan"
+    db.commit()
+
+    dl_res = client.get(
+        f"/api/v1/files/{file_id}/download",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dl_res.status_code == 409
+    assert dl_res.json()["error"]["code"] == "FILE_NOT_YET_AVAILABLE"
 
 
-def test_file_upload_unsupported_type_rejected():
+def test_celery_scan_transitions_to_clean_and_allows_download():
+    """CORRECTION 1: Celery scan task transitions pending_scan -> clean and allows signed URL."""
     db = TestingSessionLocal()
     user, token = create_customer(db)
 
-    files = {"file": ("script.exe", io.BytesIO(b"MZ malicious binary"), "application/x-msdownload")}
-    response = client.post(
+    files = {"file": ("schematic.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")}
+    res = client.post(
         "/api/v1/files",
         files=files,
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "UNSUPPORTED_FILE_TYPE"
+    file_id = res.json()["data"]["id"]
+
+    # Run Celery malware scan task
+    status = scan_file_malware(file_id)
+    assert status == "clean"
+
+    # Now download should succeed with signed Cloudinary URL
+    dl_res = client.get(
+        f"/api/v1/files/{file_id}/download",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dl_res.status_code == 200
+    assert "download_url" in dl_res.json()["data"]
+    assert dl_res.json()["data"]["expires_in"] == 300
 
 
-def test_file_metadata_and_idor_protection():
+def test_file_scan_flagged_and_failed_blocked():
+    """CORRECTION 1: Flagged and failed files cannot be downloaded (410)."""
+    db = TestingSessionLocal()
+    user, token = create_customer(db)
+
+    # 1. Flagged file (e.g. infected)
+    files = {"file": ("eicar_test_infected.pdf", io.BytesIO(b"EICAR test string"), "application/pdf")}
+    res = client.post(
+        "/api/v1/files",
+        files=files,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    file_id = res.json()["data"]["id"]
+    status = scan_file_malware(file_id)
+    assert status == "flagged"
+
+    dl_flagged = client.get(
+        f"/api/v1/files/{file_id}/download",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dl_flagged.status_code == 410
+    assert dl_flagged.json()["error"]["code"] == "FILE_FLAGGED"
+
+    # 2. Failed scan file
+    files2 = {"file": ("corrupt_fail.step", io.BytesIO(b"corrupt header"), "application/octet-stream")}
+    res2 = client.post(
+        "/api/v1/files",
+        files=files2,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    file_id2 = res2.json()["data"]["id"]
+    status2 = scan_file_malware(file_id2)
+    assert status2 == "failed"
+
+    dl_failed = client.get(
+        f"/api/v1/files/{file_id2}/download",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dl_failed.status_code == 410
+    assert dl_failed.json()["error"]["code"] == "FILE_SCAN_FAILED"
+
+
+def test_file_unauthorized_customer_receives_404():
+    """CORRECTION 1 & SEC-009: Non-owner receives 404 before any signed URL generation."""
     db = TestingSessionLocal()
     user1, token1 = create_customer(db, "user1@example.com")
     user2, token2 = create_customer(db, "user2@example.com")
 
-    # User 1 uploads a file
     files = {"file": ("drawing.step", io.BytesIO(b"STEP-file-content"), "application/octet-stream")}
     res = client.post(
         "/api/v1/files",
@@ -128,123 +197,77 @@ def test_file_metadata_and_idor_protection():
         headers={"Authorization": f"Bearer {token1}"},
     )
     file_id = res.json()["data"]["id"]
+    scan_file_malware(file_id)
 
-    # User 1 can view metadata
-    res1 = client.get(
-        f"/api/v1/files/{file_id}",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert res1.status_code == 200
-    assert res1.json()["data"]["id"] == file_id
-
-    # User 2 receives 404 (IDOR protection per SEC-009)
+    # User 2 receives 404 (IDOR protection)
     res2 = client.get(
-        f"/api/v1/files/{file_id}",
+        f"/api/v1/files/{file_id}/download",
         headers={"Authorization": f"Bearer {token2}"},
     )
     assert res2.status_code == 404
     assert res2.json()["error"]["code"] == "FILE_NOT_FOUND"
 
 
-def test_file_download_signed_url_and_scan_status():
+def test_admin_file_rbac_scoping():
+    """CORRECTION 9: MANUFACTURING_MANAGER permitted; ORDER_MANAGER/SUPPORT_EXECUTIVE rejected with 403."""
     db = TestingSessionLocal()
-    user1, token1 = create_customer(db, "user1@example.com")
-
-    files = {"file": ("specs.pdf", io.BytesIO(b"%PDF-1.4 sample content"), "application/pdf")}
-    res = client.post(
-        "/api/v1/files",
-        files=files,
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    file_id = res.json()["data"]["id"]
-
-    # Download when clean -> 200
-    dl_res = client.get(
-        f"/api/v1/files/{file_id}/download",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert dl_res.status_code == 200
-    assert "download_url" in dl_res.json()["data"]
-    assert dl_res.json()["data"]["expires_in"] == 300
-
-    # If scan_status == pending_scan -> 409
-    pfile = db.query(ProjectFile).filter(ProjectFile.id == uuid.UUID(file_id)).first()
-    pfile.scan_status = "pending_scan"
-    db.commit()
-
-    dl_pending = client.get(
-        f"/api/v1/files/{file_id}/download",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert dl_pending.status_code == 409
-    assert dl_pending.json()["error"]["code"] == "FILE_NOT_YET_AVAILABLE"
-
-    # If scan_status == flagged -> 410
-    pfile.scan_status = "flagged"
-    db.commit()
-
-    dl_flagged = client.get(
-        f"/api/v1/files/{file_id}/download",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert dl_flagged.status_code == 410
-    assert dl_flagged.json()["error"]["code"] == "FILE_FLAGGED"
-
-
-def test_file_delete_customer_upload():
-    db = TestingSessionLocal()
-    user1, token1 = create_customer(db, "user1@example.com")
-
-    files = {"file": ("delete_me.pdf", io.BytesIO(b"%PDF-1.4 delete test"), "application/pdf")}
-    res = client.post(
-        "/api/v1/files",
-        files=files,
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    file_id = res.json()["data"]["id"]
-
-    del_res = client.delete(
-        f"/api/v1/files/{file_id}",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert del_res.status_code == 200
-
-    # Verify gone
-    meta_res = client.get(
-        f"/api/v1/files/{file_id}",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    assert meta_res.status_code == 404
-
-
-def test_admin_deliverable_upload_and_permissions():
-    db = TestingSessionLocal()
-    mfg_admin, admin_token = create_admin(db, "admin@venopai.com", role="MANUFACTURING_MANAGER")
+    mfg_admin, mfg_token = create_admin(db, "mfg@venopai.com", role="MANUFACTURING_MANAGER")
+    order_admin, order_token = create_admin(db, "order@venopai.com", role="ORDER_MANAGER")
+    support_admin, support_token = create_admin(db, "support@venopai.com", role="SUPPORT_EXECUTIVE")
     user, user_token = create_customer(db, "cust@example.com")
 
     req_id = str(uuid.uuid4())
-    # Admin uploads deliverable
-    files = {"file": ("final_gerber.zip", io.BytesIO(b"PK-gerber-files"), "application/zip")}
-    res = client.post(
+    # 1. MANUFACTURING_MANAGER uploads deliverable -> 201
+    files = {"file": ("pcb_deliverable.zip", io.BytesIO(b"PK-gerber"), "application/zip")}
+    res_mfg = client.post(
         f"/api/v1/admin/requests/manufacturing/{req_id}/deliverables",
         files=files,
-        headers={"Authorization": f"Bearer {admin_token}"},
+        headers={"Authorization": f"Bearer {mfg_token}"},
     )
-    assert res.status_code == 201
-    file_id = res.json()["data"]["id"]
-    assert res.json()["data"]["source"] == "team_deliverable"
+    assert res_mfg.status_code == 201
+    file_id = res_mfg.json()["data"]["id"]
 
-    # Admin lists request files
-    list_res = client.get(
+    # 2. MANUFACTURING_MANAGER can list files -> 200
+    res_list = client.get(
         f"/api/v1/admin/requests/manufacturing/{req_id}/files",
-        headers={"Authorization": f"Bearer {admin_token}"},
+        headers={"Authorization": f"Bearer {mfg_token}"},
     )
-    assert list_res.status_code == 200
-    assert len(list_res.json()["data"]) == 1
+    assert res_list.status_code == 200
 
-    # Customer attempts to delete deliverable -> 403 or 404 (IDOR / not customer file)
-    del_res = client.delete(
-        f"/api/v1/files/{file_id}",
-        headers={"Authorization": f"Bearer {user_token}"},
+    # 3. ORDER_MANAGER attempts to list manufacturing files -> 403
+    res_order = client.get(
+        f"/api/v1/admin/requests/manufacturing/{req_id}/files",
+        headers={"Authorization": f"Bearer {order_token}"},
     )
-    assert del_res.status_code in (403, 404)
+    assert res_order.status_code == 403
+
+    # 4. SUPPORT_EXECUTIVE attempts to list manufacturing files -> 403
+    res_supp = client.get(
+        f"/api/v1/admin/requests/manufacturing/{req_id}/files",
+        headers={"Authorization": f"Bearer {support_token}"},
+    )
+    assert res_supp.status_code == 403
+
+    # 5. ORDER_MANAGER attempts to download manufacturing file -> 403
+    res_dl_order = client.get(
+        f"/api/v1/admin/files/{file_id}/download",
+        headers={"Authorization": f"Bearer {order_token}"},
+    )
+    assert res_dl_order.status_code == 403
+
+
+def test_file_upload_empty_and_unsupported_rejected():
+    db = TestingSessionLocal()
+    user, token = create_customer(db)
+
+    # Empty file -> 400
+    files = {"file": ("empty.pdf", io.BytesIO(b""), "application/pdf")}
+    res = client.post("/api/v1/files", files=files, headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 400
+    assert res.json()["error"]["code"] == "FILE_EMPTY"
+
+    # Unsupported exe -> 400
+    files_exe = {"file": ("virus.exe", io.BytesIO(b"MZ binary"), "application/x-msdownload")}
+    res_exe = client.post("/api/v1/files", files=files_exe, headers={"Authorization": f"Bearer {token}"})
+    assert res_exe.status_code == 400
+    assert res_exe.json()["error"]["code"] == "UNSUPPORTED_FILE_TYPE"

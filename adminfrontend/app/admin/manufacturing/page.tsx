@@ -83,8 +83,6 @@ export default function AdminManufacturingQueuePage() {
       clarification_needed: { label: "Clarification Req", color: "bg-orange-950 text-orange-400 border-orange-800 animate-pulse" },
       requirements_confirmed: { label: "Req Confirmed", color: "bg-cyan-950 text-cyan-400 border-cyan-800" },
       quote_ready: { label: "Quote Ready", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-      quote_issued: { label: "Quote Issued", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
-      quote_accepted: { label: "Quote Accepted", color: "bg-emerald-950 text-emerald-400 border-emerald-800" },
       payment_pending: { label: "Payment Pending", color: "bg-purple-950 text-purple-400 border-purple-800 animate-pulse" },
       in_progress: { label: "In Production", color: "bg-cyan-950 text-cyan-400 border-cyan-800" },
       completed_execution: { label: "Exec Complete", color: "bg-indigo-950 text-indigo-400 border-indigo-800" },
@@ -193,8 +191,6 @@ export default function AdminManufacturingQueuePage() {
                 <option value="clarification_needed">Clarification Needed</option>
                 <option value="requirements_confirmed">Requirements Confirmed</option>
                 <option value="quote_ready">Quote Ready</option>
-                <option value="quote_issued">Quote Issued</option>
-                <option value="quote_accepted">Quote Accepted</option>
                 <option value="payment_pending">Payment Pending</option>
                 <option value="in_progress">In Production</option>
                 <option value="completed_execution">Completed Execution</option>

@@ -141,8 +141,7 @@ def delete_file(
 
 def _check_admin_file_role(admin: User, request_type: str):
     user_role = getattr(admin, "role", "")
-    is_super = getattr(admin, "is_superuser", False) or user_role == "SUPER_ADMIN"
-    if is_super:
+    if user_role == "SUPER_ADMIN":
         return
     if request_type == "manufacturing" and user_role == "MANUFACTURING_MANAGER":
         return
