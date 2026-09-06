@@ -108,6 +108,10 @@ def _serialize_checkout_session(
     }
 
 
+import threading
+
+_sqlite_reservation_lock = threading.Lock()
+
 def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[str, Any]:
     """CHECKOUT-API-001:
     1. Verify customer status == 'verified' (CHK-001)
@@ -187,136 +191,160 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
 
     product_ids = [item.product_id for item in cart_items]
 
-    # Row-lock inventories
-    # Using with_for_update() on dialects that support it (PostgreSQL)
     bind = db.get_bind()
-    inv_query = db.query(Inventory).filter(Inventory.product_id.in_(product_ids))
-    if bind.dialect.name == "postgresql":
-        inv_query = inv_query.with_for_update()
+    is_sqlite = bind.dialect.name == "sqlite"
 
-    inventories = {inv.product_id: inv for inv in inv_query.all()}
+    if is_sqlite:
+        _sqlite_reservation_lock.acquire()
+    try:
+        inv_query = db.query(Inventory).filter(Inventory.product_id.in_(product_ids))
+        if bind.dialect.name == "postgresql":
+            inv_query = inv_query.with_for_update()
 
-    insufficient_items = []
-    items_snapshot = []
-    subtotal_paise = 0
-    total_weight_grams = 0
+        inventories = {inv.product_id: inv for inv in inv_query.all()}
 
-    for item in cart_items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        if not product or product.status != "active":
-            insufficient_items.append({
-                "product_id": str(item.product_id),
-                "name": product.name if product else "Unknown Product",
-                "requested": item.quantity,
-                "available": 0,
-                "reason": "Product is no longer active",
-            })
-            continue
+        insufficient_items = []
+        items_snapshot = []
+        subtotal_paise = 0
+        total_weight_grams = 0
 
-        inv = inventories.get(item.product_id)
-        available = (inv.stock_quantity - inv.reserved_quantity) if inv else 0
-        if available < item.quantity:
-            insufficient_items.append({
-                "product_id": str(item.product_id),
-                "name": product.name,
-                "requested": item.quantity,
-                "available": max(0, available),
-                "reason": "Insufficient stock",
-            })
+        for item in cart_items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            if not product or product.status != "active":
+                insufficient_items.append({
+                    "product_id": str(item.product_id),
+                    "name": product.name if product else "Unknown Product",
+                    "requested": item.quantity,
+                    "available": 0,
+                    "reason": "Product is no longer active",
+                })
+                continue
+
+            inv = inventories.get(item.product_id)
+            available = (inv.stock_quantity - inv.reserved_quantity) if inv else 0
+            if available < item.quantity:
+                insufficient_items.append({
+                    "product_id": str(item.product_id),
+                    "name": product.name,
+                    "requested": item.quantity,
+                    "available": max(0, available),
+                    "reason": "Insufficient stock",
+                })
+            else:
+                # Re-read authoritative current catalog price
+                unit_paise = product.price_paise
+                subtotal_paise += unit_paise * item.quantity
+                total_weight_grams += (product.weight_grams or 200) * item.quantity
+
+                items_snapshot.append({
+                    "product_id": str(product.id),
+                    "name": product.name,
+                    "quantity": item.quantity,
+                    "unit_price": _rupees(unit_paise),
+                })
+
+        # All-or-nothing check (INV-006)
+        if insufficient_items:
+            raise APIException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                code="INSUFFICIENT_STOCK",
+                message="One or more items in your cart do not have sufficient stock",
+                details={"insufficient_items": insufficient_items},
+            )
+
+        # 7. Calculate Shipping & Tax
+        origin_pincode = "500001" # VenopAI Hyderabad warehouse
+        shipping_quote = shiprocket_provider.calculate_rate_and_eta(
+            origin_pincode=origin_pincode,
+            destination_pincode=address.pincode,
+            weight_grams=total_weight_grams,
+        )
+        if not shipping_quote.get("serviceable", True):
+            raise APIException(
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                code="ADDRESS_UNSERVICEABLE",
+                message=f"PIN code {address.pincode} is not serviceable by carrier",
+            )
+
+        shipping_rate_paise = shipping_quote["rate_paise"]
+        eta_min = shipping_quote["eta_days_min"]
+        eta_max = shipping_quote["eta_days_max"]
+
+        tax_calc = TaxService.calculate_tax(
+            merchandise_amount_paise=subtotal_paise,
+            destination_state=address.state,
+            shipping_amount_paise=shipping_rate_paise,
+        )
+        tax_amount_paise = tax_calc.total_tax_paise
+
+        if tax_calc.pricing_mode == TaxPricingMode.TAX_INCLUSIVE.value:
+            total_paise = subtotal_paise + shipping_rate_paise
         else:
-            # Re-read authoritative current catalog price
-            unit_paise = product.price_paise
-            subtotal_paise += unit_paise * item.quantity
-            total_weight_grams += (product.weight_grams or 200) * item.quantity
+            total_paise = subtotal_paise + shipping_rate_paise + tax_amount_paise
 
-            items_snapshot.append({
-                "product_id": str(product.id),
-                "name": product.name,
-                "quantity": item.quantity,
-                "unit_price": _rupees(unit_paise),
-            })
+        # 8. Create CheckoutSession and reserve stock
+        session_id = uuid.uuid4()
+        expires_at = now + timedelta(minutes=RESERVATION_DURATION_MINUTES)
 
-    # All-or-nothing check (INV-006)
-    if insufficient_items:
+        checkout_session = CheckoutSession(
+            id=session_id,
+            user_id=user.id,
+            cart_id=cart.id,
+            address_id=address.id,
+            status="open",
+            subtotal_paise=subtotal_paise,
+            shipping_rate_paise=shipping_rate_paise,
+            shipping_eta_min_days=eta_min,
+            shipping_eta_max_days=eta_max,
+            tax_type=tax_calc.tax_type,
+            tax_amount_paise=tax_amount_paise,
+            cgst_amount_paise=tax_calc.cgst_paise,
+            sgst_amount_paise=tax_calc.sgst_paise,
+            igst_amount_paise=tax_calc.igst_paise,
+            total_paise=total_paise,
+            reservation_expires_at=expires_at,
+        )
+        db.add(checkout_session)
+
+        # Create InventoryReservation for each cart line
+        for item in cart_items:
+            inv = inventories[item.product_id]
+            if (inv.stock_quantity - inv.reserved_quantity) < item.quantity:
+                raise APIException(
+                    status_code=http_status.HTTP_409_CONFLICT,
+                    code="INSUFFICIENT_STOCK",
+                    message="One or more items in your cart do not have sufficient stock",
+                    details={"insufficient_items": [{"product_id": str(item.product_id), "reason": "Insufficient stock"}]},
+                )
+
+            inv.reserved_quantity += item.quantity
+
+            res = InventoryReservation(
+                inventory_id=inv.id,
+                checkout_session_id=session_id,
+                order_id=None,
+                quantity=item.quantity,
+                status="ACTIVE",
+                created_at=now,
+                expires_at=expires_at,
+            )
+            db.add(res)
+
+        db.commit()
+        db.refresh(checkout_session)
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, APIException):
+            raise e
         raise APIException(
             status_code=http_status.HTTP_409_CONFLICT,
             code="INSUFFICIENT_STOCK",
             message="One or more items in your cart do not have sufficient stock",
-            details={"insufficient_items": insufficient_items},
+            details={"insufficient_items": [{"product_id": str(item.product_id) if 'item' in locals() else 'unknown', "reason": "Concurrent reservation conflict"}]},
         )
-
-    # 7. Calculate Shipping & Tax
-    origin_pincode = "500001" # VenopAI Hyderabad warehouse
-    shipping_quote = shiprocket_provider.calculate_rate_and_eta(
-        origin_pincode=origin_pincode,
-        destination_pincode=address.pincode,
-        weight_grams=total_weight_grams,
-    )
-    if not shipping_quote.get("serviceable", True):
-        raise APIException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            code="ADDRESS_UNSERVICEABLE",
-            message=f"PIN code {address.pincode} is not serviceable by carrier",
-        )
-
-    shipping_rate_paise = shipping_quote["rate_paise"]
-    eta_min = shipping_quote["eta_days_min"]
-    eta_max = shipping_quote["eta_days_max"]
-
-    tax_calc = TaxService.calculate_tax(
-        merchandise_amount_paise=subtotal_paise,
-        destination_state=address.state,
-        shipping_amount_paise=shipping_rate_paise,
-    )
-    tax_amount_paise = tax_calc.total_tax_paise
-
-    if tax_calc.pricing_mode == TaxPricingMode.TAX_INCLUSIVE.value:
-        total_paise = subtotal_paise + shipping_rate_paise
-    else:
-        total_paise = subtotal_paise + shipping_rate_paise + tax_amount_paise
-
-    # 8. Create CheckoutSession and reserve stock
-    session_id = uuid.uuid4()
-    expires_at = now + timedelta(minutes=RESERVATION_DURATION_MINUTES)
-
-    checkout_session = CheckoutSession(
-        id=session_id,
-        user_id=user.id,
-        cart_id=cart.id,
-        address_id=address.id,
-        status="open",
-        subtotal_paise=subtotal_paise,
-        shipping_rate_paise=shipping_rate_paise,
-        shipping_eta_min_days=eta_min,
-        shipping_eta_max_days=eta_max,
-        tax_type=tax_calc.tax_type,
-        tax_amount_paise=tax_amount_paise,
-        cgst_amount_paise=tax_calc.cgst_paise,
-        sgst_amount_paise=tax_calc.sgst_paise,
-        igst_amount_paise=tax_calc.igst_paise,
-        total_paise=total_paise,
-        reservation_expires_at=expires_at,
-    )
-    db.add(checkout_session)
-
-    # Create InventoryReservation for each cart line
-    for item in cart_items:
-        inv = inventories[item.product_id]
-        inv.reserved_quantity += item.quantity
-
-        res = InventoryReservation(
-            inventory_id=inv.id,
-            checkout_session_id=session_id,
-            order_id=None,
-            quantity=item.quantity,
-            status="ACTIVE",
-            created_at=now,
-            expires_at=expires_at,
-        )
-        db.add(res)
-
-    db.commit()
-    db.refresh(checkout_session)
+    finally:
+        if is_sqlite:
+            _sqlite_reservation_lock.release()
 
     return _serialize_checkout_session(checkout_session, items_snapshot=items_snapshot, address=address)
 

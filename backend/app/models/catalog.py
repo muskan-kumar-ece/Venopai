@@ -110,6 +110,10 @@ class Inventory(Base):
         ),
     )
 
+    __mapper_args__ = {
+        "version_id_col": version
+    }
+
     product = relationship("Product", back_populates="inventory")
     reservations = relationship("InventoryReservation", back_populates="inventory")
 

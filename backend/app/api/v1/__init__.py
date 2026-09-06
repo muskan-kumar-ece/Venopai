@@ -27,6 +27,7 @@ from app.api.v1 import (
     reviews,
     admin_reviews,
     notifications,
+    shipping,
 )
 
 api_router = APIRouter()
@@ -39,6 +40,7 @@ api_router.include_router(admin_catalog.router, tags=["admin-catalog"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(cart.router, prefix="/cart", tags=["cart"])
 api_router.include_router(addresses.router, prefix="/addresses", tags=["addresses"])
+api_router.include_router(shipping.router, prefix="/shipping", tags=["shipping"])
 api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(payments.admin_router, prefix="/admin/payments", tags=["admin-payments"])
