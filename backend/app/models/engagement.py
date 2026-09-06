@@ -15,7 +15,10 @@ class Review(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
+    is_visible = Column(Boolean, default=True, nullable=False)
+    moderation_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user = relationship("User")
     product = relationship("Product")

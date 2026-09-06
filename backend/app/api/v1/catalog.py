@@ -167,3 +167,60 @@ def get_category(
         },
         "request_id": _request_id(request),
     }
+
+
+# ---------------------------------------------------------------------------
+# REVIEW-API-005 — GET /api/v1/products/{product_id}/reviews
+# Public reviews for a product — only visible (non-moderated) reviews.
+# Returns average_rating and review_count summary.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/products/{product_id}/reviews",
+    status_code=200,
+    summary="REVIEW-API-005: Public reviews for a product",
+)
+def get_product_reviews(
+    product_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return only visible (non-moderated) reviews for a product, plus average_rating and review_count."""
+    from app.models.engagement import Review
+    from sqlalchemy import func as sqlfunc
+
+    try:
+        pid = uuid.UUID(product_id)
+    except ValueError:
+        raise APIException(http_status.HTTP_422_UNPROCESSABLE_ENTITY, "INVALID_UUID", "Invalid product_id")
+
+    reviews = (
+        db.query(Review)
+        .filter(Review.product_id == pid, Review.is_visible == True)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+
+    avg = (
+        db.query(sqlfunc.avg(Review.rating))
+        .filter(Review.product_id == pid, Review.is_visible == True)
+        .scalar()
+    )
+
+    return {
+        "data": [
+            {
+                "id": str(r.id),
+                "user_id": str(r.user_id),
+                "product_id": str(r.product_id),
+                "rating": r.rating,
+                "comment": r.comment,
+                "is_visible": r.is_visible,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in reviews
+        ],
+        "average_rating": round(float(avg), 2) if avg else None,
+        "review_count": len(reviews),
+        "request_id": _request_id(request),
+    }

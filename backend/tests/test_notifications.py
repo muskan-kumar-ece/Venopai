@@ -35,12 +35,48 @@ def create_user(db, email="test@example.com"):
 def test_get_my_notifications():
     db = TestingSessionLocal()
     user, token = create_user(db)
-    
+
     notif = Notification(id=uuid.uuid4(), user_id=user.id, title="Test", message="Test Message")
     db.add(notif)
     db.commit()
 
     res = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
-    assert len(res.json()["data"]) == 1
-    assert res.json()["data"][0]["title"] == "Test"
+    body = res.json()
+    assert len(body["data"]) == 1
+    assert body["data"][0]["title"] == "Test"
+    assert "pagination" in body
+    assert body["pagination"]["total_items"] == 1
+
+
+def test_notifications_cross_customer_isolation():
+    """NOTIF-API-001: customers must only see their own notifications."""
+    db = TestingSessionLocal()
+    user1, token1 = create_user(db, "u1@test.com")
+    user2, token2 = create_user(db, "u2@test.com")
+
+    notif = Notification(id=uuid.uuid4(), user_id=user1.id, title="Private", message="For u1 only")
+    db.add(notif)
+    db.commit()
+
+    res = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {token2}"})
+    assert res.status_code == 200
+    assert len(res.json()["data"]) == 0
+
+
+def test_notifications_pagination():
+    """NOTIF-API-001: pagination parameters work correctly."""
+    db = TestingSessionLocal()
+    user, token = create_user(db)
+
+    for i in range(5):
+        db.add(Notification(id=uuid.uuid4(), user_id=user.id, title=f"N{i}", message="msg"))
+    db.commit()
+
+    res = client.get("/api/v1/notifications?page=1&page_size=2", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body["data"]) == 2
+    assert body["pagination"]["total_items"] == 5
+    assert body["pagination"]["total_pages"] == 3
+
