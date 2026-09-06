@@ -75,15 +75,18 @@ class Address(Base):
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
     pincode = Column(String(20), nullable=False)
+    postal_code = Column(String(20), nullable=True)
     country = Column(String(50), nullable=False, default="India")
     is_default = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    # Legacy compatibility properties
-    @property
-    def postal_code(self):
-        return self.pincode
+    def __init__(self, **kwargs):
+        if "pincode" in kwargs and "postal_code" not in kwargs:
+            kwargs["postal_code"] = kwargs["pincode"]
+        elif "postal_code" in kwargs and "pincode" not in kwargs:
+            kwargs["pincode"] = kwargs["postal_code"]
+        super().__init__(**kwargs)
 
     @property
     def is_default_shipping(self):

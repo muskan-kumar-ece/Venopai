@@ -40,3 +40,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+@app.get("/health")
+def root_health():
+    return {"status": "ok", "service": "venopai-backend"}

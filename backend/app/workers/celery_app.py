@@ -1,3 +1,4 @@
+import ssl
 from celery import Celery
 from app.core.config import settings
 
@@ -7,17 +8,21 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
 )
 
+ssl_options = {"ssl_cert_reqs": ssl.CERT_NONE} if settings.REDIS_URL.startswith("rediss://") else None
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    broker_connection_retry_on_startup=False,
+    broker_connection_retry_on_startup=True,
+    broker_use_ssl=ssl_options,
+    redis_backend_use_ssl=ssl_options,
     broker_transport_options={
-        "max_retries": 1,
-        "socket_timeout": 0.5,
-        "socket_connect_timeout": 0.5,
+        "max_retries": 3,
+        "socket_timeout": 5.0,
+        "socket_connect_timeout": 5.0,
     },
     beat_schedule={
         "release-expired-inventory-reservations-every-minute": {
@@ -34,4 +39,7 @@ celery_app.conf.update(
         },
     },
 )
+
+# Explicitly register all task modules so worker and beat discover them
+from app.workers.tasks import auth, consultations, files, inventory, payment  # noqa: F401
 
