@@ -222,10 +222,19 @@ def test_consultation_admin_respond_and_close():
     assert res_admin.json()["data"]["status"] == "responded"
     assert res_admin.json()["data"]["admin_response"] is not None
 
-    # Customer closes
-    res_close = client.post(
-        f"/api/v1/consultations/{consult_id}/close",
+    # Customer marks resolved (CONSULT-API-004)
+    res_resolve = client.post(
+        f"/api/v1/consultations/{consult_id}/resolve",
         headers={"Authorization": f"Bearer {cust_token}"},
+    )
+    assert res_resolve.status_code == 200
+    assert res_resolve.json()["data"]["status"] == "completed"
+
+    # Admin marks closed (ADMIN-CONSULT-API-004)
+    res_close = client.post(
+        f"/api/v1/admin/consultations/{consult_id}/close",
+        json={"notes": "Completed and closed by admin review."},
+        headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert res_close.status_code == 200
     assert res_close.json()["data"]["status"] == "closed"

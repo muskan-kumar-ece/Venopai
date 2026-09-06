@@ -278,10 +278,10 @@ def test_design_quote_creation_delivery_and_completion():
     assert res_deliv.status_code == 200
     assert res_deliv.json()["data"]["status"] == "delivered"
 
-    # Customer completes design request
+    # Admin marks completed (ADMIN-DESIGN-API-007)
     res_comp = client.post(
-        f"/api/v1/design/requests/{design_id}/complete",
-        headers={"Authorization": f"Bearer {cust_token}"},
+        f"/api/v1/admin/design/requests/{design_id}/complete",
+        headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert res_comp.status_code == 200
     assert res_comp.json()["data"]["status"] == "completed"

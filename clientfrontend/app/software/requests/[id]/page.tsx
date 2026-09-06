@@ -76,8 +76,6 @@ export default function SoftwareRequestDetailPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Complete action
-  const [isCompleting, setIsCompleting] = useState(false);
 
   const fetchDetail = async () => {
     try {
@@ -128,20 +126,6 @@ export default function SoftwareRequestDetailPage() {
       alert(msg);
     } finally {
       setIsCancelling(false);
-    }
-  };
-
-  const handleCompleteRequest = async () => {
-    if (!confirm("Confirm receipt and satisfaction with all deliverables? This will complete the software engagement.")) return;
-    setIsCompleting(true);
-    try {
-      await softwareApi.completeRequest(id);
-      await fetchDetail();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to mark completed";
-      alert(msg);
-    } finally {
-      setIsCompleting(false);
     }
   };
 
@@ -202,15 +186,6 @@ export default function SoftwareRequestDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             {getStatusBadge(softwareReq.status)}
-            {softwareReq.status === "delivered" && (
-              <button
-                onClick={handleCompleteRequest}
-                disabled={isCompleting}
-                className="text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-3 py-1.5 rounded-md transition shadow-md shadow-emerald-500/20"
-              >
-                {isCompleting ? "Completing..." : "Accept & Complete Project"}
-              </button>
-            )}
             {softwareReq.status !== "cancelled" && !softwareReq.cancellation_requested && (
               <button
                 onClick={() => setShowCancelModal(true)}

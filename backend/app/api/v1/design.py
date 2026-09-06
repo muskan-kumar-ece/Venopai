@@ -161,28 +161,6 @@ def cancel_design_request(
     }
 
 
-@router.post(
-    "/{id}/complete",
-    response_model=DesignRequestResponse,
-    status_code=http_status.HTTP_200_OK,
-    summary="Customer marks design request completed",
-)
-def complete_design_request(
-    id: str,
-    current_user: CurrentUser,
-    db: Session = Depends(get_db),
-):
-    """Customer completes design request."""
-    req = DesignService.customer_complete_request(
-        db=db,
-        user=current_user,
-        request_id=id,
-    )
-    return {
-        "data": _serialize_design(req, db),
-        "request_id": str(uuid.uuid4()),
-    }
-
 
 @router.get(
     "/{id}/clarifications",
@@ -269,11 +247,6 @@ def respond_design_clarification(
     }
 
 
-@router.get(
-    "/{id}/start-manufacturing",
-    status_code=http_status.HTTP_200_OK,
-    summary="DESIGN-API-006: Generate manufacturing draft from design deliverables (GET)",
-)
 @router.post(
     "/{id}/start-manufacturing",
     status_code=http_status.HTTP_200_OK,

@@ -134,12 +134,6 @@ def get_consultation(
     status_code=http_status.HTTP_200_OK,
     summary="CONSULT-API-004: Customer marks consultation resolved",
 )
-@router.post(
-    "/{id}/close",
-    response_model=ConsultationResponse,
-    status_code=http_status.HTTP_200_OK,
-    summary="Customer marks consultation closed",
-)
 def resolve_consultation(
     id: str,
     current_user: CurrentUser,

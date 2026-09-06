@@ -162,28 +162,6 @@ def cancel_software_request(
     }
 
 
-@router.post(
-    "/{id}/complete",
-    response_model=SoftwareRequestResponse,
-    status_code=http_status.HTTP_200_OK,
-    summary="Customer marks software request completed",
-)
-def complete_software_request(
-    id: str,
-    current_user: CurrentUser,
-    db: Session = Depends(get_db),
-):
-    """Customer completes software request."""
-    req = SoftwareService.customer_complete_request(
-        db=db,
-        user=current_user,
-        request_id=id,
-    )
-    return {
-        "data": _serialize_software(req, db),
-        "request_id": str(uuid.uuid4()),
-    }
-
 
 @router.get(
     "/{id}/clarifications",

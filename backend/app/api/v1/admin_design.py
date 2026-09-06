@@ -218,14 +218,14 @@ def admin_update_design_status(
 
 
 @router.post(
-    "/{id}/updates",
-    status_code=http_status.HTTP_201_CREATED,
-    summary="Post design execution status update (alias)",
-)
-@router.post(
     "/{id}/status-update",
     status_code=http_status.HTTP_201_CREATED,
     summary="ADMIN-DESIGN-API-005: Post design execution status update",
+)
+@router.post(
+    "/{id}/updates",
+    status_code=http_status.HTTP_201_CREATED,
+    include_in_schema=False,
 )
 def admin_post_design_status_update(
     id: str,
@@ -296,11 +296,6 @@ def admin_complete_design_request(
     }
 
 
-@router.post(
-    "/{id}/cancellation",
-    status_code=http_status.HTTP_200_OK,
-    summary="Resolve design cancellation request (alias)",
-)
 @router.post(
     "/{id}/resolve-cancellation",
     status_code=http_status.HTTP_200_OK,

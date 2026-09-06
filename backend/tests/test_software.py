@@ -280,10 +280,10 @@ def test_software_quote_execution_and_completion():
     assert res_deliv.status_code == 200
     assert res_deliv.json()["data"]["status"] == "delivered"
 
-    # Customer marks completed
+    # Admin marks completed (ADMIN-SW-API-007)
     res_comp = client.post(
-        f"/api/v1/software/requests/{sw_id}/complete",
-        headers={"Authorization": f"Bearer {cust_token}"},
+        f"/api/v1/admin/software/requests/{sw_id}/complete",
+        headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert res_comp.status_code == 200
     assert res_comp.json()["data"]["status"] == "completed"

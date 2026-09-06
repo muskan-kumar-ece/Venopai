@@ -156,7 +156,7 @@ class ConsultationService:
         """CONSULT-API-004: Customer marks consultation as resolved/completed."""
         req = cls.get_consultation(db, user, consultation_id)
         now = utcnow()
-        req.status = "closed"
+        req.status = "completed"
         req.updated_at = now
 
         audit = AuditEvent(

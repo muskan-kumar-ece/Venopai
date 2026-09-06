@@ -243,10 +243,6 @@ export const designApi = {
     apiClient.post(`/design/requests/${id}/cancel`, { reason }, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
-  completeRequest: (id: string, token?: string) =>
-    apiClient.post(`/design/requests/${id}/complete`, {}, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }),
   startManufacturing: (id: string, token?: string) =>
     apiClient.post(`/design/requests/${id}/start-manufacturing`, {}, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -280,10 +276,6 @@ export const softwareApi = {
     }),
   cancelRequest: (id: string, reason?: string, token?: string) =>
     apiClient.post(`/software/requests/${id}/cancel`, { reason }, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }),
-  completeRequest: (id: string, token?: string) =>
-    apiClient.post(`/software/requests/${id}/complete`, {}, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
   listClarifications: (id: string, token?: string) =>
