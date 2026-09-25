@@ -21,15 +21,37 @@ class RazorpayProvider(PaymentGateway):
         key_secret: Optional[str] = None,
         webhook_secret: Optional[str] = None,
     ):
-        self.key_id = key_id or settings.RAZORPAY_KEY_ID
-        self.key_secret = key_secret or settings.RAZORPAY_KEY_SECRET
-        self.webhook_secret = webhook_secret or settings.RAZORPAY_WEBHOOK_SECRET
+        self._key_id = key_id
+        self._key_secret = key_secret
+        self._webhook_secret = webhook_secret
+
+    @property
+    def key_id(self) -> str:
+        return self._key_id or settings.RAZORPAY_KEY_ID
+
+    @key_id.setter
+    def key_id(self, val: Optional[str]) -> None:
+        self._key_id = val
+
+    @property
+    def key_secret(self) -> str:
+        return self._key_secret or settings.RAZORPAY_KEY_SECRET
+
+    @key_secret.setter
+    def key_secret(self, val: Optional[str]) -> None:
+        self._key_secret = val
+
+    @property
+    def webhook_secret(self) -> str:
+        return self._webhook_secret or settings.RAZORPAY_WEBHOOK_SECRET
+
+    @webhook_secret.setter
+    def webhook_secret(self, val: Optional[str]) -> None:
+        self._webhook_secret = val
 
     @property
     def is_live_configured(self) -> bool:
-        key_id = self.key_id or settings.RAZORPAY_KEY_ID
-        key_secret = self.key_secret or settings.RAZORPAY_KEY_SECRET
-        return bool(key_id and key_secret)
+        return bool(self.key_id and self.key_secret)
 
     def create_payment_intent(
         self,
