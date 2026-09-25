@@ -1,4 +1,5 @@
 import uuid
+import sentry_sdk
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError, HTTPException
@@ -11,6 +12,10 @@ from app.core.exceptions import (
     global_exception_handler,
 )
 from app.api.v1 import api_router
+from app.integrations.sentry import init_sentry
+
+# Initialize Sentry before the FastAPI app is created
+init_sentry()
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -19,6 +24,8 @@ app = FastAPI(title=settings.PROJECT_NAME)
 async def request_id_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     request.state.request_id = request_id
+    if settings.SENTRY_DSN:
+        sentry_sdk.set_tag("request_id", request_id)
     response: Response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response

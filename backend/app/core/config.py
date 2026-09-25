@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     
     SENTRY_DSN: str = ""
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
     # Tax & Business Operations (TAX-001 - TAX-005)
     # TAX-002: Business State of Supply for determining intra-state vs inter-state GST.

@@ -85,6 +85,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = get_request_id(request)
     logger.exception(f"Unhandled Exception: {exc}")
+    try:
+        from app.core.config import settings
+        if settings.SENTRY_DSN:
+            import sentry_sdk
+            sentry_sdk.set_tag("request_id", request_id)
+            sentry_sdk.capture_exception(exc)
+    except Exception:
+        pass
     return JSONResponse(
         status_code=500,
         content={
