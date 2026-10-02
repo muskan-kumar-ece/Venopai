@@ -1,30 +1,138 @@
+# ==============================================================================
+# VenopAI — Monorepo .gitignore
+# Stack: Next.js (Client & Admin) + FastAPI + Celery + PostgreSQL (Alembic)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------------------
 node_modules/
-.next/
-out/
-build/
-dist/
-*.log
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.DS_Store
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.coverage
-htmlcov/
-alembic.ini
-.idea/
-.vscode/
-*.sqlite
-*.sqlite3
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ------------------------------------------------------------------------------
+# Python & Virtual Environments
+# ------------------------------------------------------------------------------
 venv/
 env/
 .venv/
-.AGENTS.md
-.CLAUDE.md
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ------------------------------------------------------------------------------
+# Frontend & Next.js Build Artifacts
+# ------------------------------------------------------------------------------
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# ------------------------------------------------------------------------------
+# Environment Variables, Secrets & Keys (Never commit secrets)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+
+# ------------------------------------------------------------------------------
+# Testing, Coverage & Linters
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+coverage/
+
+# ------------------------------------------------------------------------------
+# Logs & Process PID Files
+# ------------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
 celerybeat-schedule*
+celerybeat.pid
+
+# ------------------------------------------------------------------------------
+# Database & Temporary SQLite Files
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+
+# ------------------------------------------------------------------------------
+# Operating System & Editor Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------------------------
+# Deployment Platforms & Tools
+# ------------------------------------------------------------------------------
+.vercel
+.serverless/
+
+# ------------------------------------------------------------------------------
+# Assistant & Workspace Scratch Directories
+# ------------------------------------------------------------------------------
 scratch/
+.agent/
+.gemini/
+.CLAUDE.md
+.AGENTS.md
