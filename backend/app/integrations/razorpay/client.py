@@ -112,13 +112,21 @@ class RazorpayProvider(PaymentGateway):
             return False
 
         secret = self.key_secret or settings.RAZORPAY_KEY_SECRET
-        # In testing/dev without secret, permit mock valid signature
-        if not secret:
-            return signature in ("mock_valid_signature", "mock_signature", "test_signature")
 
-        # Allow test mock signature if in non-production test runs
-        if signature == "mock_valid_signature":
-            return True
+        # Strict check in production: mock signatures are strictly forbidden
+        if settings.ENVIRONMENT == "production":
+            if not secret:
+                logger.error("Razorpay key secret is not configured in production.")
+                return False
+            if signature in ("mock_valid_signature", "mock_signature", "test_signature"):
+                logger.warning("Attempted to use mock Razorpay signature in production environment.")
+                return False
+        else:
+            # Allow mock signatures only in non-production environments (dev/test/staging)
+            if not secret and signature in ("mock_valid_signature", "mock_signature", "test_signature"):
+                return True
+            if signature == "mock_valid_signature":
+                return True
 
         message = f"{order_id}|{payment_id}".encode("utf-8")
         expected_sig = hmac.new(
@@ -139,12 +147,21 @@ class RazorpayProvider(PaymentGateway):
             return False
 
         secret = self.webhook_secret or settings.RAZORPAY_WEBHOOK_SECRET
-        if not secret:
-            # Fallback for dev/testing when no webhook secret is set
-            return signature_header in ("mock_valid_signature", "mock_webhook_signature", "test_signature")
 
-        if signature_header == "mock_valid_signature":
-            return True
+        # Strict check in production: mock signatures are strictly forbidden
+        if settings.ENVIRONMENT == "production":
+            if not secret:
+                logger.error("Razorpay webhook secret is not configured in production.")
+                return False
+            if signature_header in ("mock_valid_signature", "mock_webhook_signature", "test_signature"):
+                logger.warning("Attempted to use mock Razorpay webhook signature in production environment.")
+                return False
+        else:
+            # Fallback for dev/testing when no webhook secret is set
+            if not secret and signature_header in ("mock_valid_signature", "mock_webhook_signature", "test_signature"):
+                return True
+            if signature_header == "mock_valid_signature":
+                return True
 
         expected_sig = hmac.new(
             secret.encode("utf-8"),

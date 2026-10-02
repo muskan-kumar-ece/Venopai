@@ -20,6 +20,11 @@ export default function AdminReviewsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [hideModalReviewId, setHideModalReviewId] = useState<string | null>(null);
+  const [hideReason, setHideReason] = useState<string>('');
+  const [restoreReviewId, setRestoreReviewId] = useState<string | null>(null);
+  const [actionInProgress, setActionInProgress] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchQueue = async () => {
     setIsLoading(true);
@@ -41,26 +46,42 @@ export default function AdminReviewsPage() {
     fetchQueue();
   }, []);
 
-  const handleHide = async (id: string) => {
-    const reason = prompt('Enter moderation reason to hide this review:');
-    if (!reason) return;
+  const confirmHide = async () => {
+    if (!hideModalReviewId || !hideReason.trim()) return;
+    setActionInProgress(true);
+    setFeedback(null);
     try {
-      await adminReviewsApi.hideReview(id, reason);
+      await adminReviewsApi.hideReview(hideModalReviewId, hideReason.trim());
+      setFeedback({ type: "success", message: "Review hidden from public catalog." });
+      setHideModalReviewId(null);
+      setHideReason("");
       fetchQueue();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to hide review';
-      alert(msg);
+      setFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to hide review",
+      });
+    } finally {
+      setActionInProgress(false);
     }
   };
 
-  const handleRestore = async (id: string) => {
-    if (!confirm('Restore this review to public visibility?')) return;
+  const confirmRestore = async () => {
+    if (!restoreReviewId) return;
+    setActionInProgress(true);
+    setFeedback(null);
     try {
-      await adminReviewsApi.restoreReview(id);
+      await adminReviewsApi.restoreReview(restoreReviewId);
+      setFeedback({ type: "success", message: "Review restored to public visibility." });
+      setRestoreReviewId(null);
       fetchQueue();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to restore review';
-      alert(msg);
+      setFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to restore review",
+      });
+    } finally {
+      setActionInProgress(false);
     }
   };
 
@@ -97,6 +118,21 @@ export default function AdminReviewsPage() {
           </button>
         </div>
       </div>
+
+      {feedback && (
+        <div
+          className={`rounded-xl border p-4 text-xs font-medium flex items-center justify-between ${
+            feedback.type === "success"
+              ? "border-emerald-800 bg-emerald-950/60 text-emerald-300"
+              : "border-red-800 bg-red-950/60 text-red-300"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button onClick={() => setFeedback(null)} className="text-zinc-400 hover:text-white ml-4">
+            ✕
+          </button>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-3.5 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs">
@@ -162,14 +198,17 @@ export default function AdminReviewsPage() {
                       </Link>
                       {item.is_visible ? (
                         <button
-                          onClick={() => handleHide(item.id)}
+                          onClick={() => {
+                            setHideModalReviewId(item.id);
+                            setHideReason("");
+                          }}
                           className="px-2.5 py-1 text-[11px] font-semibold text-red-300 bg-red-950/60 border border-red-800 rounded hover:bg-red-900 transition"
                         >
                           Hide Review
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleRestore(item.id)}
+                          onClick={() => setRestoreReviewId(item.id)}
                           className="px-2.5 py-1 text-[11px] font-semibold text-emerald-300 bg-emerald-950/60 border border-emerald-800 rounded hover:bg-emerald-900 transition"
                         >
                           Restore
@@ -183,6 +222,75 @@ export default function AdminReviewsPage() {
           </div>
         )}
       </div>
+
+      {/* Hide Review Modal */}
+      {hideModalReviewId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-white">Moderate & Hide Review</h3>
+            <p className="text-xs text-zinc-400">
+              Provide an official moderation reason for suppressing this customer review from public visibility.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1">Moderation Justification</label>
+              <textarea
+                value={hideReason}
+                onChange={(e) => setHideReason(e.target.value)}
+                placeholder="Reason (e.g. Contains profanity, spam, confidential proprietary schematic details)..."
+                rows={3}
+                required
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-xs text-white focus:border-red-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setHideModalReviewId(null)}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!hideReason.trim() || actionInProgress}
+                onClick={confirmHide}
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition"
+              >
+                {actionInProgress ? "Hiding..." : "Confirm Suppression"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Review Modal */}
+      {restoreReviewId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-white">Restore Review Visibility</h3>
+            <p className="text-xs text-zinc-400">
+              This review will be restored to public visibility on the hardware catalog and product page.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRestoreReviewId(null)}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionInProgress}
+                onClick={confirmRestore}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition"
+              >
+                {actionInProgress ? "Restoring..." : "Restore Public Visibility"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

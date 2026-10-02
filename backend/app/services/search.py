@@ -1,10 +1,10 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import uuid
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, case
 
 from app.models.catalog import Product, Category, Inventory
-from app.services.catalog import _paise
+from app.services.catalog import _paise, _rupees, _parse_json_list, _stock_status
 
 def search_products(
     db: Session,
@@ -98,11 +98,15 @@ def search_products(
     return products, total, suggested_categories
 
 
-def autocomplete(db: Session, query: str) -> List[str]:
-    """SEARCH-API-002: Autocomplete suggestions capped at 8 items."""
+def autocomplete(
+    db: Session,
+    query: str,
+    include_rich: bool = False,
+) -> Union[List[str], Tuple[List[str], List[dict], List[dict]]]:
+    """SEARCH-API-002: Autocomplete suggestions capped at 8 items, with optional rich previews."""
     clean_q = query.strip()
     if len(clean_q) < 2:
-        return []
+        return ([], [], []) if include_rich else []
 
     pattern = f"%{clean_q}%"
     starts_pattern = f"{clean_q}%"
@@ -117,4 +121,47 @@ def autocomplete(db: Session, query: str) -> List[str]:
         .limit(8)
         .all()
     )
-    return [r[0] for r in rows]
+    suggestions = [r[0] for r in rows]
+
+    if not include_rich:
+        return suggestions
+
+    # Matching active products with image, price, stock
+    product_rows = (
+        db.query(Product)
+        .filter(Product.status == "active")
+        .filter(or_(Product.name.ilike(pattern), Product.description.ilike(pattern)))
+        .order_by(exact_or_starts.desc(), Product.name.asc())
+        .limit(4)
+        .all()
+    )
+
+    products = []
+    for p in product_rows:
+        imgs = _parse_json_list(p.images)
+        primary_img = imgs[0] if imgs else None
+        cat_name = p.categories[0].name if p.categories else None
+        products.append({
+            "id": str(p.id),
+            "name": p.name,
+            "price": _rupees(p.price_paise) or "0.00",
+            "primary_image_url": primary_img,
+            "category_name": cat_name,
+            "stock_status": _stock_status(p.inventory),
+        })
+
+    # Matching active categories
+    cat_rows = (
+        db.query(Category)
+        .filter(Category.is_active == True)
+        .filter(Category.name.ilike(pattern))
+        .limit(3)
+        .all()
+    )
+    categories = [
+        {"id": str(c.id), "name": c.name, "slug": c.slug}
+        for c in cat_rows
+    ]
+
+    return suggestions, products, categories
+

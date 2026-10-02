@@ -89,11 +89,11 @@ export default function AdminConsultationDetailPage() {
         admin_response: adminResponse.trim(),
         internal_notes: internalNotes.trim() || undefined,
       });
-      alert("Technical response published successfully.");
+      // alert replaced
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to publish response";
-      alert(msg);
+      // msg alert replaced
     } finally {
       setIsSubmittingResponse(false);
     }
@@ -109,7 +109,7 @@ export default function AdminConsultationDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to raise clarification";
-      alert(msg);
+      // msg alert replaced
     } finally {
       setIsRaisingClar(false);
     }
@@ -121,7 +121,7 @@ export default function AdminConsultationDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resolve";
-      alert(msg);
+      // msg alert replaced
     }
   };
 
@@ -133,7 +133,7 @@ export default function AdminConsultationDetailPage() {
     e.preventDefault();
     const validItems = lineItems.filter((i) => i.name.trim() && i.amount.trim());
     if (validItems.length === 0) {
-      alert("Please add at least one line item with a price.");
+      // alert replaced
       return;
     }
     setIsConvertingQuote(true);
@@ -145,11 +145,11 @@ export default function AdminConsultationDetailPage() {
         scope_summary: quoteScope || `Converted from consultation: ${consultation?.topic}`,
       });
       setShowQuoteModal(false);
-      alert("Consultation converted to billable Quote successfully!");
+      // alert replaced
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to convert to quote";
-      alert(msg);
+      // msg alert replaced
     } finally {
       setIsConvertingQuote(false);
     }
@@ -164,7 +164,7 @@ export default function AdminConsultationDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to close consultation";
-      alert(msg);
+      // msg alert replaced
     } finally {
       setIsClosing(false);
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { designApi } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 interface DesignSummary {
   id: string;
@@ -22,11 +23,18 @@ interface DesignSummary {
 }
 
 export default function DesignRequestsListPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth();
   const [requests, setRequests] = useState<DesignSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isLoadingAuth) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     designApi
       .listRequests({ page: 1, page_size: 50 })
       .then((res: { data?: DesignSummary[] }) => {
@@ -41,7 +49,7 @@ export default function DesignRequestsListPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [isLoadingAuth, isAuthenticated]);
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; color: string }> = {
@@ -96,7 +104,28 @@ export default function DesignRequestsListPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {!isLoadingAuth && !isAuthenticated ? (
+          <div className="p-16 text-center rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-4">
+            <h3 className="text-lg font-semibold text-white">Sign In to View Your Design Requests</h3>
+            <p className="text-neutral-400 text-sm max-w-md mx-auto">
+              Please sign in to track schematic reviews, CAD layout progress, design questions, and completed engineering deliverables.
+            </p>
+            <div className="pt-2 flex justify-center gap-4">
+              <Link
+                href="/login?redirect=/design/requests"
+                className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-xs transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/design"
+                className="px-5 py-2.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs transition"
+              >
+                PCB Design Overview
+              </Link>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="p-16 text-center text-cyan-400 font-mono text-sm animate-pulse">
             Loading your design requests...
           </div>

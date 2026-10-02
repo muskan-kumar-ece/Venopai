@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { consultationsApi, filesApi } from "@/lib/api/client";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/forms/DraftRecoveryBanner";
+import { DraftSaveIndicator } from "@/components/forms/DraftSaveIndicator";
 
 interface UploadedFileItem {
   id: string;
@@ -19,6 +22,53 @@ export default function ConsultationRequestPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [agreeNDA, setAgreeNDA] = useState<boolean>(false);
+
+  // Auto-Save Draft Integration
+  const currentFormData = useMemo(
+    () => ({
+      topic,
+      description,
+      agreeNDA,
+      attachedFiles,
+    }),
+    [topic, description, agreeNDA, attachedFiles]
+  );
+
+  const {
+    saveStatus,
+    lastSaved,
+    hasDraft,
+    draftTimestamp,
+    isOnline,
+    discardDraft,
+    clearDraft,
+  } = useFormDraft({
+    formKey: "venopai_draft_consultation",
+    formData: currentFormData,
+    setFormData: (updated) => {
+      const d = typeof updated === "function" ? updated(currentFormData) : updated;
+      if (d.topic !== undefined) setTopic(d.topic);
+      if (d.description !== undefined) setDescription(d.description);
+      if (d.agreeNDA !== undefined) setAgreeNDA(d.agreeNDA);
+      if (d.attachedFiles !== undefined && Array.isArray(d.attachedFiles)) {
+        setAttachedFiles(d.attachedFiles);
+      }
+    },
+    metadata: {
+      title: topic || "Consultation Request",
+      fileCount: attachedFiles.length,
+    },
+  });
+
+  const handleDiscardDraft = () => {
+    discardDraft(() => {
+      setTopic("");
+      setDescription("");
+      setAgreeNDA(false);
+      setAttachedFiles([]);
+    });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -69,6 +119,10 @@ export default function ConsultationRequestPage() {
       setErrorMessage("Please provide a technical description or engineering question.");
       return;
     }
+    if (!agreeNDA) {
+      setErrorMessage("Please review and accept the Confidentiality & Mutual NDA Undertaking.");
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -81,6 +135,7 @@ export default function ConsultationRequestPage() {
       };
 
       const res = await consultationsApi.createRequest(payload);
+      await clearDraft();
       if (res?.data?.id) {
         router.push(`/consultations/${res.data.id}`);
       } else {
@@ -105,7 +160,10 @@ export default function ConsultationRequestPage() {
           <Link href="/consultations" className="text-sm font-medium text-neutral-400 hover:text-white transition">
             &larr; Back to Consultations
           </Link>
-          <span className="text-xs font-mono text-neutral-500">Advisory Intake</span>
+          <div className="flex items-center gap-4">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <span className="text-xs font-mono text-neutral-500">Advisory Intake</span>
+          </div>
         </div>
       </header>
 
@@ -118,6 +176,13 @@ export default function ConsultationRequestPage() {
             Submit your schematic query, MCU selection challenge, RF layout questions, or architecture review to our hardware specialists.
           </p>
         </div>
+
+        <DraftRecoveryBanner
+          draftTimestamp={draftTimestamp}
+          onDiscard={handleDiscardDraft}
+          formTitle="Consultation Request"
+          hasUploadedFiles={attachedFiles.length > 0}
+        />
 
         {errorMessage && (
           <div className="mb-6 p-4 rounded-lg bg-red-950/60 border border-red-800 text-red-200 text-sm">
@@ -200,20 +265,48 @@ export default function ConsultationRequestPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-4">
-            <Link
-              href="/consultations"
-              className="text-sm text-neutral-400 hover:text-neutral-200 transition"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || isUploading}
-              className="inline-flex items-center justify-center text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-6 py-2.5 rounded-lg transition shadow-md shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? "Submitting..." : "Submit Consultation Request"}
-            </button>
+          {/* Statutory Confidentiality & Mutual NDA Declaration */}
+          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                required
+                checked={agreeNDA}
+                onChange={(e) => setAgreeNDA(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+              />
+              <div className="text-xs text-neutral-300 leading-relaxed">
+                <span className="font-semibold text-white">Confidentiality & Mutual NDA Undertaking:</span>{" "}
+                I confirm that I own or hold valid rights to submit these project details and technical questions. I agree to the{" "}
+                <Link href="/terms#confidentiality" target="_blank" className="text-emerald-400 underline font-medium">
+                  VenopAI Engineering Confidentiality Terms
+                </Link>
+                . VenopAI guarantees that consultation queries and architecture discussions are conducted under strict mutual confidentiality. <span className="text-red-400">*</span>
+              </div>
+            </label>
+            <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">
+              <span className="text-emerald-400">🔒</span>
+              <span>Encrypted via 256-bit AES &bull; DPDP Act 2023 Compliant &bull; Never shared with third parties.</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-800">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/consultations"
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={isSubmitting || isUploading || !agreeNDA}
+                className="inline-flex items-center justify-center text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-6 py-2.5 rounded-lg transition shadow-md shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Consultation Request"}
+              </button>
+            </div>
           </div>
         </form>
       </main>

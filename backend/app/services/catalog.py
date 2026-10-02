@@ -1,9 +1,10 @@
 import json
 import uuid
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 from decimal import Decimal
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.catalog import Category, Product, Inventory, InventoryReservation, ProductCategory
@@ -24,14 +25,29 @@ def _rupees(paise: Optional[int]) -> Optional[str]:
         return None
     return f"{paise / 100:.2f}"
 
-def _parse_json_list(val: Optional[str]) -> list:
+def _parse_json_list(val: Any) -> list:
     if not val:
         return []
-    try:
-        res = json.loads(val)
-        return res if isinstance(res, list) else []
-    except Exception:
-        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        val_str = val.strip()
+        if not val_str:
+            return []
+        try:
+            res = json.loads(val_str)
+            if isinstance(res, list):
+                return res
+        except Exception:
+            pass
+        # Handle PostgreSQL array literal syntax: {"item1","item2"}
+        if val_str.startswith("{") and val_str.endswith("}"):
+            items = [item.strip(' "\'') for item in val_str[1:-1].split(",") if item.strip(' "\'')]
+            if items:
+                return items
+        if val_str.startswith("http") or val_str.startswith("/"):
+            return [val_str]
+    return []
 
 def _stock_status(inventory: Optional[Inventory]) -> str:
     if inventory is None:
@@ -179,8 +195,11 @@ def _build_product_fields(data: dict) -> Tuple[dict, Optional[List[uuid.UUID]]]:
         category_ids = cat_uuids
 
     for k, v in data.items():
-        if k == "category_ids" or k == "category_id":
+        if k in ("category_ids", "category_id", "stock_quantity"):
             continue
+        elif k == "is_active":
+            if "status" not in data:
+                out["status"] = "active" if v else "draft"
         elif k == "price":
             out["price_paise"] = _paise(v)
         elif k == "compare_price":
@@ -203,13 +222,29 @@ def list_products(
     page: int = 1,
     page_size: int = 24,
     admin: bool = False,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
 ) -> Tuple[List[Product], int]:
     """CAT-001: only 'active' products returned to public callers.
     Supports M:N category filtering via ProductCategory junction.
+    Supports server-side search across name, sku, and description.
+    Supports admin status filtering.
     """
     q = db.query(Product)
     if not admin:
         q = q.filter(Product.status == "active")
+    elif status and status != "all":
+        q = q.filter(Product.status == status)
+
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        q = q.filter(
+            (func.lower(Product.name).like(term)) |
+            (func.lower(Product.slug).like(term)) |
+            (func.lower(Product.sku).like(term)) |
+            (func.lower(Product.description).like(term))
+        )
+
     if category_id:
         q = q.filter(Product.categories.any(Category.id == category_id))
     if min_price is not None:
@@ -243,6 +278,24 @@ def get_product(db: Session, product_id: uuid.UUID, admin: bool = False) -> Opti
     if not admin:
         q = q.filter(Product.status == "active")
     return q.first()
+
+def get_product_by_slug(db: Session, slug: str, admin: bool = False) -> Optional[Product]:
+    """Look up product by slug. Public callers only receive active products."""
+    q = db.query(Product).filter(Product.slug == slug)
+    if not admin:
+        q = q.filter(Product.status == "active")
+    return q.first()
+
+def get_product_by_id_or_slug(db: Session, identifier: str, admin: bool = False) -> Optional[Product]:
+    """Accepts either a UUID string or a slug string."""
+    try:
+        pid = uuid.UUID(identifier)
+        prod = get_product(db, pid, admin=admin)
+        if prod:
+            return prod
+    except (ValueError, AttributeError):
+        pass
+    return get_product_by_slug(db, identifier, admin=admin)
 
 def create_product(db: Session, data: dict, admin_user) -> Product:
     """Admin: create a product in 'draft' status (CAT-001 - not public until activated).
@@ -283,7 +336,18 @@ def create_product(db: Session, data: dict, admin_user) -> Product:
                 message="One or more specified categories do not exist",
             )
 
+    if "slug" not in fields or not fields["slug"]:
+        import re
+        base_slug = re.sub(r"[^a-z0-9]+", "-", (data.get("name") or "product").lower()).strip("-")
+        test_slug = base_slug
+        counter = 1
+        while db.query(Product).filter(Product.slug == test_slug).first():
+            test_slug = f"{base_slug}-{counter}"
+            counter += 1
+        fields["slug"] = test_slug
+
     fields.setdefault("status", "draft")
+    initial_stock = int(data.get("stock_quantity") or 0)
 
     product = Product(**fields)
     if matched_categories:
@@ -292,7 +356,7 @@ def create_product(db: Session, data: dict, admin_user) -> Product:
     db.flush()
 
     # INV-001: Every product has an inventory record
-    inventory = Inventory(product_id=product.id, stock_quantity=0, reserved_quantity=0)
+    inventory = Inventory(product_id=product.id, stock_quantity=initial_stock, reserved_quantity=0)
     db.add(inventory)
     db.flush()
 
@@ -562,6 +626,8 @@ def build_public_product_dict(product: Product) -> dict:
         "stock_status": _stock_status(inv),
         "primary_image_url": images[0] if images else None,
         "images": images,
+        "video_url": getattr(product, "video_url", None),
+        "user_manual_url": getattr(product, "user_manual_url", None),
         "specifications": specs,
         "variant_attributes": variants,
         "category_ids": category_ids,
@@ -600,6 +666,8 @@ def build_admin_product_dict(product: Product) -> dict:
         "is_featured": product.is_featured,
         "primary_image_url": images[0] if images else None,
         "images": images,
+        "video_url": getattr(product, "video_url", None),
+        "user_manual_url": getattr(product, "user_manual_url", None),
         "specifications": specs,
         "variant_attributes": variants,
         "category_ids": category_ids,

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { softwareApi, filesApi } from "@/lib/api/client";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/forms/DraftRecoveryBanner";
+import { DraftSaveIndicator } from "@/components/forms/DraftSaveIndicator";
 
 interface UploadedFileItem {
   id: string;
@@ -32,6 +35,86 @@ export default function SoftwareRequestIntakePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [agreeNDA, setAgreeNDA] = useState<boolean>(false);
+
+  // Auto-Save Draft Integration
+  const currentFormData = useMemo(
+    () => ({
+      title,
+      projectOverview,
+      targetTimeline,
+      hardwarePlatform,
+      programmingLanguage,
+      osFramework,
+      interfacesProtocols,
+      repositoryUrl,
+      deliverablesRequired,
+      agreeNDA,
+      attachedFiles,
+    }),
+    [
+      title,
+      projectOverview,
+      targetTimeline,
+      hardwarePlatform,
+      programmingLanguage,
+      osFramework,
+      interfacesProtocols,
+      repositoryUrl,
+      deliverablesRequired,
+      agreeNDA,
+      attachedFiles,
+    ]
+  );
+
+  const {
+    saveStatus,
+    lastSaved,
+    hasDraft,
+    draftTimestamp,
+    isOnline,
+    discardDraft,
+    clearDraft,
+  } = useFormDraft({
+    formKey: "venopai_draft_software",
+    formData: currentFormData,
+    setFormData: (updated) => {
+      const d = typeof updated === "function" ? updated(currentFormData) : updated;
+      if (d.title !== undefined) setTitle(d.title);
+      if (d.projectOverview !== undefined) setProjectOverview(d.projectOverview);
+      if (d.targetTimeline !== undefined) setTargetTimeline(d.targetTimeline);
+      if (d.hardwarePlatform !== undefined) setHardwarePlatform(d.hardwarePlatform);
+      if (d.programmingLanguage !== undefined) setProgrammingLanguage(d.programmingLanguage);
+      if (d.osFramework !== undefined) setOsFramework(d.osFramework);
+      if (d.interfacesProtocols !== undefined) setInterfacesProtocols(d.interfacesProtocols);
+      if (d.repositoryUrl !== undefined) setRepositoryUrl(d.repositoryUrl);
+      if (d.deliverablesRequired !== undefined) setDeliverablesRequired(d.deliverablesRequired);
+      if (d.agreeNDA !== undefined) setAgreeNDA(d.agreeNDA);
+      if (d.attachedFiles !== undefined && Array.isArray(d.attachedFiles)) {
+        setAttachedFiles(d.attachedFiles);
+      }
+    },
+    metadata: {
+      title: title || "Software & Firmware Request",
+      fileCount: attachedFiles.length,
+    },
+  });
+
+  const handleDiscardDraft = () => {
+    discardDraft(() => {
+      setTitle("");
+      setProjectOverview("");
+      setTargetTimeline("3-4 weeks");
+      setHardwarePlatform("");
+      setProgrammingLanguage("C / C++");
+      setOsFramework("FreeRTOS");
+      setInterfacesProtocols("");
+      setRepositoryUrl("");
+      setDeliverablesRequired("");
+      setAgreeNDA(false);
+      setAttachedFiles([]);
+    });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -82,6 +165,10 @@ export default function SoftwareRequestIntakePage() {
       setErrorMessage("Please enter an overview of your software/firmware requirements.");
       return;
     }
+    if (!agreeNDA) {
+      setErrorMessage("Please review and accept the Intellectual Property & Mutual NDA Undertaking.");
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -101,6 +188,7 @@ export default function SoftwareRequestIntakePage() {
       };
 
       const res = await softwareApi.createRequest(payload);
+      await clearDraft();
       if (res?.data?.id) {
         router.push(`/software/requests/${res.data.id}`);
       } else {
@@ -125,7 +213,10 @@ export default function SoftwareRequestIntakePage() {
           <Link href="/software" className="text-sm font-medium text-neutral-400 hover:text-white transition">
             &larr; Software Home
           </Link>
-          <span className="text-xs font-mono text-indigo-400">Firmware Intake</span>
+          <div className="flex items-center gap-4">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <span className="text-xs font-mono text-indigo-400">Firmware Intake</span>
+          </div>
         </div>
       </header>
 
@@ -138,6 +229,13 @@ export default function SoftwareRequestIntakePage() {
             Define your hardware targets, RTOS preferences, communications stacks, and development deliverables.
           </p>
         </div>
+
+        <DraftRecoveryBanner
+          draftTimestamp={draftTimestamp}
+          onDiscard={handleDiscardDraft}
+          formTitle="Software Specification"
+          hasUploadedFiles={attachedFiles.length > 0}
+        />
 
         {errorMessage && (
           <div className="mb-6 p-4 rounded-lg bg-red-950/60 border border-red-800 text-red-200 text-sm">
@@ -334,20 +432,48 @@ export default function SoftwareRequestIntakePage() {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-4">
-            <Link
-              href="/software"
-              className="text-sm text-neutral-400 hover:text-neutral-200 transition"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || isUploading}
-              className="inline-flex items-center justify-center text-sm font-semibold bg-indigo-500 hover:bg-indigo-400 text-neutral-950 px-6 py-2.5 rounded-lg transition shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? "Submitting..." : "Submit Software Request"}
-            </button>
+          {/* Statutory Intellectual Property & NDA Declaration */}
+          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                required
+                checked={agreeNDA}
+                onChange={(e) => setAgreeNDA(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-neutral-700 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+              />
+              <div className="text-xs text-neutral-300 leading-relaxed">
+                <span className="font-semibold text-white">Intellectual Property & Mutual NDA Undertaking:</span>{" "}
+                I confirm that I own or hold valid licenses to submit these firmware specifications and source repositories. I agree to the{" "}
+                <Link href="/terms#confidentiality" target="_blank" className="text-indigo-400 underline font-medium">
+                  VenopAI Engineering Confidentiality Terms
+                </Link>
+                . VenopAI guarantees that all uploaded technical artifacts and repository links are maintained under strict confidentiality and used exclusively for feasibility assessment and development. <span className="text-red-400">*</span>
+              </div>
+            </label>
+            <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">
+              <span className="text-indigo-400">🔒</span>
+              <span>Encrypted via 256-bit AES &bull; DPDP Act 2023 Compliant &bull; Source code is never exposed or shared.</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-800">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/software"
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={isSubmitting || isUploading || !agreeNDA}
+                className="inline-flex items-center justify-center text-sm font-semibold bg-indigo-500 hover:bg-indigo-400 text-neutral-950 px-6 py-2.5 rounded-lg transition shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Software Request"}
+              </button>
+            </div>
           </div>
         </form>
       </main>

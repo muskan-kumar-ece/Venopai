@@ -36,9 +36,12 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        expire_minutes = (
+            getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 720)
+            if (is_admin or audience == "admin")
+            else getattr(settings, "CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
+        expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
     to_encode = {
         "exp": expire,
         "sub": str(subject),
@@ -58,3 +61,35 @@ def create_csrf_token() -> str:
 
 def create_opaque_token() -> str:
     return secrets.token_urlsafe(32)
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    """Validate password complexity against corporate security baseline.
+    Rules: min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special character.
+    """
+    import re
+    if not password or len(password) < 10:
+        return False, "Password must be at least 10 characters long."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter (A-Z)."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter (a-z)."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one numerical digit (0-9)."
+    if not re.search(r"[@$!%*?&_\-#^~+=><.,:;(){}\[\]]", password):
+        return False, "Password must contain at least one special character (@$!%*?& etc.)."
+    return True, ""
+
+def generate_secure_password(length: int = 14) -> str:
+    """Generate a high-entropy temporary password conforming to complexity rules."""
+    import string
+    if length < 12:
+        length = 12
+    upper = secrets.choice(string.ascii_uppercase)
+    lower = secrets.choice(string.ascii_lowercase)
+    digit = secrets.choice(string.digits)
+    special = secrets.choice("!@#$%^&*")
+    all_chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    remaining = [secrets.choice(all_chars) for _ in range(length - 4)]
+    password_list = [upper, lower, digit, special] + remaining
+    secrets.SystemRandom().shuffle(password_list)
+    return "".join(password_list)

@@ -9,7 +9,9 @@ from app.api.deps import get_db, CurrentAdmin
 from app.services import catalog as catalog_service
 from app.models.user import User, AuditEvent
 from app.models.catalog import Product
+from app.integrations.cloudinary import cloudinary_provider
 from app.core.exceptions import APIException
+from app.core.cache import cache_delete, cache_delete_pattern
 from fastapi import status as http_status
 
 router = APIRouter()
@@ -34,20 +36,23 @@ def _verify_catalog_role(admin: User):
 # ADMIN-CAT-API-001 — GET /api/v1/admin/products
 # ---------------------------------------------------------------------------
 
+@router.get("/admin/catalog/products")
 @router.get("/admin/products")
 def admin_list_products(
     request: Request,
     admin: CurrentAdmin,
     db: Session = Depends(get_db),
     category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     min_price: Optional[str] = Query(None),
     max_price: Optional[str] = Query(None),
     availability: Optional[str] = Query(None),
     sort: str = Query("newest"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(24, ge=1, le=100),
+    page_size: int = Query(25, ge=1, le=100),
 ):
-    """ADMIN-CAT-API-001: list including inactive/draft products."""
+    """ADMIN-CAT-API-001: list including inactive/draft products with search & status filters."""
     _verify_catalog_role(admin)
     cat_uuid = None
     if category:
@@ -65,6 +70,8 @@ def admin_list_products(
         page=page,
         page_size=page_size,
         admin=True,
+        search=search,
+        status=status,
     )
     total_pages = max(1, math.ceil(total / page_size))
     return {
@@ -74,6 +81,8 @@ def admin_list_products(
             "page_size": page_size,
             "total_items": total,
             "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
         },
         "request_id": _request_id(request),
     }
@@ -92,6 +101,41 @@ def admin_create_product(
     """ADMIN-CAT-API-002: create a product (starts in 'draft')."""
     _verify_catalog_role(admin)
     product = catalog_service.create_product(db, body, admin)
+    cache_delete_pattern("cache:prod:*")
+    cache_delete_pattern("cache:search:ac:*")
+    return {
+        "data": catalog_service.build_admin_product_dict(product),
+        "request_id": _request_id(request),
+    }
+
+# ---------------------------------------------------------------------------
+# ADMIN-CAT-API-DETAIL — GET /api/v1/admin/products/{id}
+# ---------------------------------------------------------------------------
+
+@router.get("/admin/products/{product_id}")
+def admin_get_product(
+    product_id: str,
+    request: Request,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """ADMIN-CAT-API-DETAIL: Fetch single product details for admin."""
+    _verify_catalog_role(admin)
+    try:
+        pid = uuid.UUID(product_id)
+    except ValueError:
+        raise APIException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            code="PRODUCT_NOT_FOUND",
+            message="Product not found",
+        )
+    product = db.query(Product).filter(Product.id == pid).first()
+    if not product:
+        raise APIException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            code="PRODUCT_NOT_FOUND",
+            message="Product not found",
+        )
     return {
         "data": catalog_service.build_admin_product_dict(product),
         "request_id": _request_id(request),
@@ -120,10 +164,13 @@ def admin_update_product(
             message="Product not found",
         )
     product = catalog_service.update_product(db, pid, body, admin)
+    cache_delete(f"cache:prod:detail:{pid}")
+    cache_delete_pattern("cache:search:ac:*")
     return {
         "data": catalog_service.build_admin_product_dict(product),
         "request_id": _request_id(request),
     }
+
 
 # ---------------------------------------------------------------------------
 # ADMIN-CAT-API-004 — POST /api/v1/admin/products/{id}/images
@@ -223,9 +270,134 @@ async def admin_upload_product_image(
     }
 
 # ---------------------------------------------------------------------------
+# ADMIN-CAT-API-MEDIA — POST /api/v1/admin/catalog/upload-media
+# ---------------------------------------------------------------------------
+
+ALLOWED_CATALOG_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+ALLOWED_CATALOG_VIDEO_EXTS = {".mp4", ".webm", ".mov", ".mkv"}
+ALLOWED_CATALOG_DOC_EXTS = {".pdf"}
+MAX_CATALOG_IMAGE_BYTES = 15 * 1024 * 1024  # 15MB
+MAX_CATALOG_VIDEO_BYTES = 100 * 1024 * 1024  # 100MB
+MAX_CATALOG_DOC_BYTES = 25 * 1024 * 1024  # 25MB
+
+@router.post("/admin/catalog/upload-media", status_code=201)
+@router.post("/admin/products/upload-media", status_code=201)
+async def admin_upload_catalog_media(
+    request: Request,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+):
+    """Upload product images, videos, or PDF user manuals/datasheets for catalog management.
+    Enables pre-uploading assets when creating new products or managing existing ones.
+    """
+    _verify_catalog_role(admin)
+
+    filename = file.filename or "media_asset"
+    content_type = file.content_type or ""
+
+    import os
+    ext = os.path.splitext(filename)[1].lower()
+
+    is_image = ext in ALLOWED_CATALOG_IMAGE_EXTS or content_type.startswith("image/")
+    is_video = ext in ALLOWED_CATALOG_VIDEO_EXTS or content_type.startswith("video/")
+    is_doc = ext in ALLOWED_CATALOG_DOC_EXTS or content_type == "application/pdf"
+
+    if not is_image and not is_video and not is_doc:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_MEDIA_TYPE",
+            message=f"Unsupported file format. Supported images: {', '.join(sorted(ALLOWED_CATALOG_IMAGE_EXTS))}. Supported videos: {', '.join(sorted(ALLOWED_CATALOG_VIDEO_EXTS))}. Supported documents: {', '.join(sorted(ALLOWED_CATALOG_DOC_EXTS))}.",
+        )
+
+    file_bytes = await file.read()
+    if not file_bytes or len(file_bytes) == 0:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Uploaded file cannot be empty",
+        )
+
+    if is_image and len(file_bytes) > MAX_CATALOG_IMAGE_BYTES:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="IMAGE_TOO_LARGE",
+            message="Image exceeds maximum permitted size of 15MB",
+        )
+
+    if is_video and len(file_bytes) > MAX_CATALOG_VIDEO_BYTES:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="VIDEO_TOO_LARGE",
+            message="Video exceeds maximum permitted size of 100MB",
+        )
+
+    if is_doc and len(file_bytes) > MAX_CATALOG_DOC_BYTES:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="DOCUMENT_TOO_LARGE",
+            message="Document exceeds maximum permitted size of 25MB",
+        )
+
+    if is_doc:
+        media_type = "pdf"
+        folder = "products/manuals"
+    elif is_video:
+        media_type = "video"
+        folder = "products/videos"
+    else:
+        media_type = "image"
+        folder = "products"
+
+    try:
+        upload_result = cloudinary_provider.upload(
+            file_bytes=file_bytes,
+            filename=filename,
+            folder=folder,
+            access="public",
+        )
+        url = upload_result.get("url")
+        public_id = upload_result.get("public_id")
+        if not url:
+            raise RuntimeError("Storage provider did not return a valid asset URL")
+    except Exception as e:
+        raise APIException(
+            status_code=http_status.HTTP_502_BAD_GATEWAY,
+            code="MEDIA_UPLOAD_FAILED",
+            message=f"Media upload failed: {str(e)}",
+        )
+
+    # Log audit event
+    db.add(AuditEvent(
+        user_id=admin.id,
+        action="UPLOAD_PRODUCT_MEDIA",
+        entity_type="CatalogMedia",
+        entity_id=None,
+        details=json.dumps({
+            "filename": filename,
+            "media_type": media_type,
+            "size_bytes": len(file_bytes),
+            "url": url,
+        }),
+    ))
+    db.commit()
+
+    return {
+        "data": {
+            "url": url,
+            "public_id": public_id,
+            "media_type": media_type,
+            "filename": filename,
+            "size_bytes": len(file_bytes),
+        },
+        "request_id": _request_id(request),
+    }
+
+# ---------------------------------------------------------------------------
 # ADMIN-CAT-API-005 — GET /api/v1/admin/categories
 # ---------------------------------------------------------------------------
 
+@router.get("/admin/catalog/categories")
 @router.get("/admin/categories")
 def admin_list_categories(
     request: Request,
@@ -254,6 +426,7 @@ def admin_create_category(
     """ADMIN-CAT-API-006: create category (max 2-level nesting)."""
     _verify_catalog_role(admin)
     category = catalog_service.create_category(db, body, admin)
+    cache_delete_pattern("cache:cat:*")
     return {
         "data": catalog_service.build_category_dict(category),
         "request_id": _request_id(request),
@@ -282,10 +455,12 @@ def admin_update_category(
             message="Category not found",
         )
     category = catalog_service.update_category(db, cid, body, admin)
+    cache_delete_pattern("cache:cat:*")
     return {
         "data": catalog_service.build_category_dict(category),
         "request_id": _request_id(request),
     }
+
 
 # ---------------------------------------------------------------------------
 # ADMIN-INV-API-001 — GET /api/v1/admin/inventory
@@ -404,6 +579,8 @@ def admin_adjust_inventory(
             message="'reason' is required for inventory adjustments",
         )
     inv = catalog_service.adjust_inventory(db, pid, delta, reason, admin)
+    cache_delete(f"cache:prod:detail:{pid}")
+    cache_delete_pattern("cache:search:ac:*")
     return {
         "data": {
             "product_id": str(inv.product_id),
@@ -415,6 +592,7 @@ def admin_adjust_inventory(
         },
         "request_id": _request_id(request),
     }
+
 
 # ---------------------------------------------------------------------------
 # ADMIN-INV-API-004 — GET /api/v1/admin/inventory/{product_id}/reservations

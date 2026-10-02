@@ -60,6 +60,8 @@ class Product(Base):
     status = Column(String(50), nullable=False, default="draft", index=True)
     is_featured = Column(Boolean, nullable=False, default=False)
     images = Column(Text, nullable=True)  # JSON array of image URLs
+    video_url = Column(String(1024), nullable=True)  # Product demo video (MP4/WebM or embed URL)
+    user_manual_url = Column(String(1024), nullable=True)  # Product user manual / datasheet PDF URL
     specifications = Column(Text, nullable=True)  # JSON array of {key, value} objects
     variant_attributes = Column(Text, nullable=True)  # Basic variant representation (Document 02 §9/§11)
     weight_grams = Column(Integer, nullable=True)

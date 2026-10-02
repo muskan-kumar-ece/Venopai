@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { softwareApi } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 interface SoftwareSummary {
   id: string;
@@ -19,11 +20,18 @@ interface SoftwareSummary {
 }
 
 export default function SoftwareRequestsListPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth();
   const [requests, setRequests] = useState<SoftwareSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isLoadingAuth) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     softwareApi
       .listRequests({ page: 1, page_size: 50 })
       .then((res: { data?: SoftwareSummary[] }) => {
@@ -38,7 +46,7 @@ export default function SoftwareRequestsListPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [isLoadingAuth, isAuthenticated]);
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; color: string }> = {
@@ -93,7 +101,28 @@ export default function SoftwareRequestsListPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {!isLoadingAuth && !isAuthenticated ? (
+          <div className="p-16 text-center rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-4">
+            <h3 className="text-lg font-semibold text-white">Sign In to View Your Software Requests</h3>
+            <p className="text-neutral-400 text-sm max-w-md mx-auto">
+              Please sign in to track board bring-up code, driver milestones, RTOS tasks, and download firmware binaries.
+            </p>
+            <div className="pt-2 flex justify-center gap-4">
+              <Link
+                href="/login?redirect=/software/requests"
+                className="px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-neutral-950 font-semibold text-xs transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/software"
+                className="px-5 py-2.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs transition"
+              >
+                Firmware Engineering Overview
+              </Link>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="p-16 text-center text-indigo-400 font-mono text-sm animate-pulse">
             Loading your firmware requests...
           </div>

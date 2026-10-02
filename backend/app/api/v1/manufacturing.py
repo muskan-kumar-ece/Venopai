@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, CurrentUser
 from app.services.manufacturing import ManufacturingService
+from app.core.rate_limit import RateLimiter
 from app.schemas.manufacturing import (
     ManufacturingRequestCreate,
     ManufacturingCancelRequest,
@@ -24,8 +25,10 @@ router = APIRouter()
     response_model=ManufacturingRequestResponse,
     status_code=http_status.HTTP_201_CREATED,
     summary="MFG-API-001: Submit a new manufacturing request",
+    dependencies=[Depends(RateLimiter(limit=10, window_seconds=3600, key_prefix="rl:mfg_req", scope="user"))],
 )
 def create_manufacturing_request(
+
     body: ManufacturingRequestCreate,
     current_user: CurrentUser,
     db: Session = Depends(get_db),

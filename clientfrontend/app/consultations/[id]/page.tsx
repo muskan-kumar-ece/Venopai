@@ -72,21 +72,22 @@ export default function ConsultationDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to respond to clarification";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsResponding(false);
     }
   };
 
   const handleResolveConsultation = async () => {
-    if (!confirm("Are you sure you want to mark this consultation as resolved?")) return;
+    // Resolve consultation
+
     setIsResolving(true);
     try {
       await consultationsApi.resolveRequest(id);
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resolve consultation";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsResolving(false);
     }
@@ -117,13 +118,27 @@ export default function ConsultationDetailPage() {
   }
 
   if (!consultation) {
+    const isAuthError = errorMessage?.includes("401") || errorMessage?.includes("Unauthorized") || errorMessage?.includes("credentials");
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold mb-2">Consultation Not Found</h2>
-        <p className="text-sm text-neutral-400 mb-6">{errorMessage || "The requested consultation could not be retrieved."}</p>
-        <Link href="/consultations" className="text-sm text-emerald-400 hover:underline">
-          &larr; Return to Consultations
-        </Link>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">{isAuthError ? "Sign In Required" : "Consultation Not Found"}</h2>
+        <p className="text-sm text-neutral-400 mb-6">
+          {isAuthError
+            ? "Please sign in to view and interact with this technical consultation inquiry."
+            : errorMessage || "The requested consultation could not be retrieved."}
+        </p>
+        {isAuthError ? (
+          <Link
+            href={`/login?redirect=${encodeURIComponent(`/consultations/${id}`)}`}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Sign In to Account
+          </Link>
+        ) : (
+          <Link href="/consultations" className="text-sm text-emerald-400 hover:underline">
+            &larr; Return to Consultations
+          </Link>
+        )}
       </div>
     );
   }
@@ -165,7 +180,7 @@ export default function ConsultationDetailPage() {
               </p>
             </div>
             <Link
-              href={`/quotes/${consultation.converted_quote_id}`}
+              href={`/account/quotes/${consultation.converted_quote_id}`}
               className="inline-flex items-center text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition shrink-0"
             >
               View & Approve Quotation &rarr;

@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/forms/DraftRecoveryBanner";
+import { DraftSaveIndicator } from "@/components/forms/DraftSaveIndicator";
 
 interface Address {
   id: string;
@@ -49,6 +53,7 @@ interface CheckoutSessionData {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [session, setSession] = useState<CheckoutSessionData | null>(null);
@@ -62,6 +67,7 @@ export default function CheckoutPage() {
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "initiating" | "confirming" | "success" | "failed">("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
+  const [agreeCheckoutTerms, setAgreeCheckoutTerms] = useState<boolean>(false);
 
   // New address form state
   const [formData, setFormData] = useState({
@@ -75,6 +81,22 @@ export default function CheckoutPage() {
     is_default: false,
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  const {
+    saveStatus: addressSaveStatus,
+    lastSaved: addressLastSaved,
+    draftTimestamp: addressDraftTimestamp,
+    discardDraft: discardAddressDraft,
+    clearDraft: clearAddressDraft,
+    isOnline,
+  } = useFormDraft({
+    formKey: "venopai_draft_checkout_address",
+    formData,
+    setFormData,
+    metadata: {
+      title: "Checkout Shipping Address",
+    },
+  });
 
   const getAuthHeaders = (): Record<string, string> => {
     try {
@@ -105,7 +127,12 @@ export default function CheckoutPage() {
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        if (err.message.includes("401")) {
+        if (
+          err.message.includes("401") ||
+          (err as { status?: number }).status === 401 ||
+          err.message.includes("credentials") ||
+          err.message.includes("UNAUTHORIZED")
+        ) {
           setError("AUTH_REQUIRED");
         } else if (err.message.includes("403")) {
           setError("UNVERIFIED_ACCOUNT");
@@ -163,7 +190,7 @@ export default function CheckoutPage() {
         setSession(res.data);
       }
     } catch {
-      alert("Failed to update shipping address for this session");
+      setError("Failed to update shipping address for this session");
     } finally {
       setIsSubmitting(false);
     }
@@ -179,6 +206,7 @@ export default function CheckoutPage() {
         const newAddr: Address = res.data;
         setAddresses((prev) => [newAddr, ...prev]);
         setSelectedAddressId(newAddr.id);
+        await clearAddressDraft();
         setShowAddressModal(false);
         await handleAddressChange(newAddr.id);
       }
@@ -258,6 +286,15 @@ export default function CheckoutPage() {
       if (res?.data?.status === "successful") {
         setPaymentStatus("success");
         setConfirmedOrder(res.data);
+        try {
+          sessionStorage.setItem("venopai_last_order", JSON.stringify(res.data));
+          localStorage.removeItem("venopai_cart_count");
+        } catch {
+          // ignore
+        }
+        const oId = res.data.order_id || res.data.id || "";
+        const oNum = res.data.order_number || "";
+        router.push(`/checkout/success?order_id=${encodeURIComponent(oId)}&order_number=${encodeURIComponent(oNum)}`);
       } else {
         setPaymentStatus("failed");
         setPaymentError(res?.data?.message || "Payment verification failed.");
@@ -298,16 +335,34 @@ export default function CheckoutPage() {
       // Check if Razorpay script is accessible
       const scriptLoaded = await loadRazorpayScript();
       const isMockGateway = !key_id || key_id.includes("mock");
+      const isDevelopment = process.env.NODE_ENV !== "production";
 
-      if (!scriptLoaded || isMockGateway) {
-        // Fallback simulation for local/testing without live Razorpay secrets
-        await handleConfirmPayment(
-          payment_id,
-          `pay_sim_${Date.now()}`,
-          gateway_order_id,
-          "mock_valid_signature"
-        );
-        return;
+      if (!scriptLoaded) {
+        if (isDevelopment && isMockGateway) {
+          // Fallback simulation only in local development/test mode
+          await handleConfirmPayment(
+            payment_id,
+            `pay_sim_${Date.now()}`,
+            gateway_order_id,
+            "mock_valid_signature"
+          );
+          return;
+        }
+        throw new Error("Unable to load secure Razorpay payment gateway. If you are using an ad blocker, privacy shield, or tracker blocker (e.g. Brave, uBlock), please disable it for this checkout.");
+      }
+
+      if (isMockGateway) {
+        if (isDevelopment) {
+          // Fallback simulation for local/testing without live Razorpay secrets
+          await handleConfirmPayment(
+            payment_id,
+            `pay_sim_${Date.now()}`,
+            gateway_order_id,
+            "mock_valid_signature"
+          );
+          return;
+        }
+        throw new Error("Payment gateway is currently unconfigured. Please contact support.");
       }
 
       // Live Razorpay popup modal
@@ -380,18 +435,20 @@ export default function CheckoutPage() {
         <p className="mt-2 text-sm text-zinc-500">
           You must be signed in to proceed through checkout.
         </p>
-        <button
-          onClick={() => {
-            const token = prompt("Enter customer bearer JWT token:");
-            if (token) {
-              localStorage.setItem("access_token", token.trim());
-              loadData();
-            }
-          }}
-          className="mt-6 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
-        >
-          Sign In
-        </button>
+        <div className="mt-6 flex justify-center gap-3">
+          <Link
+            href="/login?redirect=/checkout"
+            className="rounded-lg bg-zinc-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors"
+          >
+            Sign In to Complete Order
+          </Link>
+          <Link
+            href="/register?redirect=/checkout"
+            className="rounded-lg border border-zinc-200 bg-white px-5 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+          >
+            Create Account
+          </Link>
+        </div>
       </div>
     );
   }
@@ -410,6 +467,14 @@ export default function CheckoutPage() {
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Per security policy (CHK-001), please verify your email address before initiating checkout.
         </p>
+        <div className="mt-6 flex justify-center">
+          <Link
+            href="/verify-email"
+            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Verify Your Email Address &rarr;
+          </Link>
+        </div>
       </div>
     );
   }
@@ -659,16 +724,50 @@ export default function CheckoutPage() {
               </div>
             )}
 
+            {/* Statutory Return & Consumer Protection Disclosure */}
+            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+              <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 p-3 text-[11px] text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/60">
+                <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 mb-0.5">
+                  <span>⚖️</span> Consumer Protection & Return Policy:
+                </div>
+                <p>
+                  Off-the-shelf components qualify for a 7-day replacement for manufacturing defects. Custom PCB fabrication orders are built to client specs under IPC-A-610 Class 2 standards.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-2.5 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreeCheckoutTerms}
+                  onChange={(e) => setAgreeCheckoutTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 cursor-pointer"
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/terms" target="_blank" className="font-medium text-emerald-600 dark:text-emerald-400 underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/cancellation-refund" target="_blank" className="font-medium text-emerald-600 dark:text-emerald-400 underline">
+                    Refund Policy
+                  </Link>
+                  , and consent to delivery address verification with Shiprocket. <span className="text-red-500">*</span>
+                </span>
+              </label>
+            </div>
+
             <button
               disabled={
                 isSubmitting ||
                 paymentStatus === "initiating" ||
                 paymentStatus === "confirming" ||
                 session?.status === "expired" ||
-                !session
+                !session ||
+                !agreeCheckoutTerms
               }
               onClick={handleInitiatePayment}
-              className="mt-6 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              className="mt-4 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
               {paymentStatus === "initiating" ? (
                 <>
@@ -698,9 +797,32 @@ export default function CheckoutPage() {
       {showAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-              Add New Address
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                Add New Address
+              </h3>
+              <DraftSaveIndicator saveStatus={addressSaveStatus} lastSaved={addressLastSaved} isOnline={isOnline} />
+            </div>
+            <div className="mt-3">
+              <DraftRecoveryBanner
+                draftTimestamp={addressDraftTimestamp}
+                onDiscard={() =>
+                  discardAddressDraft(() =>
+                    setFormData({
+                      recipient_name: "",
+                      phone: "",
+                      line1: "",
+                      line2: "",
+                      city: "",
+                      state: "",
+                      pincode: "",
+                      is_default: false,
+                    })
+                  )
+                }
+                formTitle="Shipping Address"
+              />
+            </div>
             {formError && (
               <p className="mt-2 text-xs text-red-600">{formError}</p>
             )}

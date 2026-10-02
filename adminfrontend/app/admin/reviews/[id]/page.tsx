@@ -23,6 +23,7 @@ export default function AdminReviewDetailPage() {
   const [review, setReview] = useState<ReviewDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [moderating, setModerating] = useState(false);
 
@@ -54,16 +55,18 @@ export default function AdminReviewDetailPage() {
 
   const handleHide = async () => {
     if (!reason.trim()) {
-      alert('Moderation reason is required when hiding a review.');
+      setErrorMessage('Moderation reason is required when hiding a review.');
       return;
     }
     setModerating(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await adminReviewsApi.hideReview(id, reason);
-      alert('Review successfully hidden from public visibility.');
+      setSuccessMessage('Review successfully hidden from public visibility.');
       fetchReview();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to hide review');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to hide review');
     } finally {
       setModerating(false);
     }
@@ -71,12 +74,14 @@ export default function AdminReviewDetailPage() {
 
   const handleRestore = async () => {
     setModerating(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await adminReviewsApi.restoreReview(id);
-      alert('Review successfully restored to public visibility.');
+      setSuccessMessage('Review successfully restored to public visibility.');
       fetchReview();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to restore review');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to restore review');
     } finally {
       setModerating(false);
     }
@@ -128,6 +133,18 @@ export default function AdminReviewDetailPage() {
           )}
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs">
+          {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs">
+          {successMessage}
+        </div>
+      )}
 
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-4 shadow-sm">
         <div className="grid grid-cols-2 gap-4 text-xs font-mono text-zinc-400 border-b border-zinc-800 pb-4">

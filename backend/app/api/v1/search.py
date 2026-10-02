@@ -9,7 +9,10 @@ from app.api.deps import get_db
 from app.services import search as search_service
 from app.services import catalog as catalog_service
 from app.core.exceptions import APIException
+from app.core.rate_limit import get_client_ip, check_rate_limit
+from app.core.cache import cache_get, cache_set
 from app.schemas.search import SearchProductsResponse, AutocompleteResponse
+
 
 router = APIRouter()
 
@@ -20,6 +23,7 @@ def _request_id(request: Request) -> str:
 # SEARCH-API-001 — GET /api/v1/search/products
 # ---------------------------------------------------------------------------
 
+@router.get("", response_model=SearchProductsResponse)
 @router.get("/products", response_model=SearchProductsResponse)
 def search_products_endpoint(
     request: Request,
@@ -31,9 +35,17 @@ def search_products_endpoint(
     availability: Optional[str] = Query(None, description="Availability: in_stock or out_of_stock"),
     sort: str = Query("relevance", description="Sort by relevance, price_asc, price_desc, newest"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(24, ge=1, le=100),
+    page_size: int = Query(36, ge=1, le=100),
 ):
     """SEARCH-API-001: Keyword search over the catalog (SRCH-001, SRCH-002)."""
+    ip = get_client_ip(request)
+    if not check_rate_limit(f"rl:search:{ip}", limit=40, window_seconds=10):
+        raise APIException(
+            status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMIT_EXCEEDED",
+            message="Too many search requests. Please slow down.",
+        )
+
     if not q or not q.strip():
         raise APIException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -89,6 +101,8 @@ def search_products_endpoint(
             "page_size": page_size,
             "total_items": total,
             "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
         },
         "suggested_categories": suggested_categories if total == 0 else None,
         "request_id": _request_id(request),
@@ -104,7 +118,15 @@ def autocomplete_endpoint(
     db: Session = Depends(get_db),
     q: Optional[str] = Query(None, description="Search prefix / term"),
 ):
-    """SEARCH-API-002: Fast lightweight autocomplete suggestion list, capped at 8 results."""
+    """SEARCH-API-002: Fast lightweight autocomplete suggestion list with rich previews, capped at 8 results."""
+    ip = get_client_ip(request)
+    if not check_rate_limit(f"rl:search_ac:{ip}", limit=40, window_seconds=10):
+        raise APIException(
+            status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMIT_EXCEEDED",
+            message="Too many search requests. Please slow down.",
+        )
+
     if not q or len(q.strip()) < 2:
         raise APIException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -112,10 +134,25 @@ def autocomplete_endpoint(
             message="Query parameter 'q' must be at least 2 characters",
         )
 
-    suggestions = search_service.autocomplete(db, query=q)
+    clean_q = q.strip().lower()
+    cache_key = f"cache:search:ac:{clean_q}"
+    cached_data = cache_get(cache_key)
+    if cached_data is not None:
+        return {
+            "data": cached_data,
+            "request_id": _request_id(request),
+        }
+
+    suggestions, products, categories = search_service.autocomplete(db, query=q, include_rich=True)
+    res_data = {
+        "suggestions": suggestions,
+        "products": products,
+        "categories": categories,
+    }
+    cache_set(cache_key, res_data, ttl_seconds=300)
     return {
-        "data": {
-            "suggestions": suggestions,
-        },
+        "data": res_data,
         "request_id": _request_id(request),
     }
+
+

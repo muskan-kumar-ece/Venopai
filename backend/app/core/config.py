@@ -1,21 +1,39 @@
 from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "VenopAI"
+    ENVIRONMENT: str = "development"
     API_V1_STR: str = "/api/v1"
     
     # CORS
-    CORS_ORIGINS: List[AnyHttpUrl] | str = []
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ]
     
     @field_validator("CORS_ORIGINS", mode="before")
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    v = json.loads(v)
+                except Exception:
+                    pass
+            if isinstance(v, str):
+                return [i.strip().rstrip("/") for i in v.split(",") if i.strip()]
+        if isinstance(v, list):
+            return [str(i).strip().rstrip("/") for i in v if str(i).strip()]
+        return [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+        ]
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/venopai"
@@ -27,7 +45,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "supersecretkey_please_change_in_production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES: int = 14 * 24 * 60  # 14 days (20160 minutes)
+    ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = 12 * 60          # 12 hours (720 minutes)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 60
     
@@ -38,12 +58,14 @@ class Settings(BaseSettings):
     
     SHIPROCKET_EMAIL: str = ""
     SHIPROCKET_PASSWORD: str = ""
+    SHIPROCKET_WEBHOOK_TOKEN: str = ""
     
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
     
     RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "notifications@venopai.com"
     
     SENTRY_DSN: str = ""
     SENTRY_ENVIRONMENT: str = "development"
@@ -67,6 +89,15 @@ class Settings(BaseSettings):
     # Configurable operational defaults: 14 days auto-close, 10 days reminder notification
     CONSULTATION_INACTIVITY_DAYS: int = 14
     CONSULTATION_REMINDER_DAYS: int = 10
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.ENVIRONMENT == "production":
+            if self.SECRET_KEY == "supersecretkey_please_change_in_production" or len(self.SECRET_KEY) < 32:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: SECRET_KEY must be set to a secure random string of at least 32 characters in production environments."
+                )
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

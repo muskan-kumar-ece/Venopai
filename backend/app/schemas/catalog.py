@@ -76,6 +76,7 @@ class ProductBase(BaseModel):
     specifications: Optional[List[dict]] = None
     variant_attributes: Optional[List[dict]] = None
     images: Optional[List[str]] = None
+    video_url: Optional[str] = None
 
 class ProductCreate(ProductBase):
     price: str = Field(..., description="Price in INR, e.g. '1499.00'")
@@ -119,6 +120,7 @@ class ProductUpdate(BaseModel):
     specifications: Optional[List[dict]] = None
     variant_attributes: Optional[List[dict]] = None
     images: Optional[List[str]] = None
+    video_url: Optional[str] = None
 
     @field_validator("status")
     @classmethod
@@ -149,6 +151,7 @@ class ProductPublicResponse(BaseModel):
     stock_status: str
     primary_image_url: Optional[str] = None
     images: List[str] = []
+    video_url: Optional[str] = None
     specifications: List[dict] = []
     variant_attributes: Optional[List[dict]] = None
     category_ids: List[uuid.UUID] = []
@@ -173,6 +176,7 @@ class ProductAdminResponse(BaseModel):
     is_featured: bool
     primary_image_url: Optional[str] = None
     images: List[str] = []
+    video_url: Optional[str] = None
     specifications: List[dict] = []
     variant_attributes: Optional[List[dict]] = None
     category_ids: List[uuid.UUID] = []

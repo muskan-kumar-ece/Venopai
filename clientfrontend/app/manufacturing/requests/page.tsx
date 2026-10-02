@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { manufacturingApi } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 interface RequestSummary {
   id: string;
@@ -18,11 +19,18 @@ interface RequestSummary {
 }
 
 export default function ManufacturingRequestsListPage() {
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth();
   const [requests, setRequests] = useState<RequestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isLoadingAuth) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     manufacturingApi
       .listRequests({ page: 1, page_size: 50 })
       .then((res: { data?: RequestSummary[] }) => {
@@ -37,7 +45,7 @@ export default function ManufacturingRequestsListPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [isLoadingAuth, isAuthenticated]);
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; color: string }> = {
@@ -95,7 +103,28 @@ export default function ManufacturingRequestsListPage() {
           </div>
         )}
 
-        {isLoading ? (
+        {!isLoadingAuth && !isAuthenticated ? (
+          <div className="p-16 text-center rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-4">
+            <h3 className="text-lg font-semibold text-white">Sign In to View Your Requests</h3>
+            <p className="text-neutral-400 text-sm max-w-md mx-auto">
+              Please sign in to your account to review prototype progress, DFM status, and active manufacturing quotes.
+            </p>
+            <div className="pt-2 flex justify-center gap-4">
+              <Link
+                href="/login?redirect=/manufacturing/requests"
+                className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-xs transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/manufacturing"
+                className="px-5 py-2.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs transition"
+              >
+                Manufacturing Overview
+              </Link>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="p-16 text-center text-cyan-400 font-mono text-sm animate-pulse">
             Loading your requests...
           </div>

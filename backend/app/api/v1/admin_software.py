@@ -59,6 +59,40 @@ def _serialize_software_admin(req, db: Session) -> Dict[str, Any]:
 
 
 @router.get(
+    "/cancellation-review-queue",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-SW-API-008: List software requests in cancellation review queue",
+)
+def admin_list_software_cancellation_queue(
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """List software requests flagged with cancellation_requested == True."""
+    SoftwareService._check_admin_role(admin)
+    from app.models.project import SoftwareRequest
+    items = db.query(SoftwareRequest).filter(
+        SoftwareRequest.cancellation_requested == True,
+    ).order_by(SoftwareRequest.updated_at.desc()).all()
+    results = []
+    for r in items:
+        results.append({
+            "id": str(r.id),
+            "title": r.title,
+            "project_type": r.project_type,
+            "status": r.status,
+            "cancellation_requested": True,
+            "cancellation_reason": r.cancellation_reason,
+            "customer_email": r.user.email if r.user else None,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "updated_at": r.updated_at.isoformat() if r.updated_at else "",
+        })
+    return {
+        "data": results,
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@router.get(
     "",
     status_code=http_status.HTTP_200_OK,
     summary="ADMIN-SW-API-001: Queue view for software requests",

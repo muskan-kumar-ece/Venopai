@@ -201,3 +201,34 @@ def test_autocomplete_returns_capped_8_suggestions():
     suggestions = res.json()["data"]["suggestions"]
     assert len(suggestions) <= 8
     assert all("Arduino" in s for s in suggestions)
+
+
+def test_autocomplete_returns_rich_previews():
+    db = TestingSessionLocal()
+    create_product(db, "ESP32-S3 Dev Board", "Wi-Fi and BLE dual-core MCU", price_paise=65000)
+    cat = Category(name="Microcontrollers", slug="microcontrollers", is_active=True)
+    db.add(cat)
+    db.commit()
+    db.close()
+
+    res = client.get("/api/v1/search/autocomplete?q=ESP32")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert "suggestions" in data
+    assert "products" in data
+    assert len(data["products"]) >= 1
+    assert data["products"][0]["name"] == "ESP32-S3 Dev Board"
+    assert data["products"][0]["price"] == "650.00"
+    assert data["products"][0]["stock_status"] in ("in_stock", "out_of_stock")
+
+
+def test_search_rate_limiting(monkeypatch):
+    monkeypatch.setenv("TEST_RATE_LIMIT", "1")
+    responses = []
+    for _ in range(45):
+        res = client.get("/api/v1/search/autocomplete?q=Arduino", headers={"X-Forwarded-For": "198.51.100.99"})
+        responses.append(res.status_code)
+
+    assert 429 in responses
+
+

@@ -107,7 +107,7 @@ export default function SoftwareRequestDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to respond";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsRespondingClar(false);
     }
@@ -123,7 +123,7 @@ export default function SoftwareRequestDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to request cancellation";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsCancelling(false);
     }
@@ -159,13 +159,27 @@ export default function SoftwareRequestDetailPage() {
   }
 
   if (!softwareReq) {
+    const isAuthError = errorMessage?.includes("401") || errorMessage?.includes("Unauthorized") || errorMessage?.includes("credentials");
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold mb-2">Software Request Not Found</h2>
-        <p className="text-sm text-neutral-400 mb-6">{errorMessage || "Unable to retrieve requested software project."}</p>
-        <Link href="/software/requests" className="text-sm text-indigo-400 hover:underline">
-          &larr; Return to Software Requests
-        </Link>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">{isAuthError ? "Sign In Required" : "Software Request Not Found"}</h2>
+        <p className="text-sm text-neutral-400 mb-6">
+          {isAuthError
+            ? "Please sign in to view and collaborate on this embedded software / firmware project."
+            : errorMessage || "Unable to retrieve requested software project."}
+        </p>
+        {isAuthError ? (
+          <Link
+            href={`/login?redirect=${encodeURIComponent(`/software/requests/${id}`)}`}
+            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+          >
+            Sign In to Account
+          </Link>
+        ) : (
+          <Link href="/software/requests" className="text-sm text-indigo-400 hover:underline">
+            &larr; Return to Software Requests
+          </Link>
+        )}
       </div>
     );
   }
@@ -178,8 +192,8 @@ export default function SoftwareRequestDetailPage() {
       <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/software/requests" className="text-sm font-medium text-neutral-400 hover:text-white transition">
-              &larr; Software Requests
+            <Link href="/account/software" className="text-sm font-medium text-neutral-400 hover:text-white transition">
+              &larr; Firmware Queue
             </Link>
             <span className="text-neutral-600">/</span>
             <span className="text-xs font-mono text-neutral-400 truncate max-w-xs">{softwareReq.title}</span>
@@ -226,7 +240,7 @@ export default function SoftwareRequestDetailPage() {
               </p>
             </div>
             <Link
-              href={`/quotes/${softwareReq.active_quote.id}`}
+              href={`/account/quotes/${softwareReq.active_quote.id}`}
               className="inline-flex items-center text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-4 py-2 rounded-lg transition shrink-0 shadow-md shadow-emerald-500/20"
             >
               Review & Approve Quotation &rarr;

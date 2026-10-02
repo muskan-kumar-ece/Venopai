@@ -1,3 +1,4 @@
+import os
 import uuid
 import json
 from datetime import datetime, timezone
@@ -16,11 +17,13 @@ def scan_file_malware(file_id: str, db=None) -> str:
     """
     close_db = False
     if db is None:
-        try:
-            from tests.test_utils import TestingSessionLocal
-            db = TestingSessionLocal()
-        except ImportError:
-            from app.db.session import SessionLocal
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            try:
+                from tests.test_utils import TestingSessionLocal
+                db = TestingSessionLocal()
+            except ImportError:
+                db = SessionLocal()
+        else:
             db = SessionLocal()
         close_db = True
 

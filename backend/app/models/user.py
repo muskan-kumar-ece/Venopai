@@ -104,3 +104,36 @@ class AuditEvent(Base):
     entity_id = Column(UUID(as_uuid=True), nullable=True)
     details = Column(Text)
     created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    def __init__(self, **kwargs):
+        if "resource_type" in kwargs and "entity_type" not in kwargs:
+            kwargs["entity_type"] = kwargs.pop("resource_type")
+        if "resource_id" in kwargs and "entity_id" not in kwargs:
+            kwargs["entity_id"] = kwargs.pop("resource_id")
+        if "entity_id" in kwargs:
+            val = kwargs["entity_id"]
+            if val is None or val == "None" or val == "":
+                kwargs["entity_id"] = None
+            elif isinstance(val, str):
+                try:
+                    kwargs["entity_id"] = uuid.UUID(val)
+                except Exception:
+                    kwargs["entity_id"] = None
+            elif not isinstance(val, uuid.UUID):
+                try:
+                    kwargs["entity_id"] = uuid.UUID(str(val))
+                except Exception:
+                    kwargs["entity_id"] = None
+        if "details" in kwargs and isinstance(kwargs["details"], (dict, list)):
+            import json
+            kwargs["details"] = json.dumps(kwargs["details"])
+        super().__init__(**kwargs)
+
+    @property
+    def resource_type(self):
+        return self.entity_type
+
+    @property
+    def resource_id(self):
+        return self.entity_id
+

@@ -26,3 +26,5 @@ env/
 .venv/
 .AGENTS.md
 .CLAUDE.md
+celerybeat-schedule*
+scratch/

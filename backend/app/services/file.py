@@ -275,3 +275,24 @@ class FileService:
         cloudinary_provider.delete(file_record.storage_ref)
         db.delete(file_record)
         db.commit()
+
+    @classmethod
+    def list_customer_files(
+        cls,
+        db: Session,
+        user: User,
+        association_type: Optional[str] = None,
+        search: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Tuple[list, int]:
+        """FILES-API-005: List customer uploaded files with pagination and search."""
+        query = db.query(ProjectFile).filter(ProjectFile.owner_id == user.id)
+        if association_type and association_type != "all":
+            query = query.filter(ProjectFile.association_type == association_type.strip().lower())
+        if search and search.strip():
+            query = query.filter(ProjectFile.filename.ilike(f"%{search.strip()}%"))
+
+        total = query.count()
+        files = query.order_by(ProjectFile.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        return files, total

@@ -27,3 +27,30 @@ class ShippingProvider(ABC):
             }
         """
         pass
+
+    def get_tracking_status(self, shipment_ref: str) -> Dict[str, Any]:
+        """Fetch tracking history and status for a shipment."""
+        return {
+            "tracking_number": shipment_ref,
+            "carrier": "Delhivery",
+            "status": "in_transit",
+            "estimated_delivery": None,
+            "events": [],
+        }
+
+    def create_shipment(
+        self,
+        reference_id: str,
+        pickup_pincode: str,
+        delivery_pincode: str,
+        weight_grams: int,
+        dimensions: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Create a shipment with courier AWB generation."""
+        return {
+            "shiprocket_order_id": f"sr_{reference_id[:8]}",
+            "tracking_number": f"AWB{reference_id[:8].upper()}",
+            "carrier": "Delhivery",
+            "status": "created",
+        }
+

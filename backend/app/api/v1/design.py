@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, CurrentUser
 from app.services.design import DesignService
 from app.models.project import ProjectFile
+from app.core.rate_limit import RateLimiter
 from app.schemas.service_requests import (
+
     DesignRequestCreate,
     DesignRequestResponse,
     DesignRequestListResponse,
@@ -63,8 +65,10 @@ def _serialize_design(req, db: Session) -> Dict[str, Any]:
     response_model=DesignRequestResponse,
     status_code=http_status.HTTP_201_CREATED,
     summary="DESIGN-API-001: Submit PCB/Electronics design request",
+    dependencies=[Depends(RateLimiter(limit=10, window_seconds=3600, key_prefix="rl:design_req", scope="user"))],
 )
 def create_design_request(
+
     body: DesignRequestCreate,
     current_user: CurrentUser,
     db: Session = Depends(get_db),

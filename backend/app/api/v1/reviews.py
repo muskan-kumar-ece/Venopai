@@ -191,6 +191,17 @@ def get_my_reviews(
     }
 
 
+@router.get("/products/{product_id}", summary="REVIEW-API-005: Public product reviews alias")
+def get_reviews_for_product_alias(
+    product_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Alias for /products/{product_id}/reviews under reviews router."""
+    from app.api.v1.catalog import get_product_reviews
+    return get_product_reviews(product_id=product_id, request=request, db=db)
+
+
 @router.patch("/{review_id}", summary="REVIEW-API-003: Edit a review within the permitted window")
 def update_review(
     review_id: UUID,

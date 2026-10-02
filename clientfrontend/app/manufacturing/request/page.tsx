@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { manufacturingApi, projectsApi, filesApi } from "@/lib/api/client";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { DraftRecoveryBanner } from "@/components/forms/DraftRecoveryBanner";
+import { DraftSaveIndicator } from "@/components/forms/DraftSaveIndicator";
 
 interface ProjectOption {
   id: string;
@@ -32,6 +35,7 @@ export default function ManufacturingIntakePage() {
   const [deliveryRequirements, setDeliveryRequirements] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [agreeNDA, setAgreeNDA] = useState<boolean>(false);
 
   // Projects list
   const [projects, setProjects] = useState<ProjectOption[]>([]);
@@ -44,6 +48,93 @@ export default function ManufacturingIntakePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+
+  // Auto-Save Draft Integration
+  const currentFormData = useMemo(
+    () => ({
+      prototypeType,
+      title,
+      projectOverview,
+      quantity,
+      technicalRequirements,
+      materials,
+      dimensions,
+      pcbDetails,
+      deliveryRequirements,
+      additionalNotes,
+      selectedProjectId,
+      agreeNDA,
+      uploadedFiles,
+    }),
+    [
+      prototypeType,
+      title,
+      projectOverview,
+      quantity,
+      technicalRequirements,
+      materials,
+      dimensions,
+      pcbDetails,
+      deliveryRequirements,
+      additionalNotes,
+      selectedProjectId,
+      agreeNDA,
+      uploadedFiles,
+    ]
+  );
+
+  const {
+    saveStatus,
+    lastSaved,
+    hasDraft,
+    draftTimestamp,
+    isOnline,
+    discardDraft,
+    clearDraft,
+  } = useFormDraft({
+    formKey: "venopai_draft_manufacturing",
+    formData: currentFormData,
+    setFormData: (updated) => {
+      const d = typeof updated === "function" ? updated(currentFormData) : updated;
+      if (d.prototypeType !== undefined) setPrototypeType(d.prototypeType);
+      if (d.title !== undefined) setTitle(d.title);
+      if (d.projectOverview !== undefined) setProjectOverview(d.projectOverview);
+      if (d.quantity !== undefined) setQuantity(Number(d.quantity));
+      if (d.technicalRequirements !== undefined) setTechnicalRequirements(d.technicalRequirements);
+      if (d.materials !== undefined) setMaterials(d.materials);
+      if (d.dimensions !== undefined) setDimensions(d.dimensions);
+      if (d.pcbDetails !== undefined) setPcbDetails(d.pcbDetails);
+      if (d.deliveryRequirements !== undefined) setDeliveryRequirements(d.deliveryRequirements);
+      if (d.additionalNotes !== undefined) setAdditionalNotes(d.additionalNotes);
+      if (d.selectedProjectId !== undefined) setSelectedProjectId(d.selectedProjectId);
+      if (d.agreeNDA !== undefined) setAgreeNDA(d.agreeNDA);
+      if (d.uploadedFiles !== undefined && Array.isArray(d.uploadedFiles)) {
+        setUploadedFiles(d.uploadedFiles);
+      }
+    },
+    metadata: {
+      title: title || "Manufacturing Request",
+      fileCount: uploadedFiles.length,
+    },
+  });
+
+  const handleDiscardDraft = () => {
+    discardDraft(() => {
+      setPrototypeType("pcb_assembly");
+      setTitle("");
+      setProjectOverview("");
+      setQuantity(1);
+      setTechnicalRequirements("");
+      setMaterials("");
+      setDimensions("");
+      setPcbDetails("");
+      setDeliveryRequirements("");
+      setAdditionalNotes("");
+      setSelectedProjectId("");
+      setAgreeNDA(false);
+      setUploadedFiles([]);
+    });
+  };
 
   useEffect(() => {
     // Check for prefilled draft payload from Design -> Manufacturing convenience flow
@@ -129,6 +220,10 @@ export default function ManufacturingIntakePage() {
       setErrorMessage("Quantity must be at least 1 unit.");
       return;
     }
+    if (!agreeNDA) {
+      setErrorMessage("Please review and accept the Intellectual Property & Mutual NDA Undertaking.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -148,6 +243,7 @@ export default function ManufacturingIntakePage() {
       };
 
       const res = await manufacturingApi.createRequest(payload);
+      await clearDraft();
       if (res?.data?.id) {
         router.push(`/manufacturing/requests/${res.data.id}`);
       } else {
@@ -169,9 +265,12 @@ export default function ManufacturingIntakePage() {
               &larr; Manufacturing Home
             </Link>
           </div>
-          <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider">
-            Intake Specification Form
-          </span>
+          <div className="flex items-center gap-4">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider">
+              Intake Specification Form
+            </span>
+          </div>
         </div>
       </header>
 
@@ -184,6 +283,13 @@ export default function ManufacturingIntakePage() {
             Provide your hardware specifications. Our engineering staff will review stackups, generate an authoritative quote, and initiate manufacturing.
           </p>
         </div>
+
+        <DraftRecoveryBanner
+          draftTimestamp={draftTimestamp}
+          onDiscard={handleDiscardDraft}
+          formTitle="Manufacturing Specification"
+          hasUploadedFiles={uploadedFiles.length > 0}
+        />
 
         {draftNotice && (
           <div className="mb-8 p-4 rounded-lg bg-cyan-950/50 border border-cyan-800 text-cyan-300 text-sm flex items-center justify-between">
@@ -450,22 +556,50 @@ export default function ManufacturingIntakePage() {
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-500"
               />
             </div>
+
+            {/* Statutory Intellectual Property & NDA Declaration */}
+            <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreeNDA}
+                  onChange={(e) => setAgreeNDA(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-neutral-700 bg-neutral-900 text-cyan-500 focus:ring-cyan-500 cursor-pointer"
+                />
+                <div className="text-xs text-neutral-300 leading-relaxed">
+                  <span className="font-semibold text-white">Intellectual Property & Mutual NDA Undertaking:</span>{" "}
+                  I confirm that I own or hold valid licenses to submit these Gerber files, CAD schematics, and BOM specs. I agree to the{" "}
+                  <Link href="/terms#confidentiality" target="_blank" className="text-cyan-400 underline font-medium">
+                    VenopAI Engineering Confidentiality Terms
+                  </Link>
+                  . VenopAI guarantees that all uploaded technical files are processed with 256-bit AES encryption under strict confidentiality solely for feasibility estimation, quoting, and manufacturing. <span className="text-red-400">*</span>
+                </div>
+              </label>
+              <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">
+                <span className="text-cyan-400">🔒</span>
+                <span>Protected under DPDP Act 2023 & IPC-A-610 standards &bull; Files are never shared or sold.</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-4 pt-4">
-            <Link
-              href="/manufacturing"
-              className="px-5 py-2.5 rounded-lg border border-neutral-700 text-neutral-300 text-sm hover:bg-neutral-800 transition"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || isUploading}
-              className="px-7 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-sm transition shadow-lg shadow-cyan-500/25 disabled:opacity-50"
-            >
-              {isSubmitting ? "Submitting Request..." : "Submit for Engineering Review"}
-            </button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-800">
+            <DraftSaveIndicator saveStatus={saveStatus} lastSaved={lastSaved} isOnline={isOnline} />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/manufacturing"
+                className="px-5 py-2.5 rounded-lg border border-neutral-700 text-neutral-300 text-sm hover:bg-neutral-800 transition"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={isSubmitting || isUploading || !agreeNDA}
+                className="px-7 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-sm transition shadow-lg shadow-cyan-500/25 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Submitting Request..." : "Submit for Engineering Review"}
+              </button>
+            </div>
           </div>
         </form>
       </main>

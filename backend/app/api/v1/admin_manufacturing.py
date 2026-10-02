@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Query, status as http_status
 from sqlalchemy.orm import Session
 
@@ -418,3 +419,82 @@ def admin_resolve_cancellation(
         },
         "request_id": str(uuid.uuid4()),
     }
+
+
+class CreateManufacturingShipmentRequest(BaseModel):
+    carrier: Optional[str] = "Delhivery"
+    tracking_number: Optional[str] = None
+    weight_grams: Optional[int] = 500
+
+
+@router.post(
+    "/{id}/shipment",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-SHIP-API-002: Create shipment for manufacturing deliverable",
+)
+def admin_create_manufacturing_shipment(
+    id: str,
+    body: CreateManufacturingShipmentRequest,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    from app.models.project import ManufacturingRequest
+    from app.models.order import Shipment
+    from app.integrations.shiprocket.client import shiprocket_provider
+    from app.services.notification import NotificationService
+    from datetime import datetime, timezone
+
+    try:
+        m_uuid = uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Manufacturing request not found")
+
+    mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == m_uuid).first()
+    if not mfg:
+        raise HTTPException(status_code=404, detail="Manufacturing request not found")
+
+    shipment = db.query(Shipment).filter(Shipment.manufacturing_request_id == mfg.id).first()
+    if not shipment:
+        carrier = body.carrier or "Delhivery"
+        tracking = body.tracking_number
+        sr_order_id = None
+        if not tracking:
+            ship_res = shiprocket_provider.create_shipment(
+                reference_id=str(mfg.id),
+                pickup_pincode="500001",
+                delivery_pincode="500001",
+                weight_grams=body.weight_grams or 500,
+            )
+            tracking = ship_res.get("tracking_number")
+            sr_order_id = ship_res.get("shiprocket_order_id")
+            carrier = ship_res.get("carrier") or carrier
+
+        shipment = Shipment(
+            manufacturing_request_id=mfg.id,
+            shiprocket_order_id=sr_order_id,
+            tracking_number=tracking,
+            carrier=carrier,
+            status="created",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(shipment)
+
+    mfg.status = "delivered"
+    mfg.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(shipment)
+
+    NotificationService.notify_shipment_update(db, mfg.user_id, f"{shipment.tracking_number} (delivered)")
+
+    return {
+        "data": {
+            "id": str(shipment.id),
+            "manufacturing_request_id": str(shipment.manufacturing_request_id),
+            "carrier": shipment.carrier,
+            "tracking_number": shipment.tracking_number,
+            "status": shipment.status,
+            "created_at": shipment.created_at.isoformat() if shipment.created_at else None,
+        },
+        "request_id": str(uuid.uuid4()),
+    }
+

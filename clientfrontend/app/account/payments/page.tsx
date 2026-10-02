@@ -49,14 +49,16 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Payments & Invoices</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Payments & Invoices</h1>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
           Review your transaction receipts, Razorpay payment confirmations, and linked invoices for orders and engineering quotes.
         </p>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 rounded-2xl text-xs font-medium">
+          {error}
+        </div>
       )}
 
       {payments.length === 0 ? (
@@ -66,10 +68,10 @@ export default function PaymentsPage() {
           icon="💳"
         />
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-gray-600">
-              <thead className="bg-gray-50 text-xs uppercase font-semibold text-gray-500 border-b border-gray-200">
+            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
+              <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-[11px] uppercase font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-700">
                 <tr>
                   <th className="px-6 py-3">Transaction Date</th>
                   <th className="px-6 py-3">Linked Service / Order</th>
@@ -78,19 +80,19 @@ export default function PaymentsPage() {
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                  <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-zinc-900 dark:text-white">
                       {p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-xs font-semibold text-gray-900 capitalize">
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-white capitalize">
                         {p.source_type?.replace('_', ' ')}
                       </div>
-                      <div className="text-xs text-gray-400 font-mono truncate max-w-xs">{p.source_id}</div>
+                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono truncate max-w-xs">{p.source_id}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold font-mono text-zinc-900 dark:text-white">
                       ₹{p.amount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -100,16 +102,16 @@ export default function PaymentsPage() {
                       {p.source_type === 'order' ? (
                         <Link
                           href={`/account/orders/${p.source_id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                         >
-                          View Order & Invoice →
+                          View Order & Invoice &rarr;
                         </Link>
                       ) : (
                         <Link
                           href={`/account/quotes/${p.source_id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                         >
-                          View Quote →
+                          View Quote &rarr;
                         </Link>
                       )}
                     </td>

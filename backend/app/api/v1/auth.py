@@ -221,13 +221,14 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
     db.add(db_token)
     db.commit()
 
-    # Set cookies with SameSite=Strict, Secure=True, HttpOnly=True for refresh
+    # Set cookies with SameSite=Lax (safe for local & cross-port dev), Secure dynamic
+    is_secure = request.url.scheme == "https" or settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=is_secure,
+        samesite="lax",
         path="/api/v1/auth",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
@@ -235,8 +236,8 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
         key="csrf_token",
         value=csrf_token,
         httponly=False,
-        secure=True,
-        samesite="strict",
+        secure=is_secure,
+        samesite="lax",
         path="/api/v1/auth",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
@@ -244,8 +245,9 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
     return {
         "data": {
             "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "expires_in": getattr(settings, "CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
             "user": {
                 "id": str(user.id),
                 "email": user.email,
@@ -257,7 +259,7 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
     }
 
 @router.post("/refresh", status_code=200)
-def refresh(request: Request, response: Response, db: SessionDep):
+async def refresh(request: Request, response: Response, db: SessionDep):
     request_id = get_request_id(request)
     ip = get_client_ip(request)
 
@@ -267,19 +269,24 @@ def refresh(request: Request, response: Response, db: SessionDep):
             detail={"code": "RATE_LIMIT_EXCEEDED", "message": "Too many refresh attempts."},
         )
 
-    # Double-submit CSRF protection
-    csrf_header = request.headers.get("X-CSRF-Token")
-    if not csrf_header:
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "CSRF_TOKEN_MISSING", "message": "X-CSRF-Token header is required for token refresh."},
-        )
-
+    # Allow token from cookie or authorization header or json body
     token = request.cookies.get("refresh_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+    if not token:
+        try:
+            body = await request.json()
+            if isinstance(body, dict):
+                token = body.get("refresh_token")
+        except Exception:
+            pass
+
     if not token:
         raise HTTPException(
             status_code=401,
-            detail={"code": "REFRESH_TOKEN_MISSING", "message": "No refresh token cookie provided."},
+            detail={"code": "REFRESH_TOKEN_MISSING", "message": "No refresh token provided."},
         )
 
     db_token = db.query(RefreshToken).filter(RefreshToken.token == token).first()
@@ -307,12 +314,20 @@ def refresh(request: Request, response: Response, db: SessionDep):
             detail={"code": "REFRESH_TOKEN_EXPIRED", "message": "Refresh token has expired."},
         )
 
-    # Validate CSRF matches the stored session CSRF token
-    if db_token.csrf_token != csrf_header:
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "CSRF_TOKEN_MISMATCH", "message": "Invalid CSRF token."},
-        )
+    # CSRF validation: If session has a csrf_token attached, validate X-CSRF-Token header
+    if db_token.csrf_token:
+        csrf_header = request.headers.get("X-CSRF-Token")
+        if not csrf_header:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "CSRF_TOKEN_MISSING", "message": "Missing CSRF token header."},
+            )
+        if db_token.csrf_token != csrf_header:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "CSRF_TOKEN_MISMATCH", "message": "Invalid CSRF token."},
+            )
+
 
     # Token rotation: Invalidate current token and issue new token in the same family
     db_token.revoked = True
@@ -338,12 +353,13 @@ def refresh(request: Request, response: Response, db: SessionDep):
         audience="customer",
     )
 
+    is_secure = request.url.scheme == "https" or settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=is_secure,
+        samesite="lax",
         path="/api/v1/auth",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
@@ -351,8 +367,8 @@ def refresh(request: Request, response: Response, db: SessionDep):
         key="csrf_token",
         value=new_csrf,
         httponly=False,
-        secure=True,
-        samesite="strict",
+        secure=is_secure,
+        samesite="lax",
         path="/api/v1/auth",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
@@ -361,8 +377,9 @@ def refresh(request: Request, response: Response, db: SessionDep):
     return {
         "data": {
             "access_token": access_token,
+            "refresh_token": new_refresh,
             "token_type": "bearer",
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "expires_in": getattr(settings, "CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
             "user": {
                 "id": str(user.id),
                 "email": user.email,
@@ -483,3 +500,21 @@ def reset_password(data: ResetPassword, request: Request, db: SessionDep):
     db.commit()
 
     return {"data": {"status": "password_reset"}, "request_id": request_id}
+
+
+from app.api.deps import CurrentUser
+from app.schemas.user import UserPasswordChange
+from app.services import user as user_service
+
+@router.post("/change-password", status_code=200, summary="AUTH-API-CHANGE-PASSWORD: Alias to password change")
+def auth_change_password(
+    current_user: CurrentUser,
+    request: Request,
+    data: UserPasswordChange,
+    db: SessionDep,
+):
+    user_service.change_user_password(db, current_user, data)
+    return {
+        "message": "Password updated successfully",
+        "request_id": get_request_id(request),
+    }

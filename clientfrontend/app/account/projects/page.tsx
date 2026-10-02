@@ -69,23 +69,25 @@ export default function AccountProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Engineering Projects</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Engineering Projects</h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
             Group your manufacturing, electronics design, software firmware, and consultations into unified product portfolios.
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
         >
           + Create Project
         </button>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 rounded-2xl text-xs font-medium">
+          {error}
+        </div>
       )}
 
       {projects.length === 0 ? (
@@ -101,32 +103,33 @@ export default function AccountProjectsPage() {
           {projects.map((p) => (
             <div
               key={p.id}
-              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:border-gray-300 transition flex flex-col justify-between"
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-base text-gray-900">{p.name}</h3>
-                  <span className="text-xs text-gray-400 font-mono">{p.id.slice(0, 8)}</span>
+                  <h3 className="font-bold text-base text-zinc-900 dark:text-white">{p.name}</h3>
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">{p.id.slice(0, 8)}</span>
                 </div>
-                <div className="text-xs text-gray-500 space-y-1">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
                   <div>
-                    Linked Services: <span className="font-semibold text-gray-800">{p.linked_requests_count ?? 0}</span>
+                    Linked Services:{' '}
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      {p.linked_requests_count ?? 0}
+                    </span>
                   </div>
                   {p.created_at && (
-                    <div>
-                      Created: {new Date(p.created_at).toLocaleDateString()}
-                    </div>
+                    <div>Created: {new Date(p.created_at).toLocaleDateString()}</div>
                   )}
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-blue-600 font-medium">Aggregate CAD / Files</span>
+              <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Aggregate CAD / Files</span>
                 <Link
                   href={`/projects/${p.id}`}
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition shadow-xs cursor-pointer"
                 >
-                  Manage Project →
+                  Manage Project &rarr;
                 </Link>
               </div>
             </div>
@@ -136,28 +139,28 @@ export default function AccountProjectsPage() {
 
       {/* Create Project Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">New Engineering Project</h3>
-            <p className="text-sm text-gray-500 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">New Engineering Project</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
               Enter a name for your hardware project. You can link existing PCB designs, firmware, and quotes afterwards.
             </p>
 
             {modalError && (
-              <div className="p-3 mb-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg">
+              <div className="p-3 mb-4 text-xs text-red-800 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl">
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Project Name *</label>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Project Name *</label>
                 <input
                   type="text"
                   required
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   placeholder="e.g. Home Energy Monitor v2"
                 />
               </div>
@@ -166,14 +169,14 @@ export default function AccountProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !projectName.trim()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'Creating...' : 'Create Project'}
                 </button>

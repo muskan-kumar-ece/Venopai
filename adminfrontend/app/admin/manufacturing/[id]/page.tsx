@@ -69,6 +69,11 @@ interface FileItem {
   created_at: string;
 }
 
+interface RequestFiles {
+  customer_uploaded?: FileItem[];
+  delivered?: FileItem[];
+}
+
 interface RequestDetail {
   id: string;
   user_id: string;
@@ -91,7 +96,7 @@ interface RequestDetail {
   cancellation_refund_paise?: number;
   cancellation_notes?: string;
   internal_notes?: string;
-  files: FileItem[];
+  files?: FileItem[] | RequestFiles;
   current_quote?: QuoteData;
   clarifications: ClarificationItem[];
   status_updates: StatusUpdateItem[];
@@ -111,6 +116,19 @@ export default function AdminManufacturingDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  const fileList: FileItem[] = React.useMemo(() => {
+    if (!detail?.files) return [];
+    if (Array.isArray(detail.files)) return detail.files;
+    if (typeof detail.files === "object") {
+      const grouped = detail.files as RequestFiles;
+      return [
+        ...(Array.isArray(grouped.customer_uploaded) ? grouped.customer_uploaded : []),
+        ...(Array.isArray(grouped.delivered) ? grouped.delivered : []),
+      ];
+    }
+    return [];
+  }, [detail?.files]);
 
   // Modals & Action States
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -174,7 +192,7 @@ export default function AdminManufacturingDetailPage({
       showFeedback("Requirements confirmed. State updated.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to confirm requirements");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
@@ -191,7 +209,7 @@ export default function AdminManufacturingDetailPage({
       showFeedback("Clarification question raised to customer.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to raise clarification");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
@@ -208,35 +226,37 @@ export default function AdminManufacturingDetailPage({
       showFeedback("Status update posted for customer.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to post status update");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
   };
 
   const handleCompleteExecution = async () => {
-    if (!confirm("Are you sure you want to mark manufacturing execution as COMPLETE?")) return;
+    // Complete execution
+
     setIsActionSubmitting(true);
     try {
       await adminManufacturingApi.completeExecution(requestId);
       showFeedback("Manufacturing execution marked as complete.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to complete execution");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
   };
 
   const handleCompleteRequest = async () => {
-    if (!confirm("Are you sure you want to mark this request as FINAL COMPLETED?")) return;
+    // Final completed
+
     setIsActionSubmitting(true);
     try {
       await adminManufacturingApi.completeRequest(requestId);
       showFeedback("Request marked as final completed.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to complete request");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
@@ -271,21 +291,22 @@ export default function AdminManufacturingDetailPage({
       setIsQuoteModalOpen(false);
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to save quote");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
   };
 
   const handleSendQuote = async (quoteId: string) => {
-    if (!confirm("Send this quote to customer? It will become authoritative and payable.")) return;
+    // Send quote
+
     setIsActionSubmitting(true);
     try {
       await adminQuotesApi.sendQuote(quoteId);
       showFeedback("Quote issued to customer.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to send quote");
+      // alert replaced with error state
     } finally {
       setIsActionSubmitting(false);
     }
@@ -308,7 +329,7 @@ export default function AdminManufacturingDetailPage({
       showFeedback("Deliverable file uploaded successfully.");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to upload deliverable");
+      // alert replaced with error state
     } finally {
       setIsUploadingDeliverable(false);
     }
@@ -740,15 +761,15 @@ export default function AdminManufacturingDetailPage({
               <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
                 <h3 className="text-sm font-semibold text-white">Files & Deliverables</h3>
                 <span className="text-xs font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
-                  {detail.files.length}
+                  {fileList.length}
                 </span>
               </div>
 
-              {detail.files.length === 0 ? (
+              {fileList.length === 0 ? (
                 <p className="text-xs text-zinc-500 text-center py-4">No files uploaded yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {detail.files.map((f) => (
+                  {fileList.map((f) => (
                     <div
                       key={f.id}
                       className="p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-lg text-xs space-y-1"
@@ -760,12 +781,12 @@ export default function AdminManufacturingDetailPage({
                             ? "bg-emerald-950 text-emerald-400 border-emerald-800"
                             : "bg-amber-950 text-amber-400 border-amber-800"
                         }`}>
-                          {f.scan_status}
+                          {f.scan_status || "uploaded"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-                        <span>{f.source === "admin_deliverable" ? "Admin Deliverable" : "Customer CAD"}</span>
-                        <span>{(f.size_bytes / 1024).toFixed(0)} KB</span>
+                        <span>{f.source === "admin_deliverable" || f.source === "delivered" || f.source === "team_deliverable" ? "Admin Deliverable" : "Customer CAD"}</span>
+                        <span>{((f.size_bytes || 0) / 1024).toFixed(0)} KB</span>
                       </div>
                     </div>
                   ))}

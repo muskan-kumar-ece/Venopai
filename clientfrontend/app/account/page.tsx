@@ -124,45 +124,45 @@ export default function AccountDashboard() {
   return (
     <div className="space-y-8">
       {/* Welcome banner */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-2xl p-6 lg:p-8 shadow-sm">
+      <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-emerald-950 border border-zinc-800 text-white rounded-2xl p-6 lg:p-8 shadow-sm">
         <h1 className="text-2xl lg:text-3xl font-bold mb-2">
           Welcome back, {data.user?.full_name || 'Engineer'}
         </h1>
-        <p className="text-blue-100 text-sm lg:text-base max-w-xl">
+        <p className="text-zinc-300 text-sm lg:text-base max-w-xl">
           Manage your hardware manufacturing, engineering designs, firmwares, quotes, and active shipments in one unified workspace.
         </p>
       </div>
 
       {/* Action-oriented metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Orders</span>
-          <div className="text-2xl font-bold text-gray-900 mt-2">{data.activeOrders.length}</div>
-          <Link href="/account/orders" className="text-xs font-medium text-blue-600 hover:text-blue-800 mt-2 inline-block">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Active Orders</span>
+          <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{data.activeOrders.length}</div>
+          <Link href="/account/orders" className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 mt-2 inline-block">
             View orders →
           </Link>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Engineering Requests</span>
-          <div className="text-2xl font-bold text-gray-900 mt-2">{data.activeRequestsCount}</div>
-          <Link href="/account/manufacturing" className="text-xs font-medium text-blue-600 hover:text-blue-800 mt-2 inline-block">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Engineering Requests</span>
+          <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{data.activeRequestsCount}</div>
+          <Link href="/account/manufacturing" className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 mt-2 inline-block">
             View requests →
           </Link>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Quotes Requiring Action</span>
-          <div className="text-2xl font-bold text-amber-600 mt-2">{data.quotesNeedingAttention.length}</div>
-          <Link href="/account/quotes" className="text-xs font-medium text-blue-600 hover:text-blue-800 mt-2 inline-block">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Quotes Requiring Action</span>
+          <div className="text-2xl font-bold text-amber-500 mt-2">{data.quotesNeedingAttention.length}</div>
+          <Link href="/account/quotes" className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 mt-2 inline-block">
             Review quotes →
           </Link>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Pending Payments</span>
-          <div className="text-2xl font-bold text-gray-900 mt-2">{data.pendingPayments.length}</div>
-          <Link href="/account/payments" className="text-xs font-medium text-blue-600 hover:text-blue-800 mt-2 inline-block">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pending Payments</span>
+          <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{data.pendingPayments.length}</div>
+          <Link href="/account/payments" className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 mt-2 inline-block">
             View payments →
           </Link>
         </div>
@@ -171,25 +171,25 @@ export default function AccountDashboard() {
       {/* Main sections grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Active Orders Card */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Active Orders</h2>
-            <Link href="/account/orders" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Active Orders</h2>
+            <Link href="/account/orders" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500">
               View all
             </Link>
           </div>
           {data.activeOrders.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">No active orders right now.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 py-4">No active orders right now.</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {data.activeOrders.map((order) => (
                 <div key={order.id} className="py-3 flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">{order.order_number}</div>
-                    <div className="text-xs text-gray-500">{order.created_at?.slice(0, 10)}</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">{order.order_number}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">{order.created_at?.slice(0, 10)}</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-900">₹{order.total_amount}</span>
+                    <span className="text-sm font-medium text-zinc-900 dark:text-white">₹{order.total_amount}</span>
                     <StatusBadge status={order.status} />
                   </div>
                 </div>
@@ -199,29 +199,29 @@ export default function AccountDashboard() {
         </div>
 
         {/* Quotes Requiring Attention */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Quotes Requiring Attention</h2>
-            <Link href="/account/quotes" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Quotes Requiring Attention</h2>
+            <Link href="/account/quotes" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500">
               View all
             </Link>
           </div>
           {data.quotesNeedingAttention.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">No pending quotes requiring attention.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 py-4">No pending quotes requiring attention.</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {data.quotesNeedingAttention.map((quote) => (
                 <div key={quote.id} className="py-3 flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">{quote.quote_number}</div>
-                    <div className="text-xs text-gray-500">Action required</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">{quote.quote_number}</div>
+                    <div className="text-xs text-amber-500">Action required</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-900">₹{quote.total_amount}</span>
+                    <span className="text-sm font-medium text-zinc-900 dark:text-white">₹{quote.total_amount}</span>
                     <StatusBadge status={quote.status} />
                     <Link
                       href={`/account/quotes/${quote.id}`}
-                      className="px-2.5 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
+                      className="px-2.5 py-1 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-500 transition-colors"
                     >
                       Review
                     </Link>
@@ -234,24 +234,24 @@ export default function AccountDashboard() {
       </div>
 
       {/* Recent Notifications (Send-History Log preview) */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Recent Notifications (Audit History)</h2>
-          <Link href="/account/notifications" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Recent Notifications (Audit History)</h2>
+          <Link href="/account/notifications" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500">
             View full log
           </Link>
         </div>
         {data.recentNotifications.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4">No recent notification events logged.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 py-4">No recent notification events logged.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {data.recentNotifications.map((notif) => (
               <div key={notif.id} className="py-3 flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">{notif.title}</div>
-                  <div className="text-xs text-gray-600 mt-0.5">{notif.message}</div>
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-white">{notif.title}</div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{notif.message}</div>
                 </div>
-                <div className="text-xs text-gray-400 whitespace-nowrap">
+                <div className="text-xs text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
                   {notif.created_at ? new Date(notif.created_at).toLocaleDateString() : ''}
                 </div>
               </div>
@@ -262,78 +262,78 @@ export default function AccountDashboard() {
 
       {/* Quick Launchpad to all sections */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Account Workspace</h2>
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Account Workspace</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             href="/account/manufacturing"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">🏭</div>
-            <div className="text-sm font-semibold text-gray-900">Manufacturing</div>
-            <div className="text-xs text-gray-500 mt-1">PCB, CNC, 3D printing requests</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Manufacturing</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">PCB, CNC, 3D printing requests</div>
           </Link>
 
           <Link
             href="/account/design"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">🔧</div>
-            <div className="text-sm font-semibold text-gray-900">Electronics Design</div>
-            <div className="text-xs text-gray-500 mt-1">Schematics & PCB layouts</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Electronics Design</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Schematics & PCB layouts</div>
           </Link>
 
           <Link
             href="/account/consultations"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">💬</div>
-            <div className="text-sm font-semibold text-gray-900">Consultations</div>
-            <div className="text-xs text-gray-500 mt-1">Hardware engineering advice</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Consultations</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Hardware engineering advice</div>
           </Link>
 
           <Link
             href="/account/software"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">💻</div>
-            <div className="text-sm font-semibold text-gray-900">Firmware & Software</div>
-            <div className="text-xs text-gray-500 mt-1">Embedded C/C++, RTOS, Linux</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Firmware & Software</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Embedded C/C++, RTOS, Linux</div>
           </Link>
 
           <Link
             href="/account/projects"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">📂</div>
-            <div className="text-sm font-semibold text-gray-900">Projects</div>
-            <div className="text-xs text-gray-500 mt-1">Group cross-service assets</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Projects</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Group cross-service assets</div>
           </Link>
 
           <Link
             href="/account/addresses"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">📍</div>
-            <div className="text-sm font-semibold text-gray-900">Addresses</div>
-            <div className="text-xs text-gray-500 mt-1">Manage delivery locations</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Addresses</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Manage delivery locations</div>
           </Link>
 
           <Link
             href="/account/reviews"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">⭐</div>
-            <div className="text-sm font-semibold text-gray-900">Reviews</div>
-            <div className="text-xs text-gray-500 mt-1">Feedback on delivered items</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Reviews</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Feedback on delivered items</div>
           </Link>
 
           <Link
             href="/account/settings"
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
+            className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-500/80 hover:shadow-sm transition text-left"
           >
             <div className="text-2xl mb-2">⚙️</div>
-            <div className="text-sm font-semibold text-gray-900">Settings</div>
-            <div className="text-xs text-gray-500 mt-1">Password & notifications</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Settings</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Password & notifications</div>
           </Link>
         </div>
       </div>

@@ -219,7 +219,7 @@ export default function ManufacturingDetailPage({
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to generate download link";
-      alert(message);
+      setErrorMessage(message);
     }
   };
 
@@ -254,12 +254,27 @@ export default function ManufacturingDetailPage({
   }
 
   if (!request) {
+    const isAuthError = errorMessage?.includes("401") || errorMessage?.includes("Unauthorized") || errorMessage?.includes("credentials");
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4">
-        <div className="text-red-400 font-mono text-sm mb-4">Request not found or access restricted.</div>
-        <Link href="/manufacturing" className="text-cyan-400 text-sm hover:underline">
-          Return to Manufacturing Home
-        </Link>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">{isAuthError ? "Sign In Required" : "Request Not Found"}</h2>
+        <p className="text-sm text-neutral-400 mb-6">
+          {isAuthError
+            ? "Please sign in to track and manage this hardware manufacturing production run."
+            : errorMessage || "Request not found or access restricted."}
+        </p>
+        {isAuthError ? (
+          <Link
+            href={`/login?redirect=${encodeURIComponent(`/manufacturing/requests/${requestId}`)}`}
+            className="rounded-xl bg-cyan-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+          >
+            Sign In to Account
+          </Link>
+        ) : (
+          <Link href="/manufacturing" className="text-cyan-400 text-sm hover:underline">
+            Return to Manufacturing Home
+          </Link>
+        )}
       </div>
     );
   }
@@ -272,8 +287,8 @@ export default function ManufacturingDetailPage({
       <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/manufacturing" className="text-sm font-medium text-neutral-400 hover:text-white transition">
-              &larr; Manufacturing
+            <Link href="/account/manufacturing" className="text-sm font-medium text-neutral-400 hover:text-white transition">
+              &larr; Manufacturing Queue
             </Link>
             <span className="text-neutral-600">/</span>
             <span className="text-sm font-mono text-white truncate max-w-xs">{request.title}</span>

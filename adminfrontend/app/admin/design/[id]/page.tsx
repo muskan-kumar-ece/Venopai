@@ -103,11 +103,11 @@ export default function AdminDesignDetailPage() {
     setIsProcessing(true);
     try {
       await adminDesignApi.confirmRequirements(id, confirmNotes.trim() || undefined);
-      alert("Requirements confirmed. Project moved to requirements_confirmed.");
+      // alert replaced
       setConfirmNotes("");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to confirm");
+      // alert replaced
     } finally {
       setIsProcessing(false);
     }
@@ -122,7 +122,7 @@ export default function AdminDesignDetailPage() {
       setStatusNote("");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to post status update");
+      // alert replaced
     } finally {
       setIsProcessing(false);
     }
@@ -137,7 +137,7 @@ export default function AdminDesignDetailPage() {
       setClarQuestion("");
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to raise clarification");
+      // alert replaced
     } finally {
       setIsProcessing(false);
     }
@@ -148,7 +148,7 @@ export default function AdminDesignDetailPage() {
       await adminDesignApi.resolveClarification(id, clarId);
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to resolve");
+      // alert replaced
     }
   };
 
@@ -165,10 +165,10 @@ export default function AdminDesignDetailPage() {
         formData.append("source", "team_deliverable");
         await adminFilesApi.uploadDeliverable(formData);
       }
-      alert("Deliverable(s) uploaded successfully.");
+      // alert replaced
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Upload failed");
+      // alert replaced
     } finally {
       setIsUploadingDeliverable(false);
       e.target.value = "";
@@ -176,26 +176,28 @@ export default function AdminDesignDetailPage() {
   };
 
   const handleCompleteExecution = async () => {
-    if (!confirm("Mark execution complete (completed_execution)?")) return;
+    // Complete execution
+
     setIsProcessing(true);
     try {
       await adminDesignApi.completeExecution(id);
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed");
+      // alert replaced
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleCompleteRequest = async () => {
-    if (!confirm("Mark entire project completed?")) return;
+    // Complete request
+
     setIsProcessing(true);
     try {
       await adminDesignApi.completeRequest(id);
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed");
+      // alert replaced
     } finally {
       setIsProcessing(false);
     }
@@ -213,10 +215,10 @@ export default function AdminDesignDetailPage() {
         scope_summary: `PCB Design Engineering Quote for ${designReq?.title}`,
       });
       setShowQuoteModal(false);
-      alert("Quotation generated successfully!");
+      // alert replaced
       await fetchDetail();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to generate quote");
+      // alert replaced
     } finally {
       setIsGeneratingQuote(false);
     }

@@ -59,19 +59,19 @@ export default function AccountOrdersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Your Orders</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Your Orders</h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             Track hardware part purchases, view status, invoices, and shipment tracking.
           </p>
         </div>
 
         {/* Status Filter */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase">Filter:</label>
+          <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Filter:</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-xs border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Statuses</option>
             <option value="created">Created</option>
@@ -84,7 +84,7 @@ export default function AccountOrdersPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 rounded-lg text-sm">{error}</div>
       )}
 
       {orders.length === 0 ? (
@@ -100,17 +100,17 @@ export default function AccountOrdersPage() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:border-gray-300 transition"
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800 gap-2">
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-gray-900 text-base">{order.order_number}</span>
-                    <span className="text-xs text-gray-400">
+                    <span className="font-bold text-zinc-900 dark:text-white text-base">{order.order_number}</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500">
                       {order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                     {order.items?.length || 0} {order.items?.length === 1 ? 'item' : 'items'}
                   </div>
                 </div>
@@ -118,18 +118,18 @@ export default function AccountOrdersPage() {
                 {/* 3-way status separation indicator */}
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-gray-400 font-medium">Order:</span>
+                    <span className="text-zinc-400 font-medium">Order:</span>
                     <StatusBadge status={order.status} />
                   </div>
                   {order.payment_status && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-gray-400 font-medium">Payment:</span>
+                      <span className="text-zinc-400 font-medium">Payment:</span>
                       <StatusBadge status={order.payment_status} />
                     </div>
                   )}
                   {order.shipment_status && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-gray-400 font-medium">Shipment:</span>
+                      <span className="text-zinc-400 font-medium">Shipment:</span>
                       <StatusBadge status={order.shipment_status} />
                     </div>
                   )}
@@ -137,31 +137,31 @@ export default function AccountOrdersPage() {
               </div>
 
               {/* Items summary */}
-              <div className="py-3 text-sm text-gray-700">
+              <div className="py-3 text-sm text-zinc-700 dark:text-zinc-300">
                 {order.items?.slice(0, 3).map((item, idx) => (
                   <div key={idx} className="flex justify-between py-1 text-xs">
-                    <span className="text-gray-600 truncate max-w-md">
+                    <span className="text-zinc-600 dark:text-zinc-400 truncate max-w-md">
                       {item.quantity}x {item.product_name}
                     </span>
-                    <span className="font-medium text-gray-900">₹{item.total_price}</span>
+                    <span className="font-medium text-zinc-900 dark:text-white">₹{item.total_price}</span>
                   </div>
                 ))}
                 {order.items && order.items.length > 3 && (
-                  <div className="text-xs text-gray-400 italic pt-1">
+                  <div className="text-xs text-zinc-400 dark:text-zinc-500 italic pt-1">
                     +{order.items.length - 3} more items...
                   </div>
                 )}
               </div>
 
               {/* Actions footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="text-sm font-semibold text-gray-900">
+              <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="text-sm font-semibold text-zinc-900 dark:text-white">
                   Total: ₹{order.total_amount}
                 </div>
                 <div className="flex items-center gap-3">
                   <Link
                     href={`/account/orders/${order.id}`}
-                    className="px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
+                    className="px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
                   >
                     View Details & Tracking →
                   </Link>

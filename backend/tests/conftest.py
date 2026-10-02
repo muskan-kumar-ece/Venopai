@@ -26,6 +26,4 @@ celery_app.conf.task_eager_propagates = True
 celery_app.conf.broker_url = "memory://"
 celery_app.conf.result_backend = "cache+memory://"
 
-import app.core.rate_limit
-app.core.rate_limit.check_rate_limit = lambda *args, **kwargs: True
 

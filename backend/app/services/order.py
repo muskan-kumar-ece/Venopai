@@ -2,6 +2,7 @@ import uuid
 import json
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List, Tuple
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from fastapi import status as http_status
 
@@ -62,19 +63,19 @@ class OrderService:
     @classmethod
     def get_order(cls, db: Session, user: User, order_id: str) -> Dict[str, Any]:
         """ORDER-API-002: Customer Order detail view with IDOR protection."""
+        order = None
         try:
             o_uuid = uuid.UUID(order_id)
+            order = db.query(Order).filter(
+                Order.id == o_uuid,
+                Order.user_id == user.id,
+            ).first()
         except ValueError:
-            raise APIException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                code="ORDER_NOT_FOUND",
-                message="Order not found",
-            )
-
-        order = db.query(Order).filter(
-            Order.id == o_uuid,
-            Order.user_id == user.id,
-        ).first()
+            clean_num = order_id.strip().upper()
+            order = db.query(Order).filter(
+                func.upper(Order.order_number) == clean_num,
+                Order.user_id == user.id,
+            ).first()
 
         if not order:
             raise APIException(
@@ -219,19 +220,19 @@ class OrderService:
     @classmethod
     def get_order_invoice(cls, db: Session, user: User, order_id: str) -> Dict[str, Any]:
         """ORDER-API-004: Download invoice / invoice details with TAX-004 tax breakdown."""
+        order = None
         try:
             o_uuid = uuid.UUID(order_id)
+            order = db.query(Order).filter(
+                Order.id == o_uuid,
+                Order.user_id == user.id,
+            ).first()
         except ValueError:
-            raise APIException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                code="ORDER_NOT_FOUND",
-                message="Order not found",
-            )
-
-        order = db.query(Order).filter(
-            Order.id == o_uuid,
-            Order.user_id == user.id,
-        ).first()
+            clean_num = order_id.strip().upper()
+            order = db.query(Order).filter(
+                func.upper(Order.order_number) == clean_num,
+                Order.user_id == user.id,
+            ).first()
 
         if not order:
             raise APIException(

@@ -100,6 +100,29 @@ class Order(Base):
     checkout_session = relationship("CheckoutSession")
     shipping_address = relationship("Address")
 
+    @property
+    def payment_status(self) -> str:
+        if self.payments:
+            return sorted(self.payments, key=lambda p: p.created_at, reverse=True)[0].status
+        return "successful" if self.status != "pending_payment" else "pending"
+
+    @property
+    def total_amount_paise(self) -> int:
+        return self.total_paise or self.total_amount or 0
+
+    @property
+    def currency(self) -> str:
+        return "INR"
+
+    @property
+    def tax_paise(self) -> int:
+        return self.tax_amount_paise or 0
+
+    @property
+    def shipping_amount_paise(self) -> int:
+        return self.shipping_rate_paise or 0
+
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -148,6 +171,20 @@ class Payment(Base):
     checkout_session = relationship("CheckoutSession", back_populates="payments")
     refunds = relationship("Refund", back_populates="payment")
 
+    @property
+    def source_type(self) -> str:
+        if self.quote_id:
+            return "quote"
+        if self.order_id:
+            return "order"
+        if self.checkout_session_id:
+            return "checkout_session"
+        return "direct"
+
+    @property
+    def amount_paise(self) -> int:
+        return self.amount or 0
+
 
 class Refund(Base):
     __tablename__ = "refunds"
@@ -171,14 +208,18 @@ class Refund(Base):
 class Shipment(Base):
     __tablename__ = "shipments"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, unique=True)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, unique=True)
+    manufacturing_request_id = Column(UUID(as_uuid=True), ForeignKey("manufacturing_requests.id"), nullable=True, unique=True)
     shiprocket_order_id = Column(String(100), nullable=True)
     tracking_number = Column(String(100), nullable=True)
-    status = Column(String(50), default="pending")
+    carrier = Column(String(100), nullable=True)
+    estimated_delivery = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(50), default="pending", index=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     order = relationship("Order", back_populates="shipment")
+    manufacturing_request = relationship("ManufacturingRequest", backref="shipment")
 
 
 class ProcessedWebhookEvent(Base):

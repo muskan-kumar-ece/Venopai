@@ -1,10 +1,13 @@
 import uuid
 import json
+import math
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, Query, status as http_status
+from fastapi import APIRouter, Depends, Query, HTTPException, status as http_status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, CurrentUser, CurrentAdmin
+from app.models.project import Quote, QuoteVersion
+from app.models.user import User
 from app.services.quote import QuoteService
 from app.services.catalog import _rupees
 from app.schemas.quote import (
@@ -289,6 +292,169 @@ def reject_quote(
 # ----------------------------------------------------------------------
 # Admin Quote Endpoints
 # ----------------------------------------------------------------------
+
+@admin_router.get(
+    "",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-QUOTE-API-LIST: List all quotes with status and request filters",
+)
+def admin_list_quotes(
+    admin: CurrentAdmin,
+    status: Optional[str] = Query(None),
+    request_type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """List all quotes across all customers and service requests."""
+    query = db.query(Quote)
+    if status:
+        query = query.filter(Quote.status == status)
+    if request_type:
+        query = query.filter(Quote.request_type == request_type)
+
+    total = query.count()
+    quotes = (
+        query.order_by(Quote.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    data = []
+    for q in quotes:
+        latest = (
+            db.query(QuoteVersion)
+            .filter(QuoteVersion.quote_id == q.id)
+            .order_by(QuoteVersion.version.desc())
+            .first()
+        )
+        user_info = None
+        if q.user:
+            user_info = {
+                "id": str(q.user.id),
+                "email": q.user.email,
+                "full_name": q.user.full_name,
+            }
+
+        line_items = []
+        if latest and latest.line_items:
+            try:
+                line_items = json.loads(latest.line_items)
+            except Exception:
+                line_items = []
+
+        data.append({
+            "id": str(q.id),
+            "request_type": q.request_type,
+            "request_id": str(q.request_id) if q.request_id else "",
+            "project_id": str(q.project_id) if q.project_id else None,
+            "status": q.status,
+            "customer": user_info,
+            "current_version": {
+                "id": str(latest.id) if latest else None,
+                "version_number": latest.version if latest else 1,
+                "status": latest.status if latest else q.status,
+                "scope_summary": latest.scope_summary if latest else None,
+                "line_items": line_items,
+                "subtotal": _rupees(latest.subtotal_paise) if latest else "0.00",
+                "tax_amount": _rupees(latest.tax_paise) if latest else "0.00",
+                "shipping_amount": _rupees(latest.shipping_amount_paise) if latest else "0.00",
+                "total": _rupees(latest.total_amount) if latest else "0.00",
+                "total_paise": latest.total_amount if latest else 0,
+                "valid_until": latest.valid_until.isoformat() if latest and latest.valid_until else None,
+                "estimated_timeline": latest.estimated_timeline if latest else None,
+                "terms": latest.terms if latest else None,
+            } if latest else None,
+            "created_at": q.created_at.isoformat() if q.created_at else "",
+            "updated_at": q.updated_at.isoformat() if q.updated_at else "",
+        })
+
+    return {
+        "data": data,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_items": total,
+            "total_pages": max(1, math.ceil(total / page_size)),
+        },
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@admin_router.get(
+    "/{quote_id}",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-QUOTE-API-DETAIL: Fetch full quote detail for admin",
+)
+def admin_get_quote_detail(
+    quote_id: str,
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """Admin inspects quote and latest version without customer IDOR restriction."""
+    try:
+        q_uuid = uuid.UUID(quote_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    quote = db.query(Quote).filter(Quote.id == q_uuid).first()
+    if not quote:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    latest = (
+        db.query(QuoteVersion)
+        .filter(QuoteVersion.quote_id == quote.id)
+        .order_by(QuoteVersion.version.desc())
+        .first()
+    )
+
+    line_items = []
+    if latest and latest.line_items:
+        try:
+            line_items = json.loads(latest.line_items)
+        except Exception:
+            line_items = []
+
+    user_info = None
+    if quote.user:
+        user_info = {
+            "id": str(quote.user.id),
+            "email": quote.user.email,
+            "full_name": quote.user.full_name,
+        }
+
+    return {
+        "data": {
+            "id": str(quote.id),
+            "request_type": quote.request_type,
+            "request_id": str(quote.request_id) if quote.request_id else "",
+            "project_id": str(quote.project_id) if quote.project_id else None,
+            "status": quote.status,
+            "customer": user_info,
+            "current_version": {
+                "id": str(latest.id) if latest else None,
+                "version_number": latest.version if latest else 1,
+                "status": latest.status if latest else quote.status,
+                "scope_summary": latest.scope_summary if latest else None,
+                "line_items": line_items,
+                "subtotal": _rupees(latest.subtotal_paise) if latest else "0.00",
+                "tax_amount": _rupees(latest.tax_paise) if latest else "0.00",
+                "shipping_amount": _rupees(latest.shipping_amount_paise) if latest else "0.00",
+                "total": _rupees(latest.total_amount) if latest else "0.00",
+                "total_paise": latest.total_amount if latest else 0,
+                "valid_until": latest.valid_until.isoformat() if latest and latest.valid_until else None,
+                "estimated_timeline": latest.estimated_timeline if latest else None,
+                "terms": latest.terms if latest else None,
+                "created_at": latest.created_at.isoformat() if latest and latest.created_at else "",
+            } if latest else None,
+            "created_at": quote.created_at.isoformat() if quote.created_at else "",
+            "updated_at": quote.updated_at.isoformat() if quote.updated_at else "",
+        },
+        "request_id": str(uuid.uuid4()),
+    }
+
 
 @admin_router.post(
     "",

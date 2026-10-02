@@ -114,7 +114,7 @@ export default function DesignRequestDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to respond";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsRespondingClar(false);
     }
@@ -130,14 +130,15 @@ export default function DesignRequestDetailPage() {
       await fetchDetail();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to request cancellation";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsCancelling(false);
     }
   };
 
   const handleStartManufacturing = async () => {
-    if (!confirm("Start a Manufacturing Request using these completed PCB design deliverables?")) return;
+    // Start manufacturing
+
     setIsStartingMfg(true);
     try {
       const res = await designApi.startManufacturing(id);
@@ -149,7 +150,7 @@ export default function DesignRequestDetailPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to initiate manufacturing";
-      alert(msg);
+      setErrorMessage(msg);
     } finally {
       setIsStartingMfg(false);
     }
@@ -185,13 +186,27 @@ export default function DesignRequestDetailPage() {
   }
 
   if (!designReq) {
+    const isAuthError = errorMessage?.includes("401") || errorMessage?.includes("Unauthorized") || errorMessage?.includes("credentials");
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold mb-2">Design Request Not Found</h2>
-        <p className="text-sm text-neutral-400 mb-6">{errorMessage || "Unable to retrieve requested design."}</p>
-        <Link href="/design/requests" className="text-sm text-cyan-400 hover:underline">
-          &larr; Return to Design Requests
-        </Link>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">{isAuthError ? "Sign In Required" : "Design Request Not Found"}</h2>
+        <p className="text-sm text-neutral-400 mb-6">
+          {isAuthError
+            ? "Please sign in to view and collaborate on this electronics design request."
+            : errorMessage || "Unable to retrieve requested design."}
+        </p>
+        {isAuthError ? (
+          <Link
+            href={`/login?redirect=${encodeURIComponent(`/design/requests/${id}`)}`}
+            className="rounded-xl bg-cyan-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-cyan-500 transition-colors"
+          >
+            Sign In to Account
+          </Link>
+        ) : (
+          <Link href="/design/requests" className="text-sm text-cyan-400 hover:underline">
+            &larr; Return to Design Requests
+          </Link>
+        )}
       </div>
     );
   }
@@ -204,8 +219,8 @@ export default function DesignRequestDetailPage() {
       <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/design/requests" className="text-sm font-medium text-neutral-400 hover:text-white transition">
-              &larr; Design Requests
+            <Link href="/account/design" className="text-sm font-medium text-neutral-400 hover:text-white transition">
+              &larr; PCB Design Queue
             </Link>
             <span className="text-neutral-600">/</span>
             <span className="text-xs font-mono text-neutral-400 truncate max-w-xs">{designReq.title}</span>
@@ -252,7 +267,7 @@ export default function DesignRequestDetailPage() {
               </p>
             </div>
             <Link
-              href={`/quotes/${designReq.active_quote.id}`}
+              href={`/account/quotes/${designReq.active_quote.id}`}
               className="inline-flex items-center text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-4 py-2 rounded-lg transition shrink-0 shadow-md shadow-emerald-500/20"
             >
               Review & Approve Quotation &rarr;

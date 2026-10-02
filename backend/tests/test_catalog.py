@@ -19,6 +19,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clean_catalog_db():
+    from app.core.cache import cache_delete, cache_delete_pattern
+    cache_delete("cache:cat:tree")
+    cache_delete_pattern("cache:prod:*")
     db = TestingSessionLocal()
     db.query(InventoryReservation).delete()
     db.query(Inventory).delete()
@@ -931,4 +934,103 @@ def test_admin_catalog_rbac_matrix():
     assert res_cust.status_code == 403
 
     db.close()
+
+
+def test_get_product_by_slug():
+    db = TestingSessionLocal()
+    prod = create_test_product(db, name="Raspberry Pi Pico W", slug="raspberry-pi-pico-w", status="active")
+    db.close()
+
+    res = client.get(f"/api/v1/products/{prod.slug}")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["id"] == str(prod.id)
+    assert data["slug"] == "raspberry-pi-pico-w"
+    assert data["name"] == "Raspberry Pi Pico W"
+
+
+def test_get_product_with_user_manual_url():
+    db = TestingSessionLocal()
+    slug = "esp32-s3-dev-board"
+    prod = create_test_product(db, name="ESP32-S3 Dev Board", slug=slug, status="active")
+    prod.user_manual_url = "https://res.cloudinary.com/venopai/raw/upload/products/manuals/esp32s3_datasheet.pdf"
+    db.commit()
+    db.close()
+
+    res = client.get(f"/api/v1/products/{slug}")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["user_manual_url"] == "https://res.cloudinary.com/venopai/raw/upload/products/manuals/esp32s3_datasheet.pdf"
+
+
+def test_get_product_reviews_by_slug():
+    from app.models.engagement import Review
+    db = TestingSessionLocal()
+    customer = create_test_customer(db)
+    slug = "stm32-nucleo-board"
+    prod = create_test_product(db, name="STM32 Nucleo Board", slug=slug, status="active")
+
+    rev = Review(
+        user_id=customer.id,
+        target_type="product",
+        target_id=prod.id,
+        product_id=prod.id,
+        rating=5,
+        comment="Outstanding microcontroller with comprehensive datasheet.",
+        is_visible=True,
+    )
+    db.add(rev)
+    db.commit()
+    db.close()
+
+    res = client.get(f"/api/v1/products/{slug}/reviews")
+    assert res.status_code == 200
+    res_data = res.json()
+    assert res_data["review_count"] == 1
+    assert res_data["average_rating"] == 5.0
+    assert len(res_data["data"]) == 1
+    assert res_data["data"][0]["comment"] == "Outstanding microcontroller with comprehensive datasheet."
+
+
+def test_list_products_search_and_pagination_metadata():
+    db = TestingSessionLocal()
+    # Create distinct products
+    create_test_product(db, name="RP2040 Pico Dual-Core", slug="rp2040-pico-board", status="active", price_paise=45000)
+    create_test_product(db, name="ATmega328P DIP-28", slug="atmega328p-dip-28", status="active", price_paise=22000)
+    db.close()
+
+    # Search for RP2040
+    res = client.get("/api/v1/products?search=pico&page=1&page_size=10")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert len(json_data["data"]) == 1
+    assert json_data["data"][0]["slug"] == "rp2040-pico-board"
+    assert "has_next" in json_data["pagination"]
+    assert "has_prev" in json_data["pagination"]
+    assert json_data["pagination"]["has_prev"] is False
+
+
+def test_admin_list_products_search_and_status_filter():
+    db = TestingSessionLocal()
+    admin = create_test_admin(db)
+    headers = get_admin_headers(admin)
+    create_test_product(db, name="Draft Sensor Module", slug="draft-sensor-mod", status="draft", price_paise=15000)
+    create_test_product(db, name="Active Sensor Module", slug="active-sensor-mod", status="active", price_paise=25000)
+    db.close()
+
+    # Admin filter by status=draft
+    res_draft = client.get("/api/v1/admin/products?status=draft&page_size=10", headers=headers)
+    assert res_draft.status_code == 200
+    draft_data = res_draft.json()
+    slugs = [p["slug"] for p in draft_data["data"]]
+    assert "draft-sensor-mod" in slugs
+    assert "active-sensor-mod" not in slugs
+
+    # Admin search
+    res_search = client.get("/api/v1/admin/products?search=active-sensor&page_size=10", headers=headers)
+    assert res_search.status_code == 200
+    search_data = res_search.json()
+    assert len(search_data["data"]) == 1
+    assert search_data["data"][0]["slug"] == "active-sensor-mod"
+
 

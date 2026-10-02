@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, CurrentUser
 from app.services.consultation import ConsultationService
 from app.models.project import ProjectFile
+from app.core.rate_limit import RateLimiter
 from app.schemas.service_requests import (
+
     ConsultationCreate,
     ConsultationResponse,
     ConsultationListResponse,
@@ -57,8 +59,10 @@ def _serialize_consultation(req, db: Session) -> Dict[str, Any]:
     response_model=ConsultationResponse,
     status_code=http_status.HTTP_201_CREATED,
     summary="CONSULT-API-001: Submit consultation request",
+    dependencies=[Depends(RateLimiter(limit=10, window_seconds=3600, key_prefix="rl:consult_req", scope="user"))],
 )
 def submit_consultation(
+
     body: ConsultationCreate,
     current_user: CurrentUser,
     db: Session = Depends(get_db),

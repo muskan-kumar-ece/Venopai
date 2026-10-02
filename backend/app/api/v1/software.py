@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, CurrentUser
 from app.services.software import SoftwareService
 from app.models.project import ProjectFile
+from app.core.rate_limit import RateLimiter
 from app.schemas.service_requests import (
+
     SoftwareRequestCreate,
     SoftwareRequestResponse,
     SoftwareRequestListResponse,
@@ -63,8 +65,10 @@ def _serialize_software(req, db: Session) -> Dict[str, Any]:
     response_model=SoftwareRequestResponse,
     status_code=http_status.HTTP_201_CREATED,
     summary="SW-API-001: Submit software/firmware request",
+    dependencies=[Depends(RateLimiter(limit=10, window_seconds=3600, key_prefix="rl:software_req", scope="user"))],
 )
 def create_software_request(
+
     body: SoftwareRequestCreate,
     current_user: CurrentUser,
     db: Session = Depends(get_db),

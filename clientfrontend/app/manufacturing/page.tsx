@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function ManufacturingLandingPage() {
   const capabilities = [
@@ -63,32 +64,91 @@ export default function ManufacturingLandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-24 border-b border-neutral-800">
+      <section className="relative overflow-hidden pt-16 pb-20 lg:pt-20 lg:pb-24 border-b border-neutral-800">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.15),rgba(255,255,255,0))]" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-cyan-950/50 border border-cyan-800 text-cyan-400 mb-6">
-              <span>PROTOTYPING TO LOW-VOLUME REALIZATION</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left Column: Typography & CTAs */}
+            <div className="lg:col-span-7">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-cyan-950/50 border border-cyan-800 text-cyan-400 mb-6">
+                <span>PROTOTYPING TO LOW-VOLUME REALIZATION</span>
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                Realize custom hardware with engineering-grade precision.
+              </h1>
+              <p className="mt-6 text-base sm:text-lg text-neutral-400 leading-relaxed max-w-2xl">
+                Upload Gerber, STEP, STL, or technical drawings. Get reviewed engineering quotes, structured milestone updates, and verifiable tax compliance.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-4 items-center">
+                <Link
+                  href="/manufacturing/request"
+                  className="px-6 py-3.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold shadow-xl shadow-cyan-500/25 transition text-base"
+                >
+                  Submit Manufacturing Intake &rarr;
+                </Link>
+                <Link
+                  href="/projects"
+                  className="px-6 py-3.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 font-medium transition text-base"
+                >
+                  Group under Projects
+                </Link>
+              </div>
+              <div className="mt-10 flex flex-wrap items-center gap-6 text-xs font-mono text-neutral-400 border-t border-neutral-800/80 pt-6">
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  IPC-A-610 Class 2 &amp; 3
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  5-Axis CNC Milling
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  AOI &amp; X-Ray Testing
+                </span>
+              </div>
             </div>
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              Realize custom hardware with engineering-grade precision.
-            </h1>
-            <p className="mt-6 text-lg sm:text-xl text-neutral-400 leading-relaxed">
-              Upload Gerber, STEP, STL, or technical drawings. Get reviewed engineering quotes, structured milestone updates, and verifiable tax compliance.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-4 items-center">
-              <Link
-                href="/manufacturing/request"
-                className="px-6 py-3.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold shadow-xl shadow-cyan-500/25 transition text-base"
-              >
-                Submit Manufacturing Intake &rarr;
-              </Link>
-              <Link
-                href="/projects"
-                className="px-6 py-3.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 font-medium transition text-base"
-              >
-                Group under Projects
-              </Link>
+
+            {/* Right Column: High-Precision Manufacturing Visual Card */}
+            <div className="lg:col-span-5">
+              <div className="relative rounded-2xl border border-neutral-800 bg-neutral-900/60 p-2.5 shadow-2xl backdrop-blur-sm overflow-hidden group">
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-transparent to-cyan-500/10 opacity-70 blur-xl group-hover:opacity-100 transition duration-500" />
+                <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-neutral-950 border border-neutral-800/80">
+                  <Image
+                    src="/images/heroes/manufacturing_hero.jpg"
+                    alt="Precision SMT Pick and Place and CNC Machining"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 40vw"
+                    priority
+                    className="object-cover object-center group-hover:scale-105 transition duration-700 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-transparent to-neutral-950/20" />
+
+                  {/* Top Floating Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-2 rounded-lg bg-neutral-950/85 backdrop-blur-md px-3 py-1.5 border border-neutral-700/70 text-xs font-mono text-cyan-300 shadow-lg">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>SMT Line Active &bull; S/N: PCBA-4000</span>
+                  </div>
+
+                  {/* Bottom Metrics Pill */}
+                  <div className="absolute bottom-3 inset-x-3 rounded-lg bg-neutral-950/90 backdrop-blur-md p-3 border border-neutral-700/80 flex items-center justify-between text-xs">
+                    <div>
+                      <div className="text-neutral-400 font-mono text-[10px] uppercase">Tolerance</div>
+                      <div className="font-semibold text-white font-mono">&plusmn;0.01 mm</div>
+                    </div>
+                    <div className="h-6 w-px bg-neutral-800" />
+                    <div>
+                      <div className="text-neutral-400 font-mono text-[10px] uppercase">Turnaround</div>
+                      <div className="font-semibold text-cyan-400 font-mono">24&ndash;48 hrs</div>
+                    </div>
+                    <div className="h-6 w-px bg-neutral-800" />
+                    <div>
+                      <div className="text-neutral-400 font-mono text-[10px] uppercase">Compliance</div>
+                      <div className="font-semibold text-white font-mono">ISO 9001</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

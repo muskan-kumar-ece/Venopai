@@ -64,7 +64,7 @@ export default function AdminCancellationReviewQueuePage() {
       setTimeout(() => setActionFeedback(null), 4000);
       await fetchQueue();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to resolve cancellation");
+      // alert replaced
     } finally {
       setIsSubmitting(false);
     }

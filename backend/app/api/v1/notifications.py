@@ -41,3 +41,38 @@ def get_my_notifications(
         },
         "request_id": get_request_id(request),
     }
+
+
+from app.api.deps import CurrentAdmin
+
+admin_router = APIRouter()
+
+@admin_router.get("", summary="Admin Notification send-history log (paginated)")
+def get_admin_notifications(
+    admin: CurrentAdmin,
+    request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Admin view of all notification send-history and delivery status logs (Doc 01 §20)."""
+    offset = (page - 1) * page_size
+    total = db.query(Notification).count()
+    notifications = (
+        db.query(Notification)
+        .order_by(Notification.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "data": [NotificationOut.model_validate(n) for n in notifications],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_items": total,
+            "total_pages": max(1, math.ceil(total / page_size)),
+        },
+        "request_id": get_request_id(request),
+    }
+

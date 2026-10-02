@@ -58,6 +58,40 @@ def _serialize_design_admin(req, db: Session) -> Dict[str, Any]:
 
 
 @router.get(
+    "/cancellation-review-queue",
+    status_code=http_status.HTTP_200_OK,
+    summary="ADMIN-DESIGN-API-008: List design requests in cancellation review queue",
+)
+def admin_list_design_cancellation_queue(
+    admin: CurrentAdmin,
+    db: Session = Depends(get_db),
+):
+    """List design requests flagged with cancellation_requested == True."""
+    DesignService._check_admin_role(admin)
+    from app.models.project import DesignRequest
+    items = db.query(DesignRequest).filter(
+        DesignRequest.cancellation_requested == True,
+    ).order_by(DesignRequest.updated_at.desc()).all()
+    results = []
+    for r in items:
+        results.append({
+            "id": str(r.id),
+            "title": r.title,
+            "design_scope": r.design_scope,
+            "status": r.status,
+            "cancellation_requested": True,
+            "cancellation_reason": r.cancellation_reason,
+            "customer_email": r.user.email if r.user else None,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "updated_at": r.updated_at.isoformat() if r.updated_at else "",
+        })
+    return {
+        "data": results,
+        "request_id": str(uuid.uuid4()),
+    }
+
+
+@router.get(
     "",
     status_code=http_status.HTTP_200_OK,
     summary="ADMIN-DESIGN-API-001: Queue view for design requests",

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, CurrentUser
 from app.services import checkout as checkout_service
 from app.schemas.checkout import CheckoutSessionCreate, CheckoutAddressChange, CheckoutSessionResponse
+from app.core.rate_limit import RateLimiter
 
 router = APIRouter()
 
@@ -14,8 +15,14 @@ def _request_id(request: Request) -> str:
 # CHECKOUT-API-001 — POST /api/v1/checkout/sessions
 # ---------------------------------------------------------------------------
 
-@router.post("/sessions", response_model=CheckoutSessionResponse, status_code=201)
+@router.post(
+    "/sessions",
+    response_model=CheckoutSessionResponse,
+    status_code=201,
+    dependencies=[Depends(RateLimiter(limit=10, window_seconds=60, key_prefix="rl:checkout", scope="user_or_ip"))],
+)
 def create_checkout_session_endpoint(
+
     request: Request,
     payload: CheckoutSessionCreate,
     current_user: CurrentUser,

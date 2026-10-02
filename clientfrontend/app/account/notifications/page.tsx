@@ -49,18 +49,20 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Notification History (Audit Log)</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Notification History (Audit Log)</h1>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
           Historical record of automated email notifications dispatched regarding quotes, payments, manufacturing updates, and shipments.
         </p>
       </div>
 
-      <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 leading-relaxed">
+      <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
         <strong>Information Note:</strong> In VenopAI V1, notifications are delivered to your verified email address. This view provides an immutable send-history log for transactional transparency.
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 rounded-2xl text-xs font-medium">
+          {error}
+        </div>
       )}
 
       {notifications.length === 0 ? (
@@ -70,19 +72,19 @@ export default function NotificationsPage() {
           icon="🔔"
         />
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
           {notifications.map((notif) => (
-            <div key={notif.id} className="p-5 flex items-start justify-between gap-4 hover:bg-gray-50 transition">
+            <div key={notif.id} className="p-5 flex items-start justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-gray-900">{notif.title}</span>
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                  <span className="text-sm font-bold text-zinc-900 dark:text-white">{notif.title}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                     Dispatched via Email
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 leading-relaxed">{notif.message}</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{notif.message}</p>
               </div>
-              <div className="text-xs text-gray-400 whitespace-nowrap pt-0.5">
+              <div className="text-[11px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap pt-0.5 font-mono">
                 {notif.created_at ? new Date(notif.created_at).toLocaleString() : ''}
               </div>
             </div>
@@ -96,19 +98,19 @@ export default function NotificationsPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+            className="px-3.5 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
-            ← Previous
+            &larr; Previous
           </button>
-          <span className="text-xs text-gray-500 font-medium">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+            className="px-3.5 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
-            Next →
+            Next &rarr;
           </button>
         </div>
       )}

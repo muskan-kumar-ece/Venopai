@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, CurrentUser
 from app.services import cart as cart_service
 from app.schemas.cart import CartResponse, CartItemAdd, CartItemUpdate
+from app.core.rate_limit import RateLimiter
 
 router = APIRouter()
 
@@ -31,8 +32,13 @@ def get_cart_endpoint(
 # CART-API-002 — POST /api/v1/cart/items
 # ---------------------------------------------------------------------------
 
-@router.post("/items", response_model=CartResponse)
+@router.post(
+    "/items",
+    response_model=CartResponse,
+    dependencies=[Depends(RateLimiter(limit=30, window_seconds=60, key_prefix="rl:cart", scope="user_or_ip"))],
+)
 def add_cart_item_endpoint(
+
     request: Request,
     payload: CartItemAdd,
     current_user: CurrentUser,
