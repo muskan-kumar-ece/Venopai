@@ -209,11 +209,25 @@ async def admin_upload_product_image(
             body = await request.json()
             if isinstance(body, dict) and "image_url" in body:
                 image_url = body["image_url"]
-                if not image_url or not isinstance(image_url, str) or not image_url.startswith("http"):
+                if not image_url or not isinstance(image_url, str):
                     raise APIException(
                         status_code=http_status.HTTP_400_BAD_REQUEST,
                         code="INVALID_IMAGE",
-                        message="Valid image_url starting with http/https is required",
+                        message="Valid image_url is required",
+                    )
+                import urllib.parse
+                parsed = urllib.parse.urlparse(image_url)
+                if parsed.scheme != "https" or not parsed.netloc:
+                    raise APIException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        code="INVALID_IMAGE",
+                        message="Valid HTTPS image URL is required",
+                    )
+                if parsed.netloc.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+                    raise APIException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        code="INVALID_IMAGE",
+                        message="Internal or localhost image URLs are not permitted",
                     )
                 product = db.query(Product).filter(Product.id == pid).first()
                 if not product:
@@ -340,12 +354,43 @@ async def admin_upload_catalog_media(
         )
 
     if is_doc:
+        if not file_bytes.startswith(b"%PDF-"):
+            raise APIException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                code="INVALID_DOCUMENT",
+                message="File content does not match valid PDF header (%PDF-)",
+            )
         media_type = "pdf"
         folder = "products/manuals"
     elif is_video:
+        if len(file_bytes) < 12 or (b"ftyp" not in file_bytes[4:12] and b"moov" not in file_bytes[:32]):
+            raise APIException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                code="INVALID_VIDEO",
+                message="File content does not match valid MP4/video header",
+            )
         media_type = "video"
         folder = "products/videos"
     else:
+        if ext == ".svg" or b"<svg" in file_bytes[:1024].lower() or b"<?xml" in file_bytes[:1024].lower():
+            raise APIException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                code="INVALID_IMAGE",
+                message="SVG images are not supported for product catalog media",
+            )
+        is_valid_img = (
+            file_bytes.startswith(b"\xff\xd8\xff") or
+            file_bytes.startswith(b"\x89PNG\r\n\x1a\n") or
+            file_bytes.startswith(b"GIF87a") or
+            file_bytes.startswith(b"GIF89a") or
+            (len(file_bytes) >= 12 and file_bytes.startswith(b"RIFF") and file_bytes[8:12] == b"WEBP")
+        )
+        if not is_valid_img:
+            raise APIException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                code="INVALID_IMAGE",
+                message="File content does not match valid image headers (JPEG, PNG, GIF, WebP)",
+            )
         media_type = "image"
         folder = "products"
 

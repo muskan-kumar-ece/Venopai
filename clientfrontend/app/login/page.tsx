@@ -136,19 +136,21 @@ function LoginForm() {
         </button>
       </form>
 
-      <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-        <button
-          type="button"
-          onClick={() => {
-            setEmail("customer@venopai.com");
-            setPassword("CustomerPass123!");
-            setError(null);
-          }}
-          className="w-full text-center text-xs text-zinc-500 hover:text-emerald-500 py-1.5 px-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-750 transition cursor-pointer"
-        >
-          Quick Fill Test Customer (<span className="font-mono text-emerald-600 dark:text-emerald-400">customer@venopai.com</span>)
-        </button>
-      </div>
+      {process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true" && (
+        <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("customer@venopai.com");
+              setPassword("CustomerPass123!");
+              setError(null);
+            }}
+            className="w-full text-center text-xs text-zinc-500 hover:text-emerald-500 py-1.5 px-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-750 transition cursor-pointer"
+          >
+            Quick Fill Test Customer (<span className="font-mono text-emerald-600 dark:text-emerald-400">customer@venopai.com</span>)
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 border-t border-zinc-200 pt-4 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
         Don&apos;t have an account?{" "}

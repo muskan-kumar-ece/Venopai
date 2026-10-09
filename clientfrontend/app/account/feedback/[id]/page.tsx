@@ -6,11 +6,29 @@ import { useParams } from "next/navigation";
 import { feedbackApi } from "@/lib/api/client";
 import { LoadingState } from "@/components/account/LoadingState";
 
+interface FeedbackDetail {
+  id: string;
+  feedback_type?: string;
+  priority?: string;
+  subject?: string;
+  status: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+  resolved_at?: string;
+  admin_response?: string;
+  page_url?: string;
+  order_id?: string;
+  screenshot_url?: string;
+  file_urls?: string[];
+  [key: string]: unknown;
+}
+
 export default function AccountFeedbackDetailPage() {
   const params = useParams();
   const feedbackId = params?.id as string;
 
-  const [item, setItem] = useState<any | null>(null);
+  const [item, setItem] = useState<FeedbackDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,13 +164,15 @@ export default function AccountFeedbackDetailPage() {
                 <span>Report Logged</span>
               </div>
               <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                {new Date(item.created_at).toLocaleString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {item.created_at
+                  ? new Date(item.created_at).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Just now"}
               </p>
             </div>
 

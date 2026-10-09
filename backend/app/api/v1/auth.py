@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import SessionDep, CurrentUser
@@ -212,7 +212,7 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
 
     db_token = RefreshToken(
         user_id=user.id,
-        token=refresh_token,
+        token=hash_token(refresh_token),
         family_id=family_id,
         csrf_token=csrf_token,
         expires_at=expire_date,
@@ -238,14 +238,13 @@ def login(user_in: UserLogin, request: Request, response: Response, db: SessionD
         httponly=False,
         secure=is_secure,
         samesite="lax",
-        path="/api/v1/auth",
+        path="/",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
 
     return {
         "data": {
             "access_token": access_token,
-            "refresh_token": refresh_token,
             "token_type": "bearer",
             "expires_in": getattr(settings, "CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
             "user": {
@@ -269,19 +268,19 @@ async def refresh(request: Request, response: Response, db: SessionDep):
             detail={"code": "RATE_LIMIT_EXCEEDED", "message": "Too many refresh attempts."},
         )
 
-    # Allow token from cookie or authorization header or json body
+    # Refresh token strictly required from HttpOnly cookie in production; fallback allowed only in non-production
     token = request.cookies.get("refresh_token")
-    if not token:
+    if not token and settings.ENVIRONMENT != "production":
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ", 1)[1]
-    if not token:
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                token = body.get("refresh_token")
-        except Exception:
-            pass
+        if not token:
+            try:
+                body = await request.json()
+                if isinstance(body, dict):
+                    token = body.get("refresh_token")
+            except Exception:
+                pass
 
     if not token:
         raise HTTPException(
@@ -289,7 +288,8 @@ async def refresh(request: Request, response: Response, db: SessionDep):
             detail={"code": "REFRESH_TOKEN_MISSING", "message": "No refresh token provided."},
         )
 
-    db_token = db.query(RefreshToken).filter(RefreshToken.token == token).first()
+    hashed = hash_token(token)
+    db_token = db.query(RefreshToken).filter(or_(RefreshToken.token == hashed, RefreshToken.token == token)).first()
     if not db_token:
         raise HTTPException(
             status_code=401,
@@ -302,7 +302,7 @@ async def refresh(request: Request, response: Response, db: SessionDep):
         db.query(RefreshToken).filter(RefreshToken.family_id == db_token.family_id).update({"revoked": True})
         db.commit()
         response.delete_cookie("refresh_token", path="/api/v1/auth")
-        response.delete_cookie("csrf_token", path="/api/v1/auth")
+        response.delete_cookie("csrf_token", path="/")
         raise HTTPException(
             status_code=401,
             detail={"code": "TOKEN_REUSE_DETECTED", "message": "Token reuse detected. All sessions revoked."},
@@ -337,7 +337,7 @@ async def refresh(request: Request, response: Response, db: SessionDep):
 
     new_db_token = RefreshToken(
         user_id=db_token.user_id,
-        token=new_refresh,
+        token=hash_token(new_refresh),
         family_id=db_token.family_id,
         csrf_token=new_csrf,
         expires_at=new_expire,
@@ -369,7 +369,7 @@ async def refresh(request: Request, response: Response, db: SessionDep):
         httponly=False,
         secure=is_secure,
         samesite="lax",
-        path="/api/v1/auth",
+        path="/",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
 
@@ -377,7 +377,6 @@ async def refresh(request: Request, response: Response, db: SessionDep):
     return {
         "data": {
             "access_token": access_token,
-            "refresh_token": new_refresh,
             "token_type": "bearer",
             "expires_in": getattr(settings, "CUSTOMER_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
             "user": {
@@ -394,13 +393,14 @@ async def refresh(request: Request, response: Response, db: SessionDep):
 def logout(request: Request, response: Response, db: SessionDep):
     token = request.cookies.get("refresh_token")
     if token:
-        db_token = db.query(RefreshToken).filter(RefreshToken.token == token).first()
+        hashed = hash_token(token)
+        db_token = db.query(RefreshToken).filter(or_(RefreshToken.token == hashed, RefreshToken.token == token)).first()
         if db_token:
             db_token.revoked = True
             db.commit()
 
     response.delete_cookie(key="refresh_token", path="/api/v1/auth")
-    response.delete_cookie(key="csrf_token", path="/api/v1/auth")
+    response.delete_cookie(key="csrf_token", path="/")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.get("/me", status_code=200)

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { filesApi } from "@/lib/api/client";
+import { filesApi, getCustomerToken } from "@/lib/api/client";
 
 interface UploadedFile {
   id: string;
@@ -33,7 +33,7 @@ export default function CustomerFilesPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await filesApi.listFiles(
         {
           association_type: tab === "all" ? undefined : tab,

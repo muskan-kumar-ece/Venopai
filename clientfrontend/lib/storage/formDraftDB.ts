@@ -5,7 +5,7 @@
  * with automated sensitive field filtering, TTL expiration, and cross-tab awareness.
  */
 
-export interface FormDraftRecord<T = any> {
+export interface FormDraftRecord<T = unknown> {
   formKey: string;
   data: T;
   userScope: string; // 'anon' or user_id
@@ -15,7 +15,7 @@ export interface FormDraftRecord<T = any> {
     title?: string;
     path?: string;
     fileCount?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -53,7 +53,7 @@ export function sanitizeDraftData<T>(data: T, customExclusions?: string[]): T {
   if (Array.isArray(data)) {
     return data.map((item) => sanitizeDraftData(item, customExclusions)) as unknown as T;
   }
-  const sanitized: Record<string, any> = {};
+  const sanitized: Record<string, unknown> = {};
   const exclusions = new Set([
     ...SENSITIVE_FIELD_NAMES,
     ...(customExclusions ? customExclusions.map((e) => e.toLowerCase()) : []),
@@ -129,7 +129,7 @@ class FormDraftDB {
   async saveDraft<T>(
     formKey: string,
     rawFormData: T,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
     userScope: string = "anon",
     customExclusions?: string[]
   ): Promise<void> {
@@ -154,7 +154,7 @@ class FormDraftDB {
 
     const db = await this.initDB();
     if (db && this.isIndexedDBAvailable) {
-      return new Promise((resolve, reject) => {
+      return new Promise<void>((resolve) => {
         try {
           const transaction = db.transaction([STORE_NAME], "readwrite");
           const store = transaction.objectStore(STORE_NAME);
@@ -270,7 +270,7 @@ class FormDraftDB {
   /**
    * List all drafts (for recovery drawers or account view)
    */
-  async listAllDrafts(userScope: string = "anon"): Promise<Array<{ formKey: string; updatedAt: number; metadata?: any }>> {
+  async listAllDrafts(userScope: string = "anon"): Promise<Array<{ formKey: string; updatedAt: number; metadata?: Record<string, unknown> }>> {
     const db = await this.initDB();
     if (db && this.isIndexedDBAvailable) {
       return new Promise((resolve) => {

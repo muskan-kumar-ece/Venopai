@@ -31,8 +31,9 @@ export default function QuickCategoryModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setName("");
       setSlug("");
@@ -41,7 +42,7 @@ export default function QuickCategoryModal({
       setParentId("");
       setError(null);
     }
-  }, [isOpen]);
+  }
 
   // Handle ESC key
   useEffect(() => {

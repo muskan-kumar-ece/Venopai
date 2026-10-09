@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { apiClient, quotesApi } from "@/lib/api/client";
+import { useSearchParams } from "next/navigation";
+import { apiClient, quotesApi, getCustomerToken } from "@/lib/api/client";
+import { simulateMockPayment } from "@/lib/payments/mockGateway";
 
 interface QuoteVersion {
   id: string;
@@ -25,9 +26,19 @@ interface QuoteData {
   current_version: QuoteVersion;
 }
 
+interface RazorpaySuccessResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
   }
 }
 
@@ -60,7 +71,7 @@ function QuotePaymentContent() {
 
   const getAuthHeaders = (): Record<string, string> => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getCustomerToken();
       if (token) return { Authorization: `Bearer ${token}` };
     } catch {
       // ignore
@@ -78,7 +89,7 @@ function QuotePaymentContent() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await quotesApi.getQuote(quoteId, token);
       if (res?.data) {
         setQuote(res.data);
@@ -160,18 +171,21 @@ function QuotePaymentContent() {
       const scriptLoaded = await loadRazorpayScript();
       const isMockGateway = !key_id || key_id.includes("mock");
       const isDevelopment = process.env.NODE_ENV !== "production";
+      const allowMockPayments = isDevelopment && process.env.NEXT_PUBLIC_ENABLE_MOCK_PAYMENTS === "true";
 
       if (!scriptLoaded) {
-        if (isDevelopment && isMockGateway) {
-          await handleConfirmPayment(payment_id, `pay_sim_${Date.now()}`, gateway_order_id, "mock_valid_signature");
+        if (allowMockPayments && isMockGateway) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await handleConfirmPayment(payment_id, sim.paymentId, gateway_order_id, sim.signature);
           return;
         }
         throw new Error("Unable to load secure Razorpay payment gateway. If you are using an ad blocker, privacy shield, or tracker blocker (e.g. Brave, uBlock), please disable it for this payment.");
       }
 
       if (isMockGateway) {
-        if (isDevelopment) {
-          await handleConfirmPayment(payment_id, `pay_sim_${Date.now()}`, gateway_order_id, "mock_valid_signature");
+        if (allowMockPayments) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await handleConfirmPayment(payment_id, sim.paymentId, gateway_order_id, sim.signature);
           return;
         }
         throw new Error("Payment gateway is currently unconfigured. Please contact support.");
@@ -192,7 +206,7 @@ function QuotePaymentContent() {
         theme: {
           color: "#059669",
         },
-        handler: async function (response: any) {
+        handler: async function (response: RazorpaySuccessResponse) {
           await handleConfirmPayment(
             payment_id,
             response.razorpay_payment_id,
@@ -207,8 +221,10 @@ function QuotePaymentContent() {
         },
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (err: unknown) {
       setPaymentStatus("failed");
       setPaymentError(err instanceof Error ? err.message : "Failed to initiate payment.");

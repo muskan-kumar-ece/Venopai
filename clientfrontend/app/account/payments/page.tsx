@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { paymentsApi } from '@/lib/api/client';
+import { paymentsApi, getCustomerToken } from "@/lib/api/client";
 import { StatusBadge } from '@/components/account/StatusBadge';
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
@@ -28,7 +28,7 @@ export default function PaymentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+        const token = getCustomerToken() || undefined;
         const res = await paymentsApi.listPayments({ page_size: 50 }, token);
         if (res?.data) {
           setPayments(res.data);

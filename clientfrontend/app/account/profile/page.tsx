@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { profileApi } from '@/lib/api/client';
+import { profileApi, getCustomerToken } from "@/lib/api/client";
 import { LoadingState } from '@/components/account/LoadingState';
 
 export default function ProfilePage() {
@@ -29,7 +29,7 @@ export default function ProfilePage() {
     async function loadProfile() {
       setLoading(true);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+        const token = getCustomerToken() || undefined;
         const res = await profileApi.getProfile(token);
         if (res?.data) {
           setProfile(res.data);
@@ -52,7 +52,7 @@ export default function ProfilePage() {
     setSuccessMsg('');
     setErrorMsg('');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await profileApi.updateProfile({ name, phone }, token);
       if (res?.data) {
         setProfile(res.data);
@@ -73,7 +73,7 @@ export default function ProfilePage() {
     setEmailSuccessMsg('');
     setEmailErrorMsg('');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await profileApi.changeEmail({ new_email: newEmail }, token);
       if (res?.data) {
         setProfile(res.data);

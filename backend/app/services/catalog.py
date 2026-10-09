@@ -475,14 +475,32 @@ def add_product_image(
             message="Image file exceeds maximum permitted size (10MB)",
         )
 
-    # Validate image extension / content type
+    # Reject SVG vectors for catalog images
     import os
     ext = os.path.splitext(filename)[1].lower() if filename else ""
-    if ext not in ALLOWED_IMAGE_EXTENSIONS and (content_type and content_type not in ALLOWED_IMAGE_MIMES):
+    if ext == ".svg" or b"<svg" in file_bytes[:1024].lower() or b"<?xml" in file_bytes[:1024].lower():
         raise APIException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             code="INVALID_IMAGE",
-            message=f"Unsupported image type. Allowed extensions: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}",
+            message="SVG images are not supported for product catalog media",
+        )
+
+    # Magic bytes verification for image binaries
+    detected_mime = None
+    if file_bytes.startswith(b"\xff\xd8\xff"):
+        detected_mime = "image/jpeg"
+    elif file_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        detected_mime = "image/png"
+    elif file_bytes.startswith(b"GIF87a") or file_bytes.startswith(b"GIF89a"):
+        detected_mime = "image/gif"
+    elif len(file_bytes) >= 12 and file_bytes.startswith(b"RIFF") and file_bytes[8:12] == b"WEBP":
+        detected_mime = "image/webp"
+
+    if not detected_mime:
+        raise APIException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            code="INVALID_IMAGE",
+            message="File header does not match valid JPEG, PNG, GIF, or WebP image format",
         )
 
     # Upload via Cloudinary provider abstraction

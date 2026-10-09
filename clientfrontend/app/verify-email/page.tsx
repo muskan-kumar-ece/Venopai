@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/lib/api/client";
@@ -20,14 +20,7 @@ function VerifyEmailContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
 
-  // Auto-verify if token is provided in URL
-  useEffect(() => {
-    if (queryToken && !success && !error) {
-      handleVerify(queryToken);
-    }
-  }, [queryToken]);
-
-  const handleVerify = async (tokenToVerify: string) => {
+  const handleVerify = useCallback(async (tokenToVerify: string) => {
     if (!tokenToVerify.trim()) {
       setError("Please enter a verification token.");
       return;
@@ -47,7 +40,14 @@ function VerifyEmailContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-verify if token is provided in URL
+  useEffect(() => {
+    if (queryToken && !success && !error) {
+      handleVerify(queryToken);
+    }
+  }, [queryToken, success, error, handleVerify]);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();

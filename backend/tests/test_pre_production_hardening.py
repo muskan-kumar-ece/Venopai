@@ -24,10 +24,21 @@ def test_production_secret_key_validation():
             SECRET_KEY="short_key",
         )
 
-    # Valid 32+ character key in production should succeed
+    # Valid production settings should succeed
     valid_settings = Settings(
         ENVIRONMENT="production",
         SECRET_KEY="a" * 32,
+        RAZORPAY_KEY_ID="rzp_live_real_id",
+        RAZORPAY_KEY_SECRET="rzp_live_real_secret",
+        RAZORPAY_WEBHOOK_SECRET="rzp_live_webhook_secret",
+        CLOUDINARY_CLOUD_NAME="prod_cloud",
+        CLOUDINARY_API_KEY="prod_api_key",
+        CLOUDINARY_API_SECRET="prod_api_secret",
+        SHIPROCKET_EMAIL="ops@venopai.com",
+        SHIPROCKET_PASSWORD="strong_password",
+        SHIPROCKET_WEBHOOK_TOKEN="prod_shiprocket_token",
+        CORS_ORIGINS=["https://venopai.com", "https://admin.venopai.com"],
+        REDIS_URL="rediss://default:token@upstash.io:6379",
     )
     assert valid_settings.ENVIRONMENT == "production"
     assert len(valid_settings.SECRET_KEY) >= 32

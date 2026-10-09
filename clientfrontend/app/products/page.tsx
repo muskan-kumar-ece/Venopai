@@ -13,8 +13,9 @@ interface Product {
   price: string;
   description: string;
   images?: string[];
+  primary_image_url?: string;
   stock_quantity?: number;
-  specifications?: Record<string, string>;
+  specifications?: Record<string, string> | Array<{ key?: string; name?: string; value?: unknown }>;
   category?: { id: string; name: string; slug?: string };
 }
 
@@ -41,7 +42,7 @@ function getPaginationRange(current: number, total: number): (number | string)[]
 function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
@@ -67,8 +68,9 @@ function ProductsContent() {
   // Fetch categories
   useEffect(() => {
     catalogApi.listCategories()
-      .then((res: any) => {
-        if (res?.data) setCategories(res.data);
+      .then((res: { data?: Category[] } | Category[]) => {
+        const catData = res && "data" in res && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+        if (catData.length > 0) setCategories(catData);
       })
       .catch(() => {});
   }, []);
@@ -78,7 +80,7 @@ function ProductsContent() {
     setLoading(true);
     setError(null);
 
-    const params: any = {
+    const params: Record<string, string | number> = {
       page: currentPage,
       page_size: 36,
     };
@@ -90,8 +92,8 @@ function ProductsContent() {
     }
 
     catalogApi.listProducts(params)
-      .then((res: any) => {
-        if (res?.data) {
+      .then((res: { data?: Product[]; pagination?: PaginationMeta } | Product[]) => {
+        if (res && "data" in res && Array.isArray(res.data)) {
           setProducts(res.data);
           if (res.pagination) {
             setPagination(res.pagination);
@@ -106,8 +108,8 @@ function ProductsContent() {
           setPagination(null);
         }
       })
-      .catch((err: any) => {
-        setError(err.message || "Failed to load products");
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load products");
       })
       .finally(() => {
         setLoading(false);
@@ -152,7 +154,7 @@ function ProductsContent() {
         window.dispatchEvent(new Event("storage"));
       } catch {}
       setTimeout(() => setCartSuccess(null), 2500);
-    } catch (err: any) {
+    } catch {
       // ignore
     } finally {
       setAddingToCart(null);
@@ -340,7 +342,7 @@ function ProductsContent() {
                   {/* Image Placeholder or Image */}
                   <Link href={`/products/${prod.slug || prod.id}`} className="block relative aspect-4/3 w-full overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                     {(() => {
-                      const imgSrc = (prod.images && prod.images.length > 0 ? prod.images[0] : null) || (prod as any).primary_image_url;
+                      const imgSrc = (prod.images && prod.images.length > 0 ? prod.images[0] : null) || prod.primary_image_url;
                       return imgSrc ? (
                         <img
                           src={imgSrc}
@@ -391,7 +393,7 @@ function ProductsContent() {
                   {prod.specifications && (
                     <div className="mt-3 flex flex-wrap gap-1">
                       {Array.isArray(prod.specifications)
-                        ? prod.specifications.slice(0, 2).map((s: any, idx: number) => {
+                        ? prod.specifications.slice(0, 2).map((s: { key?: string; name?: string; value?: unknown }, idx: number) => {
                             const k = s.key || s.name || `Spec ${idx + 1}`;
                             const v = s.value ?? "";
                             return (

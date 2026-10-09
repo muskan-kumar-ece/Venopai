@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { quotesApi } from '@/lib/api/client';
+import { quotesApi, getCustomerToken } from "@/lib/api/client";
 import { StatusBadge } from '@/components/account/StatusBadge';
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
@@ -31,7 +31,7 @@ export default function QuotesListPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+        const token = getCustomerToken() || undefined;
         const res = await quotesApi.listQuotes(token);
         if (res?.data) {
           setQuotes(res.data);

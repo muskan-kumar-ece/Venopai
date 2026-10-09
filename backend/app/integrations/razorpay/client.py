@@ -88,7 +88,12 @@ class RazorpayProvider(PaymentGateway):
                         key_id=key_id,
                     )
             except Exception as e:
-                logger.error(f"Razorpay live order creation failed: {e}. Falling back to mock intent.")
+                logger.error(f"Razorpay live order creation failed: {e}.")
+                if settings.ENVIRONMENT == "production":
+                    raise RuntimeError(f"Razorpay live order creation failed in production: {e}") from e
+                logger.warning("Falling back to mock intent in non-production environment.")
+        elif settings.ENVIRONMENT == "production":
+            raise RuntimeError("CRITICAL: Live Razorpay credentials not configured in production. Mock orders are disabled.")
 
         # Development / Test mock fallback
         mock_id = f"order_mock_{uuid.uuid4().hex[:14]}"
@@ -196,7 +201,12 @@ class RazorpayProvider(PaymentGateway):
                         status=data.get("status", "processed"),
                     )
             except Exception as e:
-                logger.error(f"Razorpay live refund failed: {e}. Falling back to mock refund.")
+                logger.error(f"Razorpay live refund failed: {e}.")
+                if settings.ENVIRONMENT == "production":
+                    raise RuntimeError(f"Razorpay live refund failed in production: {e}") from e
+                logger.warning("Falling back to mock refund in non-production environment.")
+        elif settings.ENVIRONMENT == "production":
+            raise RuntimeError("CRITICAL: Live Razorpay credentials not configured in production. Mock refunds are disabled.")
 
         # Development / Test mock fallback
         mock_refund_id = f"rfnd_mock_{uuid.uuid4().hex[:14]}"

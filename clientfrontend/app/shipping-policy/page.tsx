@@ -15,7 +15,7 @@ export default function ShippingPolicyPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">1. Integrated Logistics Network</h2>
               <p className="mt-1">
-                All shipments from the VenopAI Bengaluru fabrication facility are managed through Shiprocket's enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
+                All shipments from the VenopAI Bengaluru fabrication facility are managed through Shiprocket&apos;s enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
               </p>
             </section>
 

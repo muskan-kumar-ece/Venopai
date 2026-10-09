@@ -14,7 +14,7 @@ interface Product {
   primary_image_url?: string;
   images?: string[];
   stock_quantity?: number;
-  specifications?: any;
+  specifications?: Array<{ key?: string; name?: string; value?: unknown }> | Record<string, unknown>;
   category?: { id: string; name: string; slug?: string };
 }
 
@@ -555,7 +555,7 @@ export default function HomePage() {
                         {prod.specifications && (
                           <div className="mt-3 flex flex-wrap gap-1">
                             {Array.isArray(prod.specifications)
-                              ? prod.specifications.slice(0, 2).map((s: any, idx: number) => (
+                              ? prod.specifications.slice(0, 2).map((s: { key?: string; name?: string; value?: unknown }, idx: number) => (
                                   <span
                                     key={idx}
                                     className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"

@@ -11,7 +11,7 @@ interface AuditLogEntry {
   action: string;
   target_type: string;
   target_id?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ip_address?: string;
   created_at: string;
 }
@@ -40,8 +40,8 @@ export default function AdminAuditLogsPage() {
       } else {
         setLogs([]);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load audit logs");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load audit logs");
     } finally {
       setLoading(false);
     }

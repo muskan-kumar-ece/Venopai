@@ -82,7 +82,7 @@ export function DraftRecoveryBanner({
           </div>
           <div>
             <p className="text-sm font-semibold tracking-tight">
-              Unsaved draft recovered ({formatTime(draftTimestamp)})
+              Unsaved {formTitle} draft recovered ({formatTime(draftTimestamp)})
             </p>
             <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
               Your previous inputs {hasUploadedFiles ? "and attached CAD/specs files" : ""} were restored from local storage.

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { adminPaymentsApi } from "@/lib/api/client";
+import { adminPaymentsApi, getAdminToken } from "@/lib/api/client";
 import { useAdminAuth } from "@/lib/auth/AdminAuthContext";
 
 interface PaymentItem {
@@ -44,7 +44,7 @@ export default function AdminPaymentsPage() {
   const loadPayments = async () => {
     setLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("admin_access_token") || undefined : undefined;
+      const token = getAdminToken() || undefined;
       const res = await adminPaymentsApi.listPayments(
         {
           status: statusFilter !== "all" ? statusFilter : undefined,

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { adminShippingApi } from "@/lib/api/client";
+import { adminShippingApi, getAdminToken } from "@/lib/api/client";
 import { useAdminAuth } from "@/lib/auth/AdminAuthContext";
 
 interface ShipmentItem {
@@ -53,7 +53,7 @@ export default function AdminShippingPage() {
   const loadShipments = async () => {
     setLoadingShipments(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("admin_access_token") || undefined : undefined;
+      const token = getAdminToken() || undefined;
       const res = await adminShippingApi.listShipments(
         {
           status: shipmentStatusFilter !== "all" ? shipmentStatusFilter : undefined,

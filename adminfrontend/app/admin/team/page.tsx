@@ -60,7 +60,7 @@ const ROLE_METADATA: Record<
 };
 
 export default function AdminTeamPage() {
-  const { hasRole, adminUser, adminToken } = useAdminAuth();
+  const { hasRole, adminUser } = useAdminAuth();
   const isSuperAdmin = hasRole(["SUPER_ADMIN"]);
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -118,8 +118,8 @@ export default function AdminTeamPage() {
       if (res?.data) {
         setStaffList(res.data);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to load team members.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to load team members.");
     } finally {
       setLoading(false);
     }
@@ -174,8 +174,8 @@ export default function AdminTeamPage() {
         setAutoGenPassword(true);
         fetchStaff();
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to create administrator.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to create administrator.");
     } finally {
       setFormSubmitting(false);
     }
@@ -193,8 +193,8 @@ export default function AdminTeamPage() {
       setShowEditRoleModal(null);
       fetchStaff();
       setTimeout(() => setSuccessToast(""), 4000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to update staff role.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to update staff role.");
     } finally {
       setFormSubmitting(false);
     }
@@ -216,8 +216,8 @@ export default function AdminTeamPage() {
       setShowStatusModal(null);
       fetchStaff();
       setTimeout(() => setSuccessToast(""), 4000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to update staff status.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to update staff status.");
     } finally {
       setFormSubmitting(false);
     }
@@ -246,8 +246,8 @@ export default function AdminTeamPage() {
       setResetPwAutoGen(true);
       setSuccessToast(`Password reset successfully for ${showResetPwModal.full_name}.`);
       setTimeout(() => setSuccessToast(""), 4000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to reset password.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to reset password.");
     } finally {
       setFormSubmitting(false);
     }

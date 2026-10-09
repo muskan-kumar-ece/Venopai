@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { authApi, isValidToken, getCustomerToken, clearCustomerTokens } from "@/lib/api/client";
+import { authApi, getCustomerToken, clearCustomerTokens } from "@/lib/api/client";
 
 export interface User {
   id: string;
@@ -31,7 +31,7 @@ const USER_KEY = "venopai_customer_user";
 function getStoredUser(): User | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY);
+    const raw = sessionStorage.getItem(USER_KEY);
     if (raw && raw !== "undefined" && raw !== "null") {
       return JSON.parse(raw);
     }
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Restore session from sessionStorage or localStorage on mount
+  // Restore session from sessionStorage on mount
   useEffect(() => {
     try {
       const storedToken = getCustomerToken();
@@ -96,9 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.setItem(TOKEN_KEY, accessToken);
         sessionStorage.setItem("access_token", accessToken);
         sessionStorage.setItem(USER_KEY, JSON.stringify(userData));
-        localStorage.setItem(TOKEN_KEY, accessToken);
-        localStorage.setItem("access_token", accessToken);
-        localStorage.setItem(USER_KEY, JSON.stringify(userData));
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem(USER_KEY);
       } catch {
         // ignore storage errors
       }
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(res.data);
         try {
           sessionStorage.setItem(USER_KEY, JSON.stringify(res.data));
-          localStorage.setItem(USER_KEY, JSON.stringify(res.data));
+          localStorage.removeItem(USER_KEY);
         } catch {
           // ignore
         }

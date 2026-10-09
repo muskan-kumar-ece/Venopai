@@ -297,7 +297,7 @@ def download_order_invoice_html(
                 raw_token,
                 settings.SECRET_KEY,
                 algorithms=[settings.ALGORITHM],
-                options={"verify_aud": False},
+                audience=["customer", "admin"],
             )
             user_id = payload.get("sub")
             if user_id:

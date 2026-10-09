@@ -29,14 +29,18 @@ export function clearAdminTokens(): void {
   }
 }
 
+export function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
 export function getAdminToken(): string | null {
   if (typeof window !== 'undefined') {
     try {
       const candidates = [
         sessionStorage.getItem('venopai_admin_token'),
         sessionStorage.getItem('admin_token'),
-        localStorage.getItem('admin_token'),
-        localStorage.getItem('venopai_admin_token'),
       ];
       for (const token of candidates) {
         if (isValidAdminToken(token)) return token;
@@ -98,15 +102,15 @@ export async function silentAdminRefresh(): Promise<string | null> {
 
   isAdminRefreshing = true;
   try {
-    const fallbackRefreshToken = getAdminRefreshToken();
+    const csrfToken = getCookie('admin_csrf_token') || getCookie('csrf_token');
     const res = await fetch(`${getApiBaseUrl()}/admin/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(fallbackRefreshToken ? { Authorization: `Bearer ${fallbackRefreshToken}` } : {}),
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
       },
-      body: JSON.stringify({ refresh_token: fallbackRefreshToken }),
+      body: JSON.stringify({}),
     });
 
     if (!res.ok) {
@@ -124,23 +128,20 @@ export async function silentAdminRefresh(): Promise<string | null> {
 
     const json = await res.json();
     const newAccessToken = json?.data?.access_token;
-    const newRefreshToken = json?.data?.refresh_token;
     const user = json?.data?.user;
 
     if (newAccessToken && isValidAdminToken(newAccessToken)) {
       sessionStorage.setItem('venopai_admin_token', newAccessToken);
       sessionStorage.setItem('admin_token', newAccessToken);
-      localStorage.setItem('admin_token', newAccessToken);
-      localStorage.setItem('venopai_admin_token', newAccessToken);
-      if (newRefreshToken && isValidAdminToken(newRefreshToken)) {
-        sessionStorage.setItem('venopai_admin_refresh_token', newRefreshToken);
-        sessionStorage.setItem('admin_refresh_token', newRefreshToken);
-        localStorage.setItem('admin_refresh_token', newRefreshToken);
-        localStorage.setItem('venopai_admin_refresh_token', newRefreshToken);
-      }
+      try {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('venopai_admin_token');
+        localStorage.removeItem('admin_refresh_token');
+        localStorage.removeItem('venopai_admin_refresh_token');
+        localStorage.removeItem('venopai_admin_user');
+      } catch {}
       if (user) {
         sessionStorage.setItem('venopai_admin_user', JSON.stringify(user));
-        localStorage.setItem('venopai_admin_user', JSON.stringify(user));
       }
       onAdminTokenRefreshed(newAccessToken);
       window.dispatchEvent(new CustomEvent('venopai_admin_refreshed', { detail: { token: newAccessToken, user } }));
@@ -159,7 +160,8 @@ export async function silentAdminRefresh(): Promise<string | null> {
   }
 }
 
-async function handleAdminResponse(response: Response): Promise<any> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleAdminResponse<T = any>(response: Response): Promise<T> {
   if (!response.ok) {
     if (response.status === 401) {
       clearAdminTokens();
@@ -183,11 +185,12 @@ async function handleAdminResponse(response: Response): Promise<any> {
   return response.json();
 }
 
-async function requestWithRetry(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requestWithRetry<T = any>(
   endpoint: string,
   options: RequestInit = {},
   isRetry: boolean = false
-): Promise<any> {
+): Promise<T> {
   const authHeaders = getAdminAuthHeaders();
   const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
     credentials: 'include',
@@ -214,56 +217,62 @@ async function requestWithRetry(
     }
   }
 
-  return handleAdminResponse(response);
+  return handleAdminResponse<T>(response);
 }
 
 export const apiClient = {
-  get: async (endpoint: string, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, { ...options, method: 'GET' });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get: async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, { ...options, method: 'GET' });
   },
 
-  post: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  post: async <T = any>(endpoint: string, data?: unknown, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, {
       ...options,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      body: JSON.stringify(data),
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   },
 
-  put: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  put: async <T = any>(endpoint: string, data?: unknown, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, {
       ...options,
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      body: JSON.stringify(data),
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   },
 
-  patch: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  patch: async <T = any>(endpoint: string, data?: unknown, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, {
       ...options,
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      body: JSON.stringify(data),
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   },
 
-  delete: async (endpoint: string, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, { ...options, method: 'DELETE' });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, { ...options, method: 'DELETE' });
   },
 
-  upload: async (endpoint: string, formData: FormData, options: RequestInit = {}) => {
-    return requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  upload: async <T = any>(endpoint: string, formData: FormData, options: RequestInit = {}): Promise<T> => {
+    return requestWithRetry<T>(endpoint, {
       ...options,
       method: 'POST',
       body: formData,
@@ -370,7 +379,7 @@ export const adminQuotesApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 
-  createQuote: (data: any, token?: string) =>
+  createQuote: (data: unknown, token?: string) =>
     apiClient.post('/admin/quotes', data, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
@@ -417,7 +426,7 @@ export const adminQuotesApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 
-  updateDraft: (id: string, data: any, token?: string) =>
+  updateDraft: (id: string, data: unknown, token?: string) =>
     apiClient.patch(`/admin/quotes/${id}/draft`, data, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
@@ -957,7 +966,7 @@ export interface StaffMember {
     id: string;
     action: string;
     entity_type: string;
-    details: any;
+    details: unknown;
     created_at: string;
   }>;
 }

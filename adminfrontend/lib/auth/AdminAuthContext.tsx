@@ -47,8 +47,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedToken =
           sessionStorage.getItem(ADMIN_TOKEN_KEY) ||
-          sessionStorage.getItem("admin_token") ||
-          localStorage.getItem("admin_token");
+          sessionStorage.getItem("admin_token");
+
+        // Clean up any legacy localStorage tokens for security
+        try {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem(ADMIN_TOKEN_KEY);
+          localStorage.removeItem("admin_refresh_token");
+          localStorage.removeItem("venopai_admin_refresh_token");
+          localStorage.removeItem(ADMIN_USER_KEY);
+        } catch {}
 
         if (storedToken) {
           // Proactively validate against backend /admin/auth/me
@@ -65,22 +73,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const refreshRes = await adminAuthApi.refresh();
               const newToken = refreshRes?.data?.access_token;
-              const newRefreshToken = refreshRes?.data?.refresh_token;
               const newUser = refreshRes?.data?.user;
               if (isMounted && newToken && newUser) {
                 setAdminToken(newToken);
                 setAdminUser(newUser);
                 sessionStorage.setItem(ADMIN_TOKEN_KEY, newToken);
                 sessionStorage.setItem("admin_token", newToken);
-                localStorage.setItem("admin_token", newToken);
-                if (newRefreshToken) {
-                  sessionStorage.setItem("venopai_admin_refresh_token", newRefreshToken);
-                  sessionStorage.setItem("admin_refresh_token", newRefreshToken);
-                  localStorage.setItem("admin_refresh_token", newRefreshToken);
-                  localStorage.setItem("venopai_admin_refresh_token", newRefreshToken);
-                }
                 sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(newUser));
-                localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(newUser));
                 setIsLoading(false);
                 return;
               }
@@ -113,10 +112,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const handleRefreshed = (e: any) => {
+    const handleRefreshed = (e: Event) => {
       if (isMounted) {
-        if (e.detail?.token) setAdminToken(e.detail.token);
-        if (e.detail?.user) setAdminUser(e.detail.user);
+        const customEvt = e as CustomEvent<{ token?: string; user?: AdminUser }>;
+        if (customEvt.detail?.token) setAdminToken(customEvt.detail.token);
+        if (customEvt.detail?.user) setAdminUser(customEvt.detail.user);
       }
     };
 
@@ -134,7 +134,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await adminAuthApi.login({ email, password });
       const token = res.data.access_token;
-      const refreshToken = res.data.refresh_token;
       const user: AdminUser = res.data.user;
 
       setAdminToken(token);
@@ -143,15 +142,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       try {
         sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
         sessionStorage.setItem("admin_token", token);
-        localStorage.setItem("admin_token", token);
-        if (refreshToken) {
-          sessionStorage.setItem("venopai_admin_refresh_token", refreshToken);
-          sessionStorage.setItem("admin_refresh_token", refreshToken);
-          localStorage.setItem("admin_refresh_token", refreshToken);
-          localStorage.setItem("venopai_admin_refresh_token", refreshToken);
-        }
         sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+        // Purge legacy persistent localStorage tokens
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        localStorage.removeItem("admin_refresh_token");
+        localStorage.removeItem("venopai_admin_refresh_token");
+        localStorage.removeItem(ADMIN_USER_KEY);
       } catch {
         // ignore
       }

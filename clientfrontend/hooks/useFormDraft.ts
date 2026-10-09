@@ -10,7 +10,7 @@ export interface UseFormDraftOptions<T> {
   debounceMs?: number;
   excludeFields?: string[];
   userScoped?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   enabled?: boolean;
   autoRestore?: boolean;
   onRestore?: (restoredData: T, record: FormDraftRecord<T>) => void;
@@ -18,7 +18,7 @@ export interface UseFormDraftOptions<T> {
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export function useFormDraft<T extends Record<string, any>>({
+export function useFormDraft<T extends Record<string, unknown>>({
   formKey,
   formData,
   setFormData,
@@ -42,7 +42,9 @@ export function useFormDraft<T extends Record<string, any>>({
   const isRestoringRef = useRef<boolean>(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const latestDataRef = useRef<T>(formData);
-  latestDataRef.current = formData;
+  useEffect(() => {
+    latestDataRef.current = formData;
+  }, [formData]);
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
@@ -220,7 +222,7 @@ export function useFormDraft<T extends Record<string, any>>({
 
   // Warn if closing tab while in-flight unsaved changes exist
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = () => {
       if (saveStatus === "saving") {
         // Immediate synchronous flush to localStorage if possible before unload
         try {

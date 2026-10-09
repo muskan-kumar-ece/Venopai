@@ -30,7 +30,7 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},
+            audience="customer",
         )
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -69,7 +69,7 @@ def get_optional_current_user(db: SessionDep, token: OptionalTokenDep) -> Option
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},
+            audience="customer",
         )
         user_id = payload.get("sub")
         if not user_id:
@@ -91,7 +91,7 @@ def get_current_admin(db: SessionDep, token: TokenDep) -> User:
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},
+            audience="admin",
         )
         user_id: str = payload.get("sub")
         is_admin: bool = payload.get("is_admin", False)
@@ -106,6 +106,11 @@ def get_current_admin(db: SessionDep, token: TokenDep) -> User:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "TOKEN_EXPIRED", "message": "Admin session has expired. Please sign in again."},
+        )
+    except jwt.InvalidAudienceError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Admin privileges required"},
         )
     except (jwt.PyJWTError, ValidationError):
         raise HTTPException(

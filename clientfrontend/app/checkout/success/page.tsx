@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ordersApi, getApiBaseUrl } from "@/lib/api/client";
+import { ordersApi, getApiBaseUrl, getCustomerToken } from "@/lib/api/client";
 
 interface OrderItem {
   product_id?: string;
@@ -63,10 +63,7 @@ function OrderSuccessContent() {
       }
 
       try {
-        const token =
-          typeof window !== "undefined"
-            ? localStorage.getItem("access_token") || undefined
-            : undefined;
+        const token = getCustomerToken() || undefined;
         const res = await ordersApi.getOrderDetail(identifier, token);
         if (res?.data) {
           setOrder(res.data);
@@ -104,7 +101,7 @@ function OrderSuccessContent() {
     try {
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("access_token") || ""
+          ? getCustomerToken() || ""
           : "";
       const base = getApiBaseUrl();
       const invoiceUrl = `${base}/orders/${order.id || order.order_number}/invoice/download?token=${encodeURIComponent(token)}`;

@@ -54,9 +54,9 @@ export default function AdminSettingsPage() {
             setIntegrations(remoteIntegrations);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMounted) {
-          setErrorMessage(err.message || "Failed to load system settings");
+          setErrorMessage(err instanceof Error ? err.message : "Failed to load system settings");
         }
       } finally {
         if (isMounted) {
@@ -96,8 +96,8 @@ export default function AdminSettingsPage() {
       }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to save settings");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }

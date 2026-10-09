@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { reviewsApi } from '@/lib/api/client';
+import { reviewsApi, getCustomerToken } from "@/lib/api/client";
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
 
@@ -47,7 +47,7 @@ function AccountReviewsContent() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await reviewsApi.listMyReviews(token);
       if (res?.data) {
         setReviews(res.data);
@@ -69,7 +69,7 @@ function AccountReviewsContent() {
     setSubmitting(true);
     setCreateError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await reviewsApi.createReview({ target_type: targetType, target_id: targetId, rating, text: comment, comment }, token);
       setShowCreateModal(false);
       setTargetId('');
@@ -96,7 +96,7 @@ function AccountReviewsContent() {
     setSubmitting(true);
     setEditError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await reviewsApi.updateReview(editId, { rating: editRating, text: editComment, comment: editComment }, token);
       setEditing(false);
       loadReviews();
@@ -109,7 +109,7 @@ function AccountReviewsContent() {
 
   const handleDeleteReview = async (id: string) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await reviewsApi.deleteReview(id, token);
       loadReviews();
     } catch (err: unknown) {
@@ -117,16 +117,18 @@ function AccountReviewsContent() {
     }
   };
 
+  const [now] = useState(() => Date.now());
+
   const isWithin7Days = (createdAt: string) => {
     if (!createdAt) return false;
     const created = new Date(createdAt).getTime();
-    return (Date.now() - created) <= 7 * 24 * 60 * 60 * 1000;
+    return (now - created) <= 7 * 24 * 60 * 60 * 1000;
   };
 
   const getRemainingDays = (createdAt: string) => {
     if (!createdAt) return 0;
     const created = new Date(createdAt).getTime();
-    const diffMs = (created + 7 * 24 * 60 * 60 * 1000) - Date.now();
+    const diffMs = (created + 7 * 24 * 60 * 60 * 1000) - now;
     if (diffMs <= 0) return 0;
     return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
   };

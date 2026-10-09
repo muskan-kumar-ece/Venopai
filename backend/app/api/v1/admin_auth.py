@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.api.deps import SessionDep, CurrentAdmin
 from app.core.config import settings
@@ -14,9 +14,11 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     create_csrf_token,
+    hash_token,
 )
 from app.models.user import User, RefreshToken, AuditEvent
 from app.schemas.auth import AdminLogin
+from app.core.logging import logger
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -60,7 +62,7 @@ def admin_login(user_in: AdminLogin, request: Request, response: Response, db: S
         role=admin_role,
         is_admin=True,
         audience="admin",
-        expires_delta=timedelta(minutes=getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 720)),
+        expires_delta=timedelta(minutes=getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 15)),
     )
     refresh_token = create_refresh_token()
     csrf_token = create_csrf_token()
@@ -69,7 +71,7 @@ def admin_login(user_in: AdminLogin, request: Request, response: Response, db: S
 
     db_token = RefreshToken(
         user_id=user.id,
-        token=refresh_token,
+        token=hash_token(refresh_token),
         family_id=family_id,
         csrf_token=csrf_token,
         expires_at=expire_date,
@@ -94,14 +96,13 @@ def admin_login(user_in: AdminLogin, request: Request, response: Response, db: S
         httponly=False,
         secure=is_secure,
         samesite="lax",
-        path="/api/v1/admin/auth",
+        path="/",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
 
     return {
         "data": {
             "access_token": access_token,
-            "refresh_token": refresh_token,
             "token_type": "bearer",
             "expires_in": getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
             "user": {
@@ -138,18 +139,19 @@ def admin_me(admin: CurrentAdmin, request: Request):
 async def admin_refresh(request: Request, response: Response, db: SessionDep):
     """Admin token refresh: exchanges active refresh token for a new access token and rotated refresh token."""
     request_id = get_request_id(request)
+    # Admin refresh token strictly required from HttpOnly cookie in production; fallback allowed only in non-production
     refresh_token = request.cookies.get("admin_refresh_token")
-    if not refresh_token:
+    if not refresh_token and settings.ENVIRONMENT != "production":
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             refresh_token = auth_header.split(" ", 1)[1]
-    if not refresh_token:
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                refresh_token = body.get("refresh_token") or body.get("admin_refresh_token")
-        except Exception:
-            pass
+        if not refresh_token:
+            try:
+                body = await request.json()
+                if isinstance(body, dict):
+                    refresh_token = body.get("refresh_token") or body.get("admin_refresh_token")
+            except Exception:
+                pass
 
     if not refresh_token:
         raise HTTPException(
@@ -157,16 +159,50 @@ async def admin_refresh(request: Request, response: Response, db: SessionDep):
             detail={"code": "REFRESH_TOKEN_REQUIRED", "message": "Admin refresh token missing"},
         )
     now = datetime.now(timezone.utc)
+    hashed = hash_token(refresh_token)
     token_record = (
         db.query(RefreshToken)
-        .filter(RefreshToken.token == refresh_token, RefreshToken.revoked == False)
+        .filter(or_(RefreshToken.token == hashed, RefreshToken.token == refresh_token))
         .first()
     )
-    if not token_record or (token_record.expires_at and token_record.expires_at < now):
+    if not token_record:
         raise HTTPException(
             status_code=401,
             detail={"code": "INVALID_REFRESH_TOKEN", "message": "Refresh token is invalid or expired"},
         )
+
+    # REPLAY / THEFT DETECTION: If a revoked admin token is presented, revoke the entire token family
+    if token_record.revoked:
+        logger.warning(f"Revoked admin refresh token reuse detected for user {token_record.user_id}, family {token_record.family_id}!")
+        db.query(RefreshToken).filter(RefreshToken.family_id == token_record.family_id).update({"revoked": True})
+        db.commit()
+        response.delete_cookie("admin_refresh_token", path="/api/v1/admin/auth")
+        response.delete_cookie("admin_csrf_token", path="/")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "TOKEN_REUSE_DETECTED", "message": "Admin token reuse detected. All sessions revoked."},
+        )
+
+    if token_record.expires_at and token_record.expires_at < now:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "REFRESH_TOKEN_EXPIRED", "message": "Refresh token has expired"},
+        )
+
+    # CSRF validation: If session has a csrf_token attached, validate X-CSRF-Token header
+    if token_record.csrf_token:
+        csrf_header = request.headers.get("X-CSRF-Token")
+        if not csrf_header:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "CSRF_TOKEN_MISSING", "message": "Missing CSRF token header"},
+            )
+        if token_record.csrf_token != csrf_header:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "CSRF_TOKEN_MISMATCH", "message": "Invalid CSRF token"},
+            )
+
     user = db.query(User).filter(User.id == token_record.user_id).first()
     if not user or user.status == "deactivated":
         raise HTTPException(
@@ -179,7 +215,7 @@ async def admin_refresh(request: Request, response: Response, db: SessionDep):
     expire_date = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     new_db_token = RefreshToken(
         user_id=user.id,
-        token=new_refresh_token,
+        token=hash_token(new_refresh_token),
         family_id=token_record.family_id or uuid.uuid4(),
         csrf_token=new_csrf_token,
         expires_at=expire_date,
@@ -194,7 +230,7 @@ async def admin_refresh(request: Request, response: Response, db: SessionDep):
         role=admin_role,
         is_admin=True,
         audience="admin",
-        expires_delta=timedelta(minutes=getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 720)),
+        expires_delta=timedelta(minutes=getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 15)),
     )
     is_secure = request.url.scheme == "https" or settings.ENVIRONMENT == "production"
     response.set_cookie(
@@ -212,15 +248,14 @@ async def admin_refresh(request: Request, response: Response, db: SessionDep):
         httponly=False,
         secure=is_secure,
         samesite="lax",
-        path="/api/v1/admin/auth",
+        path="/",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
     )
     return {
         "data": {
             "access_token": new_access_token,
-            "refresh_token": new_refresh_token,
             "token_type": "bearer",
-            "expires_in": getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", settings.ACCESS_TOKEN_EXPIRE_MINUTES) * 60,
+            "expires_in": getattr(settings, "ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", 15) * 60,
             "user": {
                 "id": str(user.id),
                 "email": user.email,
@@ -239,12 +274,13 @@ def admin_logout(request: Request, response: Response, db: SessionDep):
     """Admin logout: revokes active refresh token and purges admin cookies."""
     refresh_token = request.cookies.get("admin_refresh_token")
     if refresh_token:
-        token_record = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
+        hashed = hash_token(refresh_token)
+        token_record = db.query(RefreshToken).filter(or_(RefreshToken.token == hashed, RefreshToken.token == refresh_token)).first()
         if token_record:
             token_record.revoked = True
             db.commit()
     response.delete_cookie(key="admin_refresh_token", path="/api/v1/admin/auth")
-    response.delete_cookie(key="admin_csrf_token", path="/api/v1/admin/auth")
+    response.delete_cookie(key="admin_csrf_token", path="/")
     return Response(status_code=204)
 
 

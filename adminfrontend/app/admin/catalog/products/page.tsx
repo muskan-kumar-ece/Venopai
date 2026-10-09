@@ -63,8 +63,9 @@ export default function AdminCatalogProductsPage() {
   useEffect(() => {
     if (isAuthenticated) {
       adminCatalogApi.listCategories()
-        .then((res: any) => {
-          if (res?.data) setCategories(res.data);
+        .then((res: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>) => {
+          const list = res && "data" in res && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+          if (list.length > 0) setCategories(list);
         })
         .catch(() => {});
     }

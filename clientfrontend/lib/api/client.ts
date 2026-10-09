@@ -23,14 +23,18 @@ export function isValidToken(token: unknown): token is string {
   return trimmed !== '' && trimmed !== 'undefined' && trimmed !== 'null' && trimmed !== '[object Object]';
 }
 
+export function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
 export function getCustomerToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     const candidates = [
       sessionStorage.getItem('venopai_customer_token'),
       sessionStorage.getItem('access_token'),
-      localStorage.getItem('access_token'),
-      localStorage.getItem('venopai_customer_token'),
     ];
     for (const cand of candidates) {
       if (isValidToken(cand)) {
@@ -90,7 +94,8 @@ function buildHeaders(optionsHeaders?: HeadersInit, explicitToken?: string): Rec
   return result;
 }
 
-async function handleResponse(response: Response): Promise<any> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleResponse<T = any>(response: Response): Promise<T> {
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
     const code = errData?.error?.code || errData?.code || (response.status === 401 ? 'UNAUTHORIZED' : undefined);
@@ -134,11 +139,13 @@ export async function silentCustomerRefresh(): Promise<string | null> {
 
   isCustomerRefreshing = true;
   try {
+    const csrfToken = getCookie('csrf_token');
     const res = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
       },
     });
 
@@ -155,11 +162,13 @@ export async function silentCustomerRefresh(): Promise<string | null> {
     if (newAccessToken && isValidToken(newAccessToken)) {
       sessionStorage.setItem('venopai_customer_token', newAccessToken);
       sessionStorage.setItem('access_token', newAccessToken);
-      localStorage.setItem('access_token', newAccessToken);
-      localStorage.setItem('venopai_customer_token', newAccessToken);
+      try {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('venopai_customer_token');
+        localStorage.removeItem('venopai_customer_user');
+      } catch {}
       if (user) {
         sessionStorage.setItem('venopai_customer_user', JSON.stringify(user));
-        localStorage.setItem('venopai_customer_user', JSON.stringify(user));
       }
       onCustomerTokenRefreshed(newAccessToken);
       window.dispatchEvent(new Event('venopai_auth_refreshed'));
@@ -178,11 +187,12 @@ export async function silentCustomerRefresh(): Promise<string | null> {
   }
 }
 
-async function requestWithRetry(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requestWithRetry<T = any>(
   endpoint: string,
   options: RequestInit = {},
   isRetry: boolean = false
-): Promise<any> {
+): Promise<T> {
   const headers = buildHeaders(options.headers);
   const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
     credentials: 'include',
@@ -209,8 +219,10 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
-const clientMemoryCache = new Map<string, CacheEntry<unknown>>();
-const pendingRequests = new Map<string, Promise<unknown>>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const clientMemoryCache = new Map<string, CacheEntry<any>>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pendingRequests = new Map<string, Promise<any>>();
 
 // Default cache TTL for GET endpoints in milliseconds (30 seconds fresh)
 const CACHE_FRESH_MS = 30_000;
@@ -228,7 +240,8 @@ export function invalidateClientCache(prefix?: string) {
 }
 
 export const apiClient = {
-  get: async (endpoint: string, options: RequestInit & { skipCache?: boolean } = {}) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get: async <T = any>(endpoint: string, options: RequestInit & { skipCache?: boolean } = {}): Promise<T> => {
     const isCacheable =
       !options.skipCache &&
       !options.signal &&
@@ -236,7 +249,7 @@ export const apiClient = {
       !endpoint.startsWith('/cart');
 
     if (!isCacheable) {
-      return requestWithRetry(endpoint, { ...options, method: 'GET' });
+      return requestWithRetry<T>(endpoint, { ...options, method: 'GET' });
     }
 
     const cacheKey = `GET:${endpoint}`;
@@ -253,7 +266,7 @@ export const apiClient = {
 
     const fetchPromise = (async () => {
       try {
-        const res = await requestWithRetry(endpoint, { ...options, method: 'GET' });
+        const res = await requestWithRetry<T>(endpoint, { ...options, method: 'GET' });
         clientMemoryCache.set(cacheKey, { data: res, timestamp: Date.now() });
         return res;
       } finally {
@@ -264,8 +277,9 @@ export const apiClient = {
     pendingRequests.set(cacheKey, fetchPromise);
     return fetchPromise;
   },
-  post: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    const res = await requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  post: async <T = any>(endpoint: string, data: unknown, options: RequestInit = {}): Promise<T> => {
+    const res = await requestWithRetry<T>(endpoint, {
       ...options,
       method: 'POST',
       headers: {
@@ -277,8 +291,9 @@ export const apiClient = {
     invalidateClientCache();
     return res;
   },
-  put: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    const res = await requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  put: async <T = any>(endpoint: string, data: unknown, options: RequestInit = {}): Promise<T> => {
+    const res = await requestWithRetry<T>(endpoint, {
       ...options,
       method: 'PUT',
       headers: {
@@ -290,8 +305,9 @@ export const apiClient = {
     invalidateClientCache();
     return res;
   },
-  patch: async (endpoint: string, data: unknown, options: RequestInit = {}) => {
-    const res = await requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  patch: async <T = any>(endpoint: string, data: unknown, options: RequestInit = {}): Promise<T> => {
+    const res = await requestWithRetry<T>(endpoint, {
       ...options,
       method: 'PATCH',
       headers: {
@@ -303,13 +319,15 @@ export const apiClient = {
     invalidateClientCache();
     return res;
   },
-  delete: async (endpoint: string, options: RequestInit = {}) => {
-    const res = await requestWithRetry(endpoint, { ...options, method: 'DELETE' });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+    const res = await requestWithRetry<T>(endpoint, { ...options, method: 'DELETE' });
     invalidateClientCache();
     return res;
   },
-  upload: async (endpoint: string, formData: FormData, options: RequestInit = {}) => {
-    const res = await requestWithRetry(endpoint, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  upload: async <T = any>(endpoint: string, formData: FormData, options: RequestInit = {}): Promise<T> => {
+    const res = await requestWithRetry<T>(endpoint, {
       ...options,
       method: 'POST',
       body: formData,

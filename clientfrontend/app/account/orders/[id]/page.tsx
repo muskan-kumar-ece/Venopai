@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ordersApi } from '@/lib/api/client';
+import { ordersApi, getCustomerToken } from "@/lib/api/client";
 import { StatusBadge } from '@/components/account/StatusBadge';
 import { LoadingState } from '@/components/account/LoadingState';
 
@@ -64,7 +64,7 @@ export default function OrderDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await ordersApi.getOrderDetail(orderId, token);
       if (res?.data) {
         setOrder(res.data);
@@ -85,7 +85,7 @@ export default function OrderDetailPage() {
   const handleCancelOrder = async () => {
     setCancelling(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await ordersApi.cancelOrder(orderId, cancelReason, token);
       setShowCancelModal(false);
       loadOrderDetail();
@@ -99,7 +99,7 @@ export default function OrderDetailPage() {
   const handleDownloadInvoice = async () => {
     setDownloadingInvoice(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await ordersApi.getInvoice(orderId, token);
       if (res?.data?.invoice_url) {
         const rawUrl = res.data.invoice_url;

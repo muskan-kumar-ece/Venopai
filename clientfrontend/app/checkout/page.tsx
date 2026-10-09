@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api/client";
+import { apiClient, getCustomerToken } from "@/lib/api/client";
+import { simulateMockPayment } from "@/lib/payments/mockGateway";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { DraftRecoveryBanner } from "@/components/forms/DraftRecoveryBanner";
 import { DraftSaveIndicator } from "@/components/forms/DraftSaveIndicator";
@@ -52,6 +53,31 @@ interface CheckoutSessionData {
   total: string | null;
 }
 
+interface RazorpaySuccessResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
+  }
+}
+
+interface ConfirmedOrder {
+  order_id?: string;
+  order_number?: string;
+  id?: string;
+  total_amount?: string;
+  total?: string;
+  [key: string]: unknown;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -66,7 +92,7 @@ export default function CheckoutPage() {
   // Payment states (Phase 7)
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "initiating" | "confirming" | "success" | "failed">("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
+  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(null);
   const [agreeCheckoutTerms, setAgreeCheckoutTerms] = useState<boolean>(false);
 
   // New address form state
@@ -100,7 +126,7 @@ export default function CheckoutPage() {
 
   const getAuthHeaders = (): Record<string, string> => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getCustomerToken();
       if (token) return { Authorization: `Bearer ${token}` };
     } catch {
       // ignore
@@ -254,7 +280,7 @@ export default function CheckoutPage() {
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (typeof window === "undefined") return resolve(false);
-      if ((window as any).Razorpay) return resolve(true);
+      if (window.Razorpay) return resolve(true);
 
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -336,30 +362,21 @@ export default function CheckoutPage() {
       const scriptLoaded = await loadRazorpayScript();
       const isMockGateway = !key_id || key_id.includes("mock");
       const isDevelopment = process.env.NODE_ENV !== "production";
+      const allowMockPayments = isDevelopment && process.env.NEXT_PUBLIC_ENABLE_MOCK_PAYMENTS === "true";
 
       if (!scriptLoaded) {
-        if (isDevelopment && isMockGateway) {
-          // Fallback simulation only in local development/test mode
-          await handleConfirmPayment(
-            payment_id,
-            `pay_sim_${Date.now()}`,
-            gateway_order_id,
-            "mock_valid_signature"
-          );
+        if (allowMockPayments && isMockGateway) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await handleConfirmPayment(payment_id, sim.paymentId, gateway_order_id, sim.signature);
           return;
         }
         throw new Error("Unable to load secure Razorpay payment gateway. If you are using an ad blocker, privacy shield, or tracker blocker (e.g. Brave, uBlock), please disable it for this checkout.");
       }
 
       if (isMockGateway) {
-        if (isDevelopment) {
-          // Fallback simulation for local/testing without live Razorpay secrets
-          await handleConfirmPayment(
-            payment_id,
-            `pay_sim_${Date.now()}`,
-            gateway_order_id,
-            "mock_valid_signature"
-          );
+        if (allowMockPayments) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await handleConfirmPayment(payment_id, sim.paymentId, gateway_order_id, sim.signature);
           return;
         }
         throw new Error("Payment gateway is currently unconfigured. Please contact support.");
@@ -381,7 +398,7 @@ export default function CheckoutPage() {
         theme: {
           color: "#059669",
         },
-        handler: async function (response: any) {
+        handler: async function (response: RazorpaySuccessResponse) {
           await handleConfirmPayment(
             payment_id,
             response.razorpay_payment_id,
@@ -397,8 +414,10 @@ export default function CheckoutPage() {
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (err: unknown) {
       setPaymentStatus("failed");
       if (err instanceof Error) {

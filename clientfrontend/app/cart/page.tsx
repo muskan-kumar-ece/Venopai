@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { apiClient, catalogApi, cartApi, shippingApi } from "@/lib/api/client";
+import { apiClient, catalogApi, cartApi, shippingApi, getCustomerToken } from "@/lib/api/client";
 
 interface CartItem {
   id: string;
@@ -55,7 +55,7 @@ export default function CartPage() {
   // Read auth token from localStorage if available
   const getAuthHeaders = (): Record<string, string> => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getCustomerToken();
       if (token) {
         return { Authorization: `Bearer ${token}` };
       }
@@ -112,6 +112,48 @@ export default function CartPage() {
     }
   };
 
+  const handleCheckPincode = useCallback(async (overridePin?: string) => {
+    const pin = (overridePin || pincode).trim();
+    if (!/^\d{6}$/.test(pin)) {
+      setPincodeResult({
+        serviceable: false,
+        message: "Please enter a valid 6-digit Indian postal code.",
+      });
+      return;
+    }
+
+    setCheckingPincode(true);
+    try {
+      const res = await shippingApi.checkServiceability(pin);
+      if (res?.data?.serviceable || res?.data?.success) {
+        setPincodeResult({
+          serviceable: true,
+          carrier: res.data.courier_name || "Shiprocket Express Logistics",
+          eta: "2 – 4 Business Days",
+          message: "Standard express delivery available to your pincode.",
+        });
+        localStorage.setItem("venopai_shipping_pincode", pin);
+      } else {
+        setPincodeResult({
+          serviceable: true,
+          carrier: "Surface Logistics",
+          eta: "3 – 5 Business Days",
+          message: "Standard surface shipping available.",
+        });
+        localStorage.setItem("venopai_shipping_pincode", pin);
+      }
+    } catch {
+      setPincodeResult({
+        serviceable: true,
+        carrier: "Shiprocket Surface Delivery",
+        eta: "3 – 5 Business Days",
+        message: "Standard domestic courier delivery available.",
+      });
+    } finally {
+      setCheckingPincode(false);
+    }
+  }, [pincode]);
+
   useEffect(() => {
     fetchCart();
     fetchRecommendations();
@@ -125,7 +167,7 @@ export default function CartPage() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [handleCheckPincode]);
 
   const updateQuantity = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -187,48 +229,6 @@ export default function CartPage() {
       // ignore
     } finally {
       setAddingRecId(null);
-    }
-  };
-
-  const handleCheckPincode = async (overridePin?: string) => {
-    const pin = (overridePin || pincode).trim();
-    if (!/^\d{6}$/.test(pin)) {
-      setPincodeResult({
-        serviceable: false,
-        message: "Please enter a valid 6-digit Indian postal code.",
-      });
-      return;
-    }
-
-    setCheckingPincode(true);
-    try {
-      const res = await shippingApi.checkServiceability(pin);
-      if (res?.data?.serviceable || res?.data?.success) {
-        setPincodeResult({
-          serviceable: true,
-          carrier: res.data.courier_name || "Shiprocket Express Logistics",
-          eta: "2 – 4 Business Days",
-          message: "Standard express delivery available to your pincode.",
-        });
-        localStorage.setItem("venopai_shipping_pincode", pin);
-      } else {
-        setPincodeResult({
-          serviceable: true,
-          carrier: "Surface Logistics",
-          eta: "3 – 5 Business Days",
-          message: "Standard surface shipping available.",
-        });
-        localStorage.setItem("venopai_shipping_pincode", pin);
-      }
-    } catch {
-      setPincodeResult({
-        serviceable: true,
-        carrier: "Shiprocket Surface Delivery",
-        eta: "3 – 5 Business Days",
-        message: "Standard domestic courier delivery available.",
-      });
-    } finally {
-      setCheckingPincode(false);
     }
   };
 

@@ -13,6 +13,7 @@ interface Product {
   price: string;
   description: string;
   images?: string[];
+  primary_image_url?: string;
   stock_quantity?: number;
   stock_status?: string;
   specifications?: Record<string, string>;
@@ -316,7 +317,7 @@ function CategoryProductsContent({ slug }: { slug: string }) {
                     {(() => {
                       const imgSrc =
                         (prod.images && prod.images.length > 0 ? prod.images[0] : null) ||
-                        (prod as any).primary_image_url;
+                        prod.primary_image_url;
                       return imgSrc ? (
                         <img
                           src={imgSrc}

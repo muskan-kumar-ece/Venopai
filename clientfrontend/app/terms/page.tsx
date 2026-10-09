@@ -22,7 +22,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">1. Acceptance of Terms & Entity Information</h2>
               <p className="mt-1">
-                By creating an account, browsing the hardware catalog, uploading CAD schematics, requesting engineering quotations, or placing orders on VenopAI (the "Platform"), operated by <strong className="text-zinc-900 dark:text-zinc-200">VenopAI Technologies Pvt. Ltd.</strong> ("Company", "we", "us"), CIN: <code className="font-mono text-zinc-700 dark:text-zinc-300">U72900KA2026PTC189201</code>, you agree to be legally bound by these Terms of Service, the <Link href="/privacy" className="text-emerald-600 underline">Privacy Policy</Link>, and the <Link href="/cancellation-refund" className="text-emerald-600 underline">Cancellation & Refund Policy</Link>.
+                By creating an account, browsing the hardware catalog, uploading CAD schematics, requesting engineering quotations, or placing orders on VenopAI (the &quot;Platform&quot;), operated by <strong className="text-zinc-900 dark:text-zinc-200">VenopAI Technologies Pvt. Ltd.</strong> (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), CIN: <code className="font-mono text-zinc-700 dark:text-zinc-300">U72900KA2026PTC189201</code>, you agree to be legally bound by these Terms of Service, the <Link href="/privacy" className="text-emerald-600 underline">Privacy Policy</Link>, and the <Link href="/cancellation-refund" className="text-emerald-600 underline">Cancellation & Refund Policy</Link>.
               </p>
             </section>
 

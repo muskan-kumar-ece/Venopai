@@ -6,13 +6,40 @@ import { useParams } from "next/navigation";
 import { useAdminAuth } from "@/lib/auth/AdminAuthContext";
 import { adminFeedbackApi } from "@/lib/api/client";
 
+interface AdminFeedbackItem {
+  id: string;
+  feedback_type?: string;
+  priority?: string;
+  status?: string;
+  subject?: string;
+  description?: string;
+  page_url?: string;
+  order_id?: string;
+  screenshot_url?: string;
+  browser_info?: string;
+  user_email?: string;
+  user_full_name?: string;
+  guest_email?: string;
+  guest_name?: string;
+  guest_phone?: string;
+  admin_notes?: string;
+  admin_response?: string;
+  created_at?: string;
+  updated_at?: string;
+  resolved_at?: string;
+  resolved_by_email?: string;
+  resolved_by_name?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
 export default function AdminFeedbackDetailPage() {
   const params = useParams();
   const feedbackId = params?.id as string;
   const { adminToken, isAuthenticated, isLoading } = useAdminAuth();
 
   const [mounted, setMounted] = useState(false);
-  const [item, setItem] = useState<any | null>(null);
+  const [item, setItem] = useState<AdminFeedbackItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,7 +190,7 @@ export default function AdminFeedbackDetailPage() {
                 </span>
               </div>
               <span className="text-xs text-zinc-400 font-mono" suppressHydrationWarning>
-                {mounted ? new Date(item.created_at).toLocaleString("en-IN") : ""}
+                {mounted && item.created_at ? new Date(item.created_at).toLocaleString("en-IN") : ""}
               </span>
             </div>
 
@@ -361,7 +388,7 @@ export default function AdminFeedbackDetailPage() {
               <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400">
                 <span className="font-bold block">Resolved On:</span>
                 <span className="font-mono text-[11px]" suppressHydrationWarning>
-                  {mounted ? new Date(item.resolved_at).toLocaleString("en-IN") : ""}
+                  {mounted && item.resolved_at ? new Date(item.resolved_at).toLocaleString("en-IN") : ""}
                 </span>
                 {item.resolved_by_name && (
                   <span className="block text-[11px] mt-0.5">By: {item.resolved_by_name}</span>

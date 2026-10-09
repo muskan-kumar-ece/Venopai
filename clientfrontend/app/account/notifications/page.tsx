@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { notificationsApi } from '@/lib/api/client';
+import { notificationsApi, getCustomerToken } from "@/lib/api/client";
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
 
@@ -23,7 +23,7 @@ export default function NotificationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await notificationsApi.listNotifications({ page: p, page_size: 15 }, token);
       if (res?.data) {
         setNotifications(res.data);

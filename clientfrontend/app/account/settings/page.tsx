@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { profileApi } from '@/lib/api/client';
+import { profileApi, getCustomerToken } from "@/lib/api/client";
 
 export default function SettingsPage() {
   // Password change state
@@ -48,7 +48,7 @@ export default function SettingsPage() {
     setPwSuccess('');
     setPwError('');
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await profileApi.changePassword(
         { current_password: currentPassword, new_password: newPassword },
         token

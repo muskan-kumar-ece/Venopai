@@ -114,7 +114,7 @@ class RateLimiter:
                         token,
                         settings.SECRET_KEY,
                         algorithms=[settings.ALGORITHM],
-                        options={"verify_aud": False},
+                        audience=["customer", "admin"],
                     )
                     user_id = payload.get("sub")
                 except Exception:

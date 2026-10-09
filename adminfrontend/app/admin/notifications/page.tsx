@@ -41,8 +41,8 @@ export default function AdminNotificationsPage() {
       } else {
         setNotifications([]);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load notification logs");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load notification logs");
     } finally {
       setLoading(false);
     }

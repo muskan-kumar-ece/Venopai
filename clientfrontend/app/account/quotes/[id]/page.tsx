@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { quotesApi, apiClient } from "@/lib/api/client";
+import { quotesApi, apiClient, getCustomerToken } from "@/lib/api/client";
+import { simulateMockPayment } from "@/lib/payments/mockGateway";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { LoadingState } from "@/components/account/LoadingState";
 
@@ -39,9 +40,19 @@ interface QuoteDetail {
   current_version: QuoteVersion;
 }
 
+interface RazorpaySuccessResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
   }
 }
 
@@ -88,7 +99,7 @@ export default function QuoteDetailPage({
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await quotesApi.getQuote(quoteId, token);
       if (res?.data) {
         setQuote(res.data);
@@ -130,7 +141,7 @@ export default function QuoteDetailPage({
     setApproving(true);
     setBanner(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await quotesApi.approveQuote(quoteId, token);
       setShowApproveModal(false);
       setBanner({ type: "success", message: "Quotation approved successfully! You can now proceed to payment." });
@@ -147,7 +158,7 @@ export default function QuoteDetailPage({
     setRejecting(true);
     setBanner(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await quotesApi.rejectQuote(quoteId, rejectReason.trim(), token);
       setShowRejectModal(false);
       setBanner({ type: "success", message: "Revision request submitted. The engineering manager has been notified." });
@@ -166,7 +177,7 @@ export default function QuoteDetailPage({
 
     const getAuthHeaders = (): Record<string, string> => {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = getCustomerToken();
         if (token) return { Authorization: `Bearer ${token}` };
       } catch {}
       return {};
@@ -201,9 +212,25 @@ export default function QuoteDetailPage({
         await loadQuoteAndVersions();
       };
 
-      if (!scriptLoaded || isMockGateway) {
-        await confirmCall(`pay_sim_${Date.now()}`, gateway_order_id, "mock_valid_signature");
-        return;
+      const isDevelopment = process.env.NODE_ENV !== "production";
+      const allowMockPayments = isDevelopment && process.env.NEXT_PUBLIC_ENABLE_MOCK_PAYMENTS === "true";
+
+      if (!scriptLoaded) {
+        if (allowMockPayments && isMockGateway) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await confirmCall(sim.paymentId, gateway_order_id, sim.signature);
+          return;
+        }
+        throw new Error("Unable to load secure Razorpay payment gateway. If you are using an ad blocker, privacy shield, or tracker blocker, please disable it for this payment.");
+      }
+
+      if (isMockGateway) {
+        if (allowMockPayments) {
+          const sim = simulateMockPayment(gateway_order_id);
+          await confirmCall(sim.paymentId, gateway_order_id, sim.signature);
+          return;
+        }
+        throw new Error("Payment gateway is currently unconfigured. Please contact support.");
       }
 
       const options = {
@@ -219,7 +246,7 @@ export default function QuoteDetailPage({
           contact: customer?.phone || "",
         },
         theme: { color: "#059669" },
-        handler: async function (response: any) {
+        handler: async function (response: RazorpaySuccessResponse) {
           await confirmCall(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
         },
         modal: {
@@ -229,8 +256,10 @@ export default function QuoteDetailPage({
         },
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (err: unknown) {
       setBanner({ type: "error", message: err instanceof Error ? err.message : "Payment failed" });
     } finally {

@@ -94,10 +94,10 @@ export function SearchBar() {
   // Fetch active categories for quick navigation pills
   useEffect(() => {
     catalogApi.listCategories()
-      .then((res: any) => {
+      .then((res: { data?: Array<{ id: string; name: string; slug: string }> }) => {
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           setPopularCategories(
-            res.data.slice(0, 4).map((c: any) => ({
+            res.data.slice(0, 4).map((c) => ({
               id: c.id,
               name: c.name,
               slug: c.slug,

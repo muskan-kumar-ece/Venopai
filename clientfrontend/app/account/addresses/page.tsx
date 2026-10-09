@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { addressesApi, shippingApi } from '@/lib/api/client';
+import { addressesApi, shippingApi, getCustomerToken } from "@/lib/api/client";
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
 
@@ -77,7 +77,7 @@ export default function AddressesPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await addressesApi.listAddresses(token);
       if (res?.data) {
         setAddresses(res.data);
@@ -130,7 +130,7 @@ export default function AddressesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       if (editId) {
         await addressesApi.updateAddress(editId, formValues, token);
       } else {
@@ -147,7 +147,7 @@ export default function AddressesPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await addressesApi.deleteAddress(id, token);
       loadAddresses();
     } catch (err: unknown) {
@@ -157,7 +157,7 @@ export default function AddressesPage() {
 
   const handleSetDefault = async (addr: Address) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await addressesApi.updateAddress(addr.id, { is_default: true }, token);
       loadAddresses();
     } catch (err: unknown) {

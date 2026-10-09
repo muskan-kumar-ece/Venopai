@@ -30,10 +30,25 @@ export default function AdminCustomersPage() {
   const [segmentFilter, setSegmentFilter] = useState<string>("");
   const [page, setPage] = useState(1);
 
+interface CustomerOrderSummary {
+  id: string;
+  order_number?: string;
+  total_amount?: string;
+  status: string;
+  created_at: string;
+}
+
+interface CustomerRequestSummary {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+}
+
   // Selected customer for modal/drawer
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
-  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
-  const [customerRequests, setCustomerRequests] = useState<any[]>([]);
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrderSummary[]>([]);
+  const [customerRequests, setCustomerRequests] = useState<CustomerRequestSummary[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   const fetchCustomers = async () => {
@@ -54,8 +69,8 @@ export default function AdminCustomersPage() {
       } else {
         setCustomers([]);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load customers");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load customers");
     } finally {
       setLoading(false);
     }
@@ -109,10 +124,10 @@ export default function AdminCustomersPage() {
       setDeactivateReason("");
       fetchCustomers();
       if (selectedCustomer?.id === deactivateCust.id) setSelectedCustomer(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedback({
         type: "error",
-        message: err.message || "Failed to deactivate customer account.",
+        message: err instanceof Error ? err.message : "Failed to deactivate customer account.",
       });
     } finally {
       setDeactivating(false);

@@ -19,7 +19,7 @@ interface ProductDetail {
   user_manual_url?: string;
   stock_quantity?: number;
   stock_status?: string;
-  specifications?: any;
+  specifications?: unknown;
   category?: { id: string; name: string; slug?: string };
   category_ids?: string[];
 }
@@ -51,14 +51,15 @@ interface SpecItem {
   value: string;
 }
 
-function parseSpecifications(specs: any): SpecItem[] {
+function parseSpecifications(specs: unknown): SpecItem[] {
   if (!specs) return [];
   if (Array.isArray(specs)) {
     return specs
       .map((item, idx) => {
         if (typeof item === "object" && item !== null) {
-          const label = item.key || item.name || item.label || item.title || `Parameter ${idx + 1}`;
-          const val = item.value ?? item.val ?? "";
+          const itemObj = item as Record<string, unknown>;
+          const label = (itemObj.key || itemObj.name || itemObj.label || itemObj.title || `Parameter ${idx + 1}`) as string;
+          const val = (itemObj.value ?? itemObj.val ?? "") as string;
           return { label: String(label).trim(), value: String(val).trim() };
         }
         return { label: `Spec ${idx + 1}`, value: String(item).trim() };
@@ -66,12 +67,12 @@ function parseSpecifications(specs: any): SpecItem[] {
       .filter((s) => s.label && s.value);
   }
   if (typeof specs === "object") {
-    return Object.entries(specs)
+    return Object.entries(specs as Record<string, unknown>)
       .map(([k, v]) => {
         if (typeof v === "object" && v !== null) {
-          const itemObj = v as any;
-          const label = itemObj.key || itemObj.name || itemObj.label || k;
-          const val = itemObj.value ?? itemObj.val ?? JSON.stringify(v);
+          const itemObj = v as Record<string, unknown>;
+          const label = (itemObj.key || itemObj.name || itemObj.label || k) as string;
+          const val = (itemObj.value ?? itemObj.val ?? JSON.stringify(v)) as string;
           return { label: String(label).trim(), value: String(val).trim() };
         }
         return { label: String(k).trim(), value: String(v).trim() };
@@ -132,15 +133,15 @@ export default function ProductDetailPage() {
     if (!id) return;
     setLoading(true);
     catalogApi.getProduct(id)
-      .then((res: any) => {
-        const prodData = res?.data || res;
+      .then((res: { data?: ProductDetail } | ProductDetail) => {
+        const prodData = (res && "data" in res && res.data ? res.data : res) as ProductDetail;
         if (prodData) {
           setProduct(prodData);
 
           // Fetch top 5 customer reviews
           setLoadingReviews(true);
           reviewsApi.getProductReviews(prodData.id || id)
-            .then((revRes: any) => {
+            .then((revRes: { data?: ProductReview[]; average_rating?: number; review_count?: number }) => {
               if (revRes?.data && Array.isArray(revRes.data)) {
                 setReviews(revRes.data.slice(0, 5));
               }
@@ -158,17 +159,22 @@ export default function ProductDetailPage() {
           setLoadingRelated(true);
           const firstCatId = prodData.category_ids?.[0] || prodData.category?.id;
           catalogApi.listProducts({ category_id: firstCatId, page_size: 8 })
-            .then((catRes: any) => {
-              const list = catRes?.data || (Array.isArray(catRes) ? catRes : []);
-              const filtered = list.filter((p: any) => p.id !== prodData.id && p.slug !== prodData.slug);
+            .then((catRes: { data?: { items?: RelatedProduct[] } | RelatedProduct[] }) => {
+              const resData = catRes?.data;
+              const list: RelatedProduct[] = Array.isArray(resData)
+                ? resData
+                : resData && "items" in resData && Array.isArray(resData.items)
+                ? resData.items
+                : [];
+              const filtered = list.filter((p: RelatedProduct) => p.id !== prodData.id && p.slug !== prodData.slug);
               setRelatedProducts(filtered.slice(0, 4));
             })
             .catch(() => {})
             .finally(() => setLoadingRelated(false));
         }
       })
-      .catch((err: any) => {
-        setError(err.message || "Failed to load product details");
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load product details");
       })
       .finally(() => {
         setLoading(false);
@@ -188,7 +194,7 @@ export default function ProductDetailPage() {
         window.dispatchEvent(new Event("storage"));
       } catch {}
       setTimeout(() => setCartSuccess(false), 3000);
-    } catch (err: any) {
+    } catch {
       setAddingToCart(false);
     } finally {
       setAddingToCart(false);
@@ -201,8 +207,7 @@ export default function ProductDetailPage() {
     try {
       await cartApi.addItem({ product_id: product.id, quantity });
       router.push("/checkout");
-    } catch (err: any) {
-      setBuyingNow(false);
+    } catch {
       setBuyingNow(false);
     }
   };

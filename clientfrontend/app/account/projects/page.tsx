@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { projectsApi } from '@/lib/api/client';
+import { projectsApi, getCustomerToken } from "@/lib/api/client";
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
 
@@ -29,7 +29,7 @@ export default function AccountProjectsPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await projectsApi.listProjects(token);
       if (res?.data) {
         setProjects(res.data);
@@ -51,7 +51,7 @@ export default function AccountProjectsPage() {
     setSubmitting(true);
     setModalError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       await projectsApi.createProject(projectName.trim(), token);
       setShowModal(false);
       setProjectName('');

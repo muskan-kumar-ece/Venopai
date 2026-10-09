@@ -139,8 +139,8 @@ export default function AdminSecuritySettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to change password. Please verify your current password.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to change password. Please verify your current password.");
     } finally {
       setSubmitting(false);
     }

@@ -4,11 +4,29 @@ import React, { useEffect, useState } from "react";
 import { adminAnalyticsApi } from "@/lib/api/client";
 import { useAdminAuth } from "@/lib/auth/AdminAuthContext";
 
+interface AnalyticsData {
+  total_revenue_inr?: number;
+  total_revenue_paise?: number;
+  total_orders?: number;
+  total_customers?: number;
+  total_products?: number;
+  low_stock_sku_count?: number;
+  active_services?: {
+    manufacturing?: number;
+    pcb_design?: number;
+    firmware_software?: number;
+    consultations?: number;
+    total?: number;
+  };
+  quote_conversion_rate_percent?: number;
+  [key: string]: unknown;
+}
+
 export default function AdminAnalyticsPage() {
   const { hasRole, isAuthenticated } = useAdminAuth();
   const isAllowed = hasRole(["SUPER_ADMIN", "FINANCE_MANAGER", "ORDER_MANAGER"]);
 
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -42,16 +60,17 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (isAuthenticated && isAllowed) {
       setLoading(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       adminAnalyticsApi.getAnalytics()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .then((res: any) => {
-          if (res?.data) {
-            setAnalytics(res.data);
-          } else {
-            setAnalytics(res);
+          const data = res?.data || res;
+          if (data) {
+            setAnalytics(data as AnalyticsData);
           }
         })
-        .catch((err: any) => {
-          setError(err.message || "Failed to load operational analytics");
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : "Failed to load operational analytics");
         })
         .finally(() => {
           setLoading(false);

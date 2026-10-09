@@ -141,46 +141,47 @@ function AdminLoginForm() {
         </button>
       </form>
 
-      {/* Quick Test Roles for Local Development */}
-      <div className="mt-8 border-t border-zinc-800/80 pt-5">
-        <p className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-2.5">
-          Local Development Role Presets:
-        </p>
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleQuickFill("superadmin@venopai.com")}
-            className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
-          >
-            <span className="font-semibold text-emerald-400 block">SUPER_ADMIN</span>
-            <span className="text-[10px] text-zinc-500">Full system access</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickFill("order_mgr@venopai.com")}
-            className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
-          >
-            <span className="font-semibold text-blue-400 block">ORDER_MGR</span>
-            <span className="text-[10px] text-zinc-500">Catalog & Inventory</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickFill("mfg_mgr@venopai.com")}
-            className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
-          >
-            <span className="font-semibold text-cyan-400 block">MFG_MGR</span>
-            <span className="text-[10px] text-zinc-500">Fabrication Queues</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickFill("finance_mgr@venopai.com")}
-            className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
-          >
-            <span className="font-semibold text-purple-400 block">FINANCE_MGR</span>
-            <span className="text-[10px] text-zinc-500">Refunds & Payments</span>
-          </button>
+      {process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true" && (
+        <div className="mt-8 border-t border-zinc-800/80 pt-5">
+          <p className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 mb-2.5">
+            Local Development Role Presets:
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleQuickFill("superadmin@venopai.com")}
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+            >
+              <span className="font-semibold text-emerald-400 block">SUPER_ADMIN</span>
+              <span className="text-[10px] text-zinc-500">Full system access</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill("order_mgr@venopai.com")}
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+            >
+              <span className="font-semibold text-blue-400 block">ORDER_MGR</span>
+              <span className="text-[10px] text-zinc-500">Catalog & Inventory</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill("mfg_mgr@venopai.com")}
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+            >
+              <span className="font-semibold text-cyan-400 block">MFG_MGR</span>
+              <span className="text-[10px] text-zinc-500">Fabrication Queues</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill("finance_mgr@venopai.com")}
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+            >
+              <span className="font-semibold text-purple-400 block">FINANCE_MGR</span>
+              <span className="text-[10px] text-zinc-500">Refunds & Payments</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

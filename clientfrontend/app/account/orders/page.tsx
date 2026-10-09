@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ordersApi } from '@/lib/api/client';
+import { ordersApi, getCustomerToken } from "@/lib/api/client";
 import { StatusBadge } from '@/components/account/StatusBadge';
 import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
@@ -35,7 +35,7 @@ export default function AccountOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+      const token = getCustomerToken() || undefined;
       const res = await ordersApi.listOrders({ status: statusFilter || undefined }, token);
       if (res?.data) {
         setOrders(res.data);

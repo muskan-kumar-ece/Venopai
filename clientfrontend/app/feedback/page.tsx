@@ -103,7 +103,14 @@ export default function FeedbackPage() {
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [submittedItem, setSubmittedItem] = useState<any | null>(null);
+  const [submittedItem, setSubmittedItem] = useState<{
+    id?: string;
+    feedback_type?: string;
+    priority?: string;
+    subject?: string;
+    status?: string;
+    [key: string]: unknown;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -192,14 +199,12 @@ export default function FeedbackPage() {
       const res = await feedbackApi.submitFeedback(payload);
       await clearDraft();
       setSubmittedItem(res.data);
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to submit feedback. Please check your network and try again.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to submit feedback. Please check your network and try again.");
     } finally {
       setSubmitting(false);
     }
   };
-
-  const selectedType = FEEDBACK_TYPES.find((t) => t.id === form.feedback_type) || FEEDBACK_TYPES[0];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-12 md:py-16 text-zinc-900 dark:text-zinc-100">

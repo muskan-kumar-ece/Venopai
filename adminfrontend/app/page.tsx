@@ -3,15 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAdminAuth } from "@/lib/auth/AdminAuthContext";
-import {
-  adminDashboardApi,
-  adminManufacturingApi,
-  adminCatalogApi,
-  adminConsultationsApi,
-  adminDesignApi,
-  adminSoftwareApi,
-  adminInventoryApi,
-} from "@/lib/api/client";
+import { adminDashboardApi } from "@/lib/api/client";
 
 export default function AdminHomePage() {
   const { adminUser, isAuthenticated, isLoading: authLoading, hasRole } = useAdminAuth();

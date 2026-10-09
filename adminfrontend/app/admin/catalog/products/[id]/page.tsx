@@ -81,7 +81,7 @@ export default function AdminEditProductPage({
 
           if (Array.isArray(p.specifications)) {
             setSpecs(
-              p.specifications.map((s: any) => ({
+              p.specifications.map((s: { name?: string; key?: string; value?: unknown }) => ({
                 name: s.name || s.key || "",
                 value: s.value !== undefined ? String(s.value) : "",
               }))

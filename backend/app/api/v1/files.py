@@ -220,8 +220,17 @@ def admin_list_all_files(
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """List all files uploaded across requests with scan status and metadata."""
+    """List all files uploaded across requests with scan status and metadata. Scoped by role."""
+    user_role = getattr(admin, "role", "")
+    if user_role not in ("SUPER_ADMIN", "MANUFACTURING_MANAGER"):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Admin role does not have permission to browse files"},
+        )
+
     query = db.query(ProjectFile)
+    if user_role == "MANUFACTURING_MANAGER":
+        query = query.filter(ProjectFile.association_type.in_(["manufacturing", "design", "software", "consultation"]))
     if scan_status:
         query = query.filter(ProjectFile.scan_status == scan_status)
     if association_type:
@@ -382,8 +391,8 @@ def admin_list_pending_scan(
     admin: CurrentAdmin,
     db: Session = Depends(get_db),
 ):
-    """List project files whose scan status is pending."""
-    files = db.query(ProjectFile).filter(ProjectFile.scan_status == "pending").order_by(ProjectFile.created_at.desc()).all()
+    """List project files whose scan status is pending_scan."""
+    files = db.query(ProjectFile).filter(ProjectFile.scan_status == "pending_scan").order_by(ProjectFile.created_at.desc()).all()
     return {
         "data": [
             {
@@ -412,7 +421,13 @@ def admin_override_scan(
     admin: CurrentAdmin,
     db: Session = Depends(get_db),
 ):
-    """Admin overrides malware scan verdict (e.g. false positive)."""
+    """Admin overrides malware scan verdict (e.g. false positive). Requires SUPER_ADMIN role."""
+    if not (getattr(admin, "is_superuser", False) or getattr(admin, "role", "") == "SUPER_ADMIN"):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Only SUPER_ADMIN can manually override file scan status"},
+        )
+
     try:
         f_uuid = uuid.UUID(file_id)
     except ValueError:
@@ -423,10 +438,21 @@ def admin_override_scan(
         raise HTTPException(status_code=404, detail="File not found")
 
     new_status = body.get("status", "clean")
-    if new_status not in ("clean", "flagged", "pending"):
-        raise HTTPException(status_code=400, detail="Invalid status. Must be clean, flagged, or pending.")
+    if new_status not in ("clean", "flagged", "pending_scan"):
+        raise HTTPException(status_code=400, detail="Invalid status. Must be clean, flagged, or pending_scan.")
 
+    old_status = file_obj.scan_status
     file_obj.scan_status = new_status
+
+    from app.models.user import AuditEvent
+    audit = AuditEvent(
+        user_id=admin.id,
+        action="OVERRIDE_FILE_SCAN",
+        entity_type="project_file",
+        entity_id=str(file_obj.id),
+        details={"previous_status": old_status, "new_status": new_status, "reason": body.get("reason", "Manual admin override")},
+    )
+    db.add(audit)
     db.commit()
     db.refresh(file_obj)
 

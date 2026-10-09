@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { quotesApi } from "@/lib/api/client";
+import { quotesApi, getCustomerToken } from "@/lib/api/client";
 
 interface LineItem {
   name?: string;
@@ -57,7 +57,7 @@ export default function PrintableQuotePage({
       setLoading(true);
       setError(null);
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined;
+        const token = getCustomerToken() || undefined;
         const res = await quotesApi.getQuote(quoteId, token);
         if (res?.data) {
           setQuote(res.data);

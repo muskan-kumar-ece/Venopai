@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import or_
 
 from app.main import app
 from app.api.deps import get_db, get_current_admin
@@ -316,7 +317,8 @@ def test_logout_204():
     assert res.status_code == 204
 
     db = TestingSessionLocal()
-    db_token = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
+    db_token = db.query(RefreshToken).filter(or_(RefreshToken.token == hash_token(refresh_token), RefreshToken.token == refresh_token)).first()
+    assert db_token is not None
     assert db_token.revoked is True
     db.close()
 

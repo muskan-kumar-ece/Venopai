@@ -60,8 +60,24 @@ class FileService:
         """FILES-API-001: Uploads file bytes via Cloudinary abstraction and records ProjectFile.
         Contract: Upload initializes scan_status as 'pending_scan' and enqueues malware scan task.
         """
-        # 1. Read file bytes
-        file_bytes = upload_file.file.read()
+        # 1. Read file bytes in streaming chunks up to MAX_FILE_SIZE_BYTES
+        chunks = []
+        total_read = 0
+        chunk_size = 1024 * 1024  # 1MB chunks
+        while True:
+            chunk = upload_file.file.read(chunk_size)
+            if not chunk:
+                break
+            total_read += len(chunk)
+            if total_read > MAX_FILE_SIZE_BYTES:
+                raise APIException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    code="FILE_TOO_LARGE",
+                    message="File exceeds maximum allowed size of 100MB",
+                )
+            chunks.append(chunk)
+
+        file_bytes = b"".join(chunks)
         size_bytes = len(file_bytes)
 
         if size_bytes == 0:
@@ -71,13 +87,6 @@ class FileService:
                 message="File cannot be empty",
             )
 
-        if size_bytes > MAX_FILE_SIZE_BYTES:
-            raise APIException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                code="FILE_TOO_LARGE",
-                message=f"File exceeds maximum allowed size of 100MB ({size_bytes} bytes)",
-            )
-
         content_type = upload_file.content_type or "application/octet-stream"
         filename = upload_file.filename or "file.bin"
 
@@ -85,7 +94,7 @@ class FileService:
         ext = filename.split(".")[-1].lower() if "." in filename else ""
         cad_extensions = {
             "step", "stp", "stl", "dxf", "dwg", "gerber", "gbr", "pcb", "sch",
-            "kicad_pcb", "kicad_sch", "kicad_pro", "zip", "pdf", "png", "jpg", "jpeg", "csv"
+            "kicad_pcb", "kicad_sch", "kicad_pro", "zip", "pdf", "png", "jpg", "jpeg", "csv", "svg"
         }
         
         if content_type not in ALLOWED_MIME_TYPES and ext not in cad_extensions:
@@ -95,7 +104,84 @@ class FileService:
                 message=f"Unsupported file type: {content_type}",
             )
 
-        # 2. Upload to Cloudinary private storage
+        # SVG Sanitization against stored XSS
+        if content_type == "image/svg+xml" or ext == "svg":
+            lower_content = file_bytes[:100000].lower()
+            dangerous_patterns = [
+                b"<script", b"javascript:", b"onload", b"onerror",
+                b"onclick", b"<foreignobject", b"<iframe", b"<embed", b"<object"
+            ]
+            for pattern in dangerous_patterns:
+                if pattern in lower_content:
+                    raise APIException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST,
+                        code="MALICIOUS_SVG_CONTENT",
+                        message="SVG file contains prohibited scripts or active event handlers",
+                    )
+
+        # 2. Validate association ownership and authorization
+        assoc_uuid = None
+        if association_id:
+            try:
+                assoc_uuid = uuid.UUID(association_id)
+            except ValueError:
+                raise APIException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    code="INVALID_ASSOCIATION_ID",
+                    message="association_id must be a valid UUID",
+                )
+
+            is_admin_user = (
+                getattr(user, "is_superuser", False)
+                or getattr(user, "is_admin", False)
+                or getattr(user, "role", "") in ("SUPER_ADMIN", "MANUFACTURING_MANAGER")
+            )
+            if not is_admin_user or source == "customer_upload":
+                # Customer ownership validation
+                assoc_t = (association_type or "").lower()
+                owned = False
+                if assoc_t == "manufacturing":
+                    owned = db.query(ManufacturingRequest).filter(
+                        ManufacturingRequest.id == assoc_uuid,
+                        ManufacturingRequest.user_id == user.id,
+                    ).first() is not None
+                elif assoc_t == "design":
+                    from app.models.project import DesignRequest
+                    owned = db.query(DesignRequest).filter(
+                        DesignRequest.id == assoc_uuid,
+                        DesignRequest.user_id == user.id,
+                    ).first() is not None
+                elif assoc_t == "software":
+                    from app.models.project import SoftwareRequest
+                    owned = db.query(SoftwareRequest).filter(
+                        SoftwareRequest.id == assoc_uuid,
+                        SoftwareRequest.user_id == user.id,
+                    ).first() is not None
+                elif assoc_t == "consultation":
+                    from app.models.project import ConsultationRequest
+                    owned = db.query(ConsultationRequest).filter(
+                        ConsultationRequest.id == assoc_uuid,
+                        ConsultationRequest.user_id == user.id,
+                    ).first() is not None
+                elif assoc_t == "project":
+                    owned = db.query(Project).filter(
+                        Project.id == assoc_uuid,
+                        Project.user_id == user.id,
+                    ).first() is not None
+                else:
+                    owned = False
+
+                if not owned:
+                    raise APIException(
+                        status_code=http_status.HTTP_404_NOT_FOUND,
+                        code="ASSOCIATION_NOT_FOUND",
+                        message=f"Request of type '{association_type}' with ID '{association_id}' not found or does not belong to you",
+                    )
+            else:
+                # Admin deliverable validation: check permission for service type
+                cls.check_admin_role_for_service(user, association_type)
+
+        # 3. Upload to Cloudinary private storage
         folder = f"venopai/files/{association_type or 'general'}"
         res = cloudinary_provider.upload(
             file_bytes=file_bytes,
@@ -104,14 +190,6 @@ class FileService:
             access="private",
         )
         storage_ref = res.get("public_id") or res.get("url")
-
-        # 3. Associate with request if association_id belongs to a known request
-        assoc_uuid = None
-        if association_id:
-            try:
-                assoc_uuid = uuid.UUID(association_id)
-            except ValueError:
-                pass
 
         # 4. Create ProjectFile record in 'pending_scan' status (mandatory per Document 04 §31)
         file_id = uuid.uuid4()
