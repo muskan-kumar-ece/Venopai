@@ -14,3 +14,4 @@ PyJWT
 email-validator
 python-multipart
 sentry-sdk[fastapi]
+cloudinary
