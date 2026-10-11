@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: Union[List[str], str] = [
+        "https://venopai.in",
+        "https://www.venopai.in",
+        "https://info.venopai.in",
+        "https://admin.venopai.in",
+        "https://venopai.vercel.app",
+        "https://adminvenopai.vercel.app",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
