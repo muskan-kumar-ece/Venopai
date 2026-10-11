@@ -8,10 +8,14 @@ import { LoadingState } from '@/components/account/LoadingState';
 import { EmptyState } from '@/components/account/EmptyState';
 
 interface OrderItem {
-  id: string;
-  product_name: string;
+  id?: string;
+  product_id?: string;
+  name?: string;
+  product_name?: string;
   quantity: number;
-  total_price: string;
+  unit_price?: string;
+  line_total?: string;
+  total_price?: string;
 }
 
 interface Order {
@@ -20,8 +24,10 @@ interface Order {
   status: string;
   payment_status?: string;
   shipment_status?: string;
-  total_amount: string;
-  items: OrderItem[];
+  total?: string;
+  total_amount?: string;
+  item_count?: number;
+  items?: OrderItem[];
   created_at: string;
 }
 
@@ -111,7 +117,8 @@ export default function AccountOrdersPage() {
                     </span>
                   </div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {order.items?.length || 0} {order.items?.length === 1 ? 'item' : 'items'}
+                    {order.item_count ?? order.items?.length ?? 0}{' '}
+                    {(order.item_count ?? order.items?.length ?? 0) === 1 ? 'item' : 'items'}
                   </div>
                 </div>
 
@@ -138,14 +145,22 @@ export default function AccountOrdersPage() {
 
               {/* Items summary */}
               <div className="py-3 text-sm text-zinc-700 dark:text-zinc-300">
-                {order.items?.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex justify-between py-1 text-xs">
-                    <span className="text-zinc-600 dark:text-zinc-400 truncate max-w-md">
-                      {item.quantity}x {item.product_name}
-                    </span>
-                    <span className="font-medium text-zinc-900 dark:text-white">₹{item.total_price}</span>
+                {order.items && order.items.length > 0 ? (
+                  order.items.slice(0, 3).map((item, idx) => (
+                    <div key={item.id || item.product_id || `item-${idx}`} className="flex justify-between py-1 text-xs">
+                      <span className="text-zinc-600 dark:text-zinc-400 truncate max-w-md">
+                        {item.quantity}x {item.product_name || item.name || 'Hardware Part'}
+                      </span>
+                      <span className="font-medium text-zinc-900 dark:text-white">
+                        ₹{item.total_price || item.line_total || item.unit_price || '0.00'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-1 text-xs text-zinc-500 dark:text-zinc-400 italic">
+                    Hardware realization order ({order.item_count ?? 1} items)
                   </div>
-                ))}
+                )}
                 {order.items && order.items.length > 3 && (
                   <div className="text-xs text-zinc-400 dark:text-zinc-500 italic pt-1">
                     +{order.items.length - 3} more items...
@@ -156,7 +171,7 @@ export default function AccountOrdersPage() {
               {/* Actions footer */}
               <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
                 <div className="text-sm font-semibold text-zinc-900 dark:text-white">
-                  Total: ₹{order.total_amount}
+                  Total: ₹{order.total_amount || order.total || '0.00'}
                 </div>
                 <div className="flex items-center gap-3">
                   <Link

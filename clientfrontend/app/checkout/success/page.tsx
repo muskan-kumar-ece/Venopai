@@ -6,11 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { ordersApi, getApiBaseUrl, getCustomerToken } from "@/lib/api/client";
 
 interface OrderItem {
+  id?: string;
   product_id?: string;
-  name: string;
+  name?: string;
+  product_name?: string;
   quantity: number;
   unit_price: string;
   line_total?: string;
+  total_price?: string;
 }
 
 interface OrderDetail {
@@ -21,8 +24,9 @@ interface OrderDetail {
   subtotal: string;
   shipping_fee?: string;
   shipping_amount?: string;
-  tax_amount: string;
-  total_amount: string;
+  tax_amount?: string;
+  total?: string;
+  total_amount?: string;
   paid_at?: string;
   created_at: string;
   items: OrderItem[];
@@ -206,15 +210,17 @@ function OrderSuccessContent() {
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {order?.items && order.items.length > 0 ? (
               order.items.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between py-3.5 text-sm">
+                <div key={item.id || item.product_id || `item-${idx}`} className="flex items-center justify-between py-3.5 text-sm">
                   <div>
-                    <p className="font-semibold text-zinc-900 dark:text-white">{item.name}</p>
+                    <p className="font-semibold text-zinc-900 dark:text-white">
+                      {item.product_name || item.name || 'Hardware Part'}
+                    </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                       Qty: {item.quantity} × ₹{item.unit_price}
                     </p>
                   </div>
                   <span className="font-mono font-bold text-zinc-900 dark:text-white">
-                    ₹{item.line_total || (parseFloat(item.unit_price) * item.quantity).toFixed(2)}
+                    ₹{item.total_price || item.line_total || (parseFloat(item.unit_price) * item.quantity).toFixed(2)}
                   </span>
                 </div>
               ))

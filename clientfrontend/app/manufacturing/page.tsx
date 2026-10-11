@@ -32,7 +32,7 @@ export default function ManufacturingLandingPage() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 selection:bg-cyan-500 selection:text-black">
       {/* Top Banner / Breadcrumb */}
-      <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="text-xl font-bold tracking-tight text-white flex items-center gap-2">

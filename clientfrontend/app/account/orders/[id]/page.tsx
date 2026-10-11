@@ -8,14 +8,16 @@ import { StatusBadge } from '@/components/account/StatusBadge';
 import { LoadingState } from '@/components/account/LoadingState';
 
 interface OrderItem {
-  id: string;
-  product_id: string;
-  product_name: string;
-  sku: string | null;
+  id?: string;
+  product_id?: string;
+  name?: string;
+  product_name?: string;
+  sku?: string | null;
   quantity: number;
   unit_price: string;
-  tax_amount: string;
-  total_price: string;
+  tax_amount?: string;
+  line_total?: string;
+  total_price?: string;
 }
 
 interface OrderDetail {
@@ -23,16 +25,31 @@ interface OrderDetail {
   order_number: string;
   status: string;
   payment_status: string;
-  shipment_status: string;
+  shipment_status?: string;
   subtotal: string;
-  shipping_fee: string;
-  tax_amount: string;
-  total_amount: string;
-  shipping_address_snapshot: {
+  shipping_fee?: string;
+  shipping_amount?: string;
+  tax_amount?: string;
+  tax?: {
+    type?: string;
+    amount?: string;
+  };
+  total?: string;
+  total_amount?: string;
+  shipping_address_snapshot?: {
     recipient_name?: string;
     phone?: string;
     line1?: string;
-    line2?: string;
+    line2?: string | null;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  shipping_address?: {
+    recipient_name?: string;
+    phone?: string;
+    line1?: string;
+    line2?: string | null;
     city?: string;
     state?: string;
     pincode?: string;
@@ -40,7 +57,7 @@ interface OrderDetail {
   items: OrderItem[];
   tracking_number?: string | null;
   carrier?: string | null;
-  can_cancel: boolean;
+  can_cancel?: boolean;
   created_at: string;
 }
 
@@ -221,16 +238,16 @@ export default function OrderDetailPage() {
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Purchased Items</h2>
         <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-          {order.items?.map((item) => (
-            <div key={item.id} className="py-4 flex items-center justify-between">
+          {order.items?.map((item, index) => (
+            <div key={item.id || item.product_id || `item-${index}`} className="py-4 flex items-center justify-between">
               <div>
-                <div className="font-semibold text-sm text-zinc-900 dark:text-white">{item.product_name}</div>
+                <div className="font-semibold text-sm text-zinc-900 dark:text-white">{item.product_name || (item as any).name || 'Hardware Item'}</div>
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   SKU: {item.sku || 'N/A'} • Qty: {item.quantity} • Unit: ₹{item.unit_price}
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">₹{item.total_price}</span>
+                <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">₹{item.total_price || (item as any).line_total || item.unit_price}</span>
                 {order.status === 'delivered' && (
                   <Link
                     href={`/account/reviews?target_type=order_item&target_id=${item.id}&product_id=${item.product_id}`}
@@ -248,41 +265,49 @@ export default function OrderDetailPage() {
         <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 max-w-xs ml-auto space-y-1.5 text-xs text-zinc-600 dark:text-zinc-400">
           <div className="flex justify-between">
             <span>Subtotal:</span>
-            <span className="font-mono font-medium text-zinc-900 dark:text-white">₹{order.subtotal}</span>
+            <span className="font-mono font-medium text-zinc-900 dark:text-white">₹{order.subtotal || '0.00'}</span>
           </div>
           <div className="flex justify-between">
             <span>Shipping:</span>
-            <span className="font-mono font-medium text-zinc-900 dark:text-white">₹{order.shipping_fee}</span>
+            <span className="font-mono font-medium text-zinc-900 dark:text-white">
+              ₹{order.shipping_fee || order.shipping_amount || '0.00'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>GST / Taxes:</span>
-            <span className="font-mono font-medium text-zinc-900 dark:text-white">₹{order.tax_amount}</span>
+            <span className="font-mono font-medium text-zinc-900 dark:text-white">
+              ₹{order.tax_amount || order.tax?.amount || '0.00'}
+            </span>
           </div>
           <div className="flex justify-between pt-2 border-t border-zinc-200 dark:border-zinc-700 text-sm font-bold text-zinc-900 dark:text-white">
             <span>Total:</span>
-            <span className="font-mono text-emerald-600 dark:text-emerald-400">₹{order.total_amount}</span>
+            <span className="font-mono text-emerald-600 dark:text-emerald-400">
+              ₹{order.total_amount || order.total || '0.00'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Shipping Address */}
-      {order.shipping_address_snapshot && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Shipping Destination</h2>
-          <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-            <div className="font-semibold text-sm text-zinc-900 dark:text-white">
-              {order.shipping_address_snapshot.recipient_name}
+      {(order.shipping_address_snapshot || order.shipping_address) && (() => {
+        const addr = order.shipping_address_snapshot || order.shipping_address;
+        return (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Shipping Destination</h2>
+            <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+              <div className="font-semibold text-sm text-zinc-900 dark:text-white">
+                {addr?.recipient_name}
+              </div>
+              <div>{addr?.line1}</div>
+              {addr?.line2 && <div>{addr.line2}</div>}
+              <div>
+                {addr?.city}, {addr?.state} - {addr?.pincode}
+              </div>
+              {addr?.phone && <div className="text-zinc-500 dark:text-zinc-400 mt-1">Phone: {addr.phone}</div>}
             </div>
-            <div>{order.shipping_address_snapshot.line1}</div>
-            {order.shipping_address_snapshot.line2 && <div>{order.shipping_address_snapshot.line2}</div>}
-            <div>
-              {order.shipping_address_snapshot.city}, {order.shipping_address_snapshot.state} -{' '}
-              {order.shipping_address_snapshot.pincode}
-            </div>
-            <div className="text-zinc-500 dark:text-zinc-400 mt-1">Phone: {order.shipping_address_snapshot.phone}</div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Cancellation Modal */}
       {showCancelModal && (

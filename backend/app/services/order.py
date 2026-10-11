@@ -41,14 +41,39 @@ class OrderService:
                 latest_payment = sorted(o.payments, key=lambda p: p.created_at, reverse=True)[0]
                 pay_status = latest_payment.status
 
+            # Items snapshot preview
+            order_items = []
+            if o.items:
+                for it in o.items:
+                    unit_p = it.unit_price_paise or it.price_at_time_of_order
+                    tot_p = it.total_paise or (unit_p * it.quantity)
+                    p_name = it.product_name or (it.product.name if it.product else "Product")
+                    order_items.append({
+                        "id": str(it.id),
+                        "product_id": str(it.product_id),
+                        "name": p_name,
+                        "product_name": p_name,
+                        "sku": (it.product.sku if it.product else None) or "N/A",
+                        "unit_price": _rupees(unit_p),
+                        "quantity": it.quantity,
+                        "line_total": _rupees(tot_p),
+                        "total_price": _rupees(tot_p),
+                    })
+
+            shipment_status = o.shipment.status if o.shipment else ("pending" if o.status != "cancelled" else "cancelled")
+            total_str = _rupees(o.total_paise)
+
             items.append({
                 "id": str(o.id),
                 "order_number": o.order_number,
                 "status": o.status,
                 "payment_status": pay_status,
-                "total": _rupees(o.total_paise),
+                "shipment_status": shipment_status,
+                "total": total_str,
+                "total_amount": total_str,
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "item_count": len(o.items) if o.items else 0,
+                "items": order_items,
             })
 
         total_pages = max(1, (total + page_size - 1) // page_size)
@@ -96,11 +121,15 @@ class OrderService:
             unit_p = it.unit_price_paise or it.price_at_time_of_order
             tot_p = it.total_paise or (unit_p * it.quantity)
             items_data.append({
+                "id": str(it.id),
                 "product_id": str(it.product_id),
                 "name": it.product_name or (it.product.name if it.product else "Product"),
+                "product_name": it.product_name or (it.product.name if it.product else "Product"),
+                "sku": (it.product.sku if it.product else None) or "N/A",
                 "unit_price": _rupees(unit_p),
                 "quantity": it.quantity,
                 "line_total": _rupees(tot_p),
+                "total_price": _rupees(tot_p),
             })
 
         # Address snapshot
@@ -141,17 +170,29 @@ class OrderService:
             "igst_amount": _rupees(order.igst_amount_paise) if order.igst_amount_paise is not None else None,
         }
 
+        tax_amount_str = _rupees(order.tax_amount_paise)
+        shipping_fee_str = _rupees(order.shipping_rate_paise)
+        total_str = _rupees(order.total_paise)
+        shipment_status = order.shipment.status if order.shipment else ("pending" if order.status != "cancelled" else "cancelled")
+        can_cancel = order.status in ("paid", "processing", "pending_payment")
+
         return {
             "id": str(order.id),
             "order_number": order.order_number,
             "status": order.status,
             "payment_status": pay_status,
+            "shipment_status": shipment_status,
+            "can_cancel": can_cancel,
             "items": items_data,
             "subtotal": _rupees(order.subtotal_paise),
-            "shipping_amount": _rupees(order.shipping_rate_paise),
+            "shipping_amount": shipping_fee_str,
+            "shipping_fee": shipping_fee_str,
             "tax": tax_data,
-            "total": _rupees(order.total_paise),
+            "tax_amount": tax_amount_str,
+            "total": total_str,
+            "total_amount": total_str,
             "shipping_address": addr_data,
+            "shipping_address_snapshot": addr_data,
             "shipment": shipment_data,
             "estimated_delivery": None,
             "created_at": order.created_at.isoformat() if order.created_at else None,

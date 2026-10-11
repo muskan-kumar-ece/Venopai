@@ -46,7 +46,7 @@ export default function PCBDesignLandingPage() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       {/* Sub-nav */}
-      <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-neutral-800 bg-neutral-900/50 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-bold text-white tracking-wide uppercase font-mono">

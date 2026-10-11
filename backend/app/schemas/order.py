@@ -2,11 +2,15 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 class OrderItemResponse(BaseModel):
+    id: Optional[str] = None
     product_id: str
     name: str
+    product_name: Optional[str] = None
+    sku: Optional[str] = None
     unit_price: str
     quantity: int
     line_total: str
+    total_price: Optional[str] = None
 
 class OrderShippingAddressResponse(BaseModel):
     recipient_name: str
@@ -39,10 +43,16 @@ class OrderDetailData(BaseModel):
     items: List[OrderItemResponse]
     subtotal: str
     shipping_amount: str
+    shipping_fee: Optional[str] = None
     tax: OrderTaxResponse
+    tax_amount: Optional[str] = None
     total: str
+    total_amount: Optional[str] = None
     shipping_address: Optional[OrderShippingAddressResponse] = None
+    shipping_address_snapshot: Optional[OrderShippingAddressResponse] = None
     shipment: Optional[OrderShipmentResponse] = None
+    shipment_status: Optional[str] = None
+    can_cancel: bool = False
     estimated_delivery: Optional[str] = None
     created_at: str
     paid_at: Optional[str] = None
@@ -57,8 +67,11 @@ class OrderSummaryData(BaseModel):
     status: str
     payment_status: str
     total: str
+    total_amount: Optional[str] = None
     created_at: str
     item_count: int
+    items: Optional[List[OrderItemResponse]] = None
+    shipment_status: Optional[str] = None
 
 class OrderListResponse(BaseModel):
     data: List[OrderSummaryData]

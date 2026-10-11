@@ -11,6 +11,7 @@ import { profileApi,
   designApi,
   consultationsApi,
   softwareApi,
+  projectsApi,
   getCustomerToken,
 } from "@/lib/api/client";
 import { StatusBadge } from '@/components/account/StatusBadge';
@@ -19,8 +20,8 @@ import { LoadingState } from '@/components/account/LoadingState';
 interface DashboardData {
   user: { full_name?: string; email?: string; status?: string } | null;
   ordersCount: number;
-  activeOrders: Array<{ id: string; order_number: string; status: string; total_amount: string; created_at: string }>;
-  quotesNeedingAttention: Array<{ id: string; quote_number: string; status: string; total_amount: string }>;
+  activeOrders: Array<{ id: string; order_number: string; status: string; total?: string; total_amount?: string; created_at: string }>;
+  quotesNeedingAttention: Array<{ id: string; quote_number?: string; status: string; total_amount?: string; created_at?: string; current_version?: { total?: string; version_number?: number } }>;
   pendingPayments: Array<{ id: string; amount: string; status: string; created_at: string }>;
   recentNotifications: Array<{ id: string; title: string; message: string; created_at: string }>;
   activeRequestsCount: number;
@@ -54,33 +55,36 @@ export default function AccountDashboard() {
           designRes,
           consultRes,
           softwareRes,
+          projectsRes,
         ] = await Promise.allSettled([
           profileApi.getProfile(token),
-          ordersApi.listOrders({ page_size: 5 }, token),
+          ordersApi.listOrders({ page_size: 10 }, token),
           quotesApi.listQuotes(token),
-          paymentsApi.listPayments({ page_size: 5 }, token),
+          paymentsApi.listPayments({ page_size: 10 }, token),
           notificationsApi.listNotifications({ page_size: 5 }, token),
-          manufacturingApi.listRequests({ page_size: 10 }, token),
-          designApi.listRequests({ page_size: 10 }, token),
-          consultationsApi.listRequests({ page_size: 10 }, token),
-          softwareApi.listRequests({ page_size: 10 }, token),
+          manufacturingApi.listRequests({ page_size: 20 }, token),
+          designApi.listRequests({ page_size: 20 }, token),
+          consultationsApi.listRequests({ page_size: 20 }, token),
+          softwareApi.listRequests({ page_size: 20 }, token),
+          projectsApi.listProjects(token),
         ]);
 
         const user = profileRes.status === 'fulfilled' ? profileRes.value?.data : null;
         
         const ordersList = ordersRes.status === 'fulfilled' ? ordersRes.value?.data || [] : [];
+        // Authoritative VenopAI Order Lifecycle: paid, processing, ready_to_ship, shipped
         const activeOrders = ordersList.filter((o: { status: string }) =>
-          ['created', 'processing', 'confirmed'].includes(o.status)
+          ['paid', 'processing', 'ready_to_ship', 'shipped', 'created', 'confirmed'].includes(o.status?.toLowerCase())
         );
 
         const quotesList = quotesRes.status === 'fulfilled' ? quotesRes.value?.data || [] : [];
         const quotesNeedingAttention = quotesList.filter((q: { status: string }) =>
-          ['sent', 'pending_approval', 'quoted'].includes(q.status)
+          ['sent', 'pending_approval', 'quoted'].includes(q.status?.toLowerCase())
         );
 
         const paymentsList = paymentsRes.status === 'fulfilled' ? paymentsRes.value?.data || [] : [];
         const pendingPayments = paymentsList.filter((p: { status: string }) =>
-          ['initiated', 'pending'].includes(p.status)
+          ['initiated', 'pending', 'created', 'processing'].includes(p.status?.toLowerCase())
         );
 
         const recentNotifications = notifsRes.status === 'fulfilled' ? notifsRes.value?.data || [] : [];
@@ -98,10 +102,17 @@ export default function AccountDashboard() {
         if (softwareRes.status === 'fulfilled') {
           activeRequestsCount += (softwareRes.value?.data || []).filter((r: { status: string }) => r.status !== 'completed' && r.status !== 'cancelled').length;
         }
+        if (projectsRes.status === 'fulfilled') {
+          activeRequestsCount += (projectsRes.value?.data || []).filter((p: { status?: string }) => p.status !== 'completed' && p.status !== 'archived').length;
+        }
+
+        const totalOrdersCount = ordersRes.status === 'fulfilled'
+          ? (ordersRes.value?.pagination?.total ?? ordersList.length)
+          : 0;
 
         setData({
           user,
-          ordersCount: ordersList.length,
+          ordersCount: totalOrdersCount,
           activeOrders: activeOrders.slice(0, 3),
           quotesNeedingAttention: quotesNeedingAttention.slice(0, 3),
           pendingPayments: pendingPayments.slice(0, 3),
@@ -189,7 +200,9 @@ export default function AccountDashboard() {
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">{order.created_at?.slice(0, 10)}</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-zinc-900 dark:text-white">₹{order.total_amount}</span>
+                    <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                      ₹{order.total_amount || order.total || '0.00'}
+                    </span>
                     <StatusBadge status={order.status} />
                   </div>
                 </div>
@@ -213,11 +226,15 @@ export default function AccountDashboard() {
               {data.quotesNeedingAttention.map((quote) => (
                 <div key={quote.id} className="py-3 flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">{quote.quote_number}</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">
+                      {quote.quote_number || `QUO-${quote.id.slice(0, 8).toUpperCase()}`}
+                    </div>
                     <div className="text-xs text-amber-500">Action required</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-zinc-900 dark:text-white">₹{quote.total_amount}</span>
+                    <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                      ₹{quote.current_version?.total || quote.total_amount || '0.00'}
+                    </span>
                     <StatusBadge status={quote.status} />
                     <Link
                       href={`/account/quotes/${quote.id}`}

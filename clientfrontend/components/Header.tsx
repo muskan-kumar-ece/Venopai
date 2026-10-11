@@ -72,7 +72,7 @@ export function Header() {
     : "U";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 shadow-xs">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand & Main Nav */}
         <div className="flex items-center gap-6">
@@ -200,86 +200,117 @@ export function Header() {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 z-50">
-                  <div className="border-b border-zinc-100 px-4 py-2 dark:border-zinc-800">
-                    <p className="text-xs font-semibold text-zinc-900 dark:text-white truncate">
-                      {user?.full_name}
-                    </p>
-                    <p className="text-xs text-zinc-500 truncate dark:text-zinc-400">
-                      {user?.email}
-                    </p>
+                <div className="absolute right-0 mt-2.5 w-64 rounded-2xl border border-zinc-200/90 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl dark:border-zinc-800/90 dark:bg-zinc-950/95 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  {/* User Profile Header */}
+                  <div className="border-b border-zinc-100 px-3.5 py-3 dark:border-zinc-800/80 mb-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white shadow-xs">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                          {user?.full_name || "Engineer"}
+                        </p>
+                        <p className="text-[11px] text-zinc-500 truncate dark:text-zinc-400">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Group 1: Commercial & Account Overview */}
                   <div className="py-1">
+                    <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">
+                      Activity
+                    </span>
                     <Link
                       href="/account"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
                     >
-                      Dashboard Overview
+                      <span className="text-zinc-400 dark:text-zinc-500">📊</span>
+                      <span>Dashboard Overview</span>
                     </Link>
                     <Link
                       href="/account/orders"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
                     >
-                      Orders & Invoices
+                      <span className="text-zinc-400 dark:text-zinc-500">📦</span>
+                      <span>Orders & Invoices</span>
                     </Link>
                     <Link
                       href="/account/quotes"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
                     >
-                      Quotes & Approvals
+                      <span className="text-zinc-400 dark:text-zinc-500">📄</span>
+                      <span>Quotes & Approvals</span>
                     </Link>
                     <Link
                       href="/account/projects"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
                     >
-                      Engineering Projects
-                    </Link>
-                    <Link
-                      href="/account/manufacturing"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      Manufacturing Requests
-                    </Link>
-                    <Link
-                      href="/account/design"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      PCB Design Requests
-                    </Link>
-                    <Link
-                      href="/account/software"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      Firmware Requests
-                    </Link>
-                    <Link
-                      href="/account/consultations"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      Consultations
-                    </Link>
-                    <Link
-                      href="/account/files"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      Project File Library
+                      <span className="text-zinc-400 dark:text-zinc-500">📂</span>
+                      <span>Engineering Projects</span>
                     </Link>
                   </div>
 
-                  <div className="border-t border-zinc-100 py-1 dark:border-zinc-800">
+                  {/* Group 2: Specialized Engineering Requests */}
+                  <div className="border-t border-zinc-100 py-1 dark:border-zinc-800/80">
+                    <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">
+                      Realization Services
+                    </span>
+                    <Link
+                      href="/account/manufacturing"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
+                    >
+                      <span className="text-zinc-400 dark:text-zinc-500">🏭</span>
+                      <span>Manufacturing Requests</span>
+                    </Link>
+                    <Link
+                      href="/account/design"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
+                    >
+                      <span className="text-zinc-400 dark:text-zinc-500">🔧</span>
+                      <span>PCB Design Requests</span>
+                    </Link>
+                    <Link
+                      href="/account/software"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
+                    >
+                      <span className="text-zinc-400 dark:text-zinc-500">💻</span>
+                      <span>Firmware Requests</span>
+                    </Link>
+                    <Link
+                      href="/account/consultations"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
+                    >
+                      <span className="text-zinc-400 dark:text-zinc-500">💬</span>
+                      <span>Consultations</span>
+                    </Link>
+                    <Link
+                      href="/account/files"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
+                    >
+                      <span className="text-zinc-400 dark:text-zinc-500">📁</span>
+                      <span>Project File Library</span>
+                    </Link>
+                  </div>
+
+                  {/* Group 3: Settings & Sign Out */}
+                  <div className="border-t border-zinc-100 pt-1 dark:border-zinc-800/80">
                     <Link
                       href="/account/settings"
-                      className="block px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70 transition-colors"
                     >
-                      Account Settings
+                      <span className="text-zinc-400 dark:text-zinc-500">⚙️</span>
+                      <span>Account Settings</span>
                     </Link>
                     <button
                       type="button"
                       onClick={() => logout()}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                     >
-                      Sign Out
+                      <span>🚪</span>
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>
