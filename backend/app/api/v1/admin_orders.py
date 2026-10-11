@@ -3,6 +3,7 @@ Conforms to Document 01 §13, Document 02 §13 & §21, Document 03 §39, Documen
 """
 import uuid
 import math
+import json
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request, Query, HTTPException, status as http_status
@@ -136,6 +137,25 @@ def admin_get_order(
     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
     shipment = db.query(Shipment).filter(Shipment.order_id == order.id).first()
 
+    # Parse shipping address snapshot or relationship
+    shipping_addr = None
+    if order.shipping_address_snapshot:
+        try:
+            shipping_addr = json.loads(order.shipping_address_snapshot)
+        except Exception:
+            shipping_addr = None
+    elif order.shipping_address:
+        shipping_addr = {
+            "recipient_name": order.shipping_address.recipient_name,
+            "phone": order.shipping_address.phone,
+            "line1": order.shipping_address.line1,
+            "line2": order.shipping_address.line2,
+            "city": order.shipping_address.city,
+            "state": order.shipping_address.state,
+            "pincode": order.shipping_address.pincode,
+            "country": order.shipping_address.country,
+        }
+
     return {
         "data": {
             "id": str(order.id),
@@ -147,16 +167,16 @@ def admin_get_order(
             "subtotal_paise": order.subtotal_paise,
             "tax_paise": order.tax_paise,
             "shipping_amount_paise": order.shipping_amount_paise,
-            "shipping_address": order.shipping_address_snapshot,
+            "shipping_address": shipping_addr,
             "items": [
                 {
                     "id": str(item.id),
                     "product_id": str(item.product_id),
-                    "title": item.title,
-                    "sku": item.sku,
+                    "title": item.product_name or (item.product.name if item.product else "Hardware Component"),
+                    "sku": (item.product.sku if item.product else None) or "N/A",
                     "quantity": item.quantity,
-                    "unit_price_paise": item.unit_price_paise,
-                    "total_price_paise": item.total_price_paise,
+                    "unit_price_paise": item.unit_price_paise or item.price_at_time_of_order,
+                    "total_price_paise": item.total_paise or ((item.unit_price_paise or item.price_at_time_of_order) * item.quantity),
                 }
                 for item in items
             ],

@@ -67,6 +67,21 @@ def test_admin_orders_api_lifecycle(db):
     db.add(order)
     db.commit()
 
+    # Add OrderItem to ensure serialization of items works cleanly
+    from app.models.order import OrderItem
+    item = OrderItem(
+        id=uuid.uuid4(),
+        order_id=order.id,
+        product_id=uuid.uuid4(),
+        product_name="Test Sensor Board",
+        quantity=2,
+        price_at_time_of_order=50000,
+        unit_price_paise=50000,
+        total_paise=100000,
+    )
+    db.add(item)
+    db.commit()
+
     # ADMIN-ORD-API-001: List orders
     res = client.get("/api/v1/admin/orders", headers=headers)
     assert res.status_code == 200
@@ -76,7 +91,13 @@ def test_admin_orders_api_lifecycle(db):
     # ADMIN-ORD-API-002: Get order detail
     res_det = client.get(f"/api/v1/admin/orders/{order.id}", headers=headers)
     assert res_det.status_code == 200
-    assert res_det.json()["data"]["id"] == str(order.id)
+    order_resp = res_det.json()["data"]
+    assert order_resp["id"] == str(order.id)
+    assert len(order_resp["items"]) == 1
+    assert order_resp["items"][0]["title"] == "Test Sensor Board"
+    assert order_resp["items"][0]["quantity"] == 2
+    assert order_resp["items"][0]["unit_price_paise"] == 50000
+    assert order_resp["items"][0]["total_price_paise"] == 100000
 
     # ADMIN-ORD-API-003: Update status
     res_stat = client.patch(
