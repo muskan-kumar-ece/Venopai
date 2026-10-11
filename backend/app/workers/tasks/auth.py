@@ -2,6 +2,7 @@
 Conforms to Document 01 §7.1 & §17, Document 02 §17 & §20.
 """
 import logging
+from app.core.config import settings
 from app.workers.celery_app import celery_app
 from app.integrations.resend import resend_provider
 
@@ -13,7 +14,8 @@ def send_verification_email_task(self, email: str, token: str, full_name: str):
     """Dispatches account email verification link via Resend. Tokens are never logged."""
     logger.info(f"[EMAIL TASK] Sending verification email to {email}")
     try:
-        verify_url = f"http://localhost:3000/verify-email?token={token}&email={email}"
+        base_url = settings.CLIENT_FRONTEND_URL.rstrip("/")
+        verify_url = f"{base_url}/verify-email?token={token}&email={email}"
         html_body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2>Verify your VenopAI account</h2>
@@ -40,7 +42,8 @@ def send_password_reset_email_task(self, email: str, token: str):
     """Dispatches password reset link via Resend. Tokens are never logged."""
     logger.info(f"[EMAIL TASK] Sending password reset email to {email}")
     try:
-        reset_url = f"http://localhost:3000/reset-password?token={token}"
+        base_url = settings.CLIENT_FRONTEND_URL.rstrip("/")
+        reset_url = f"{base_url}/reset-password?token={token}"
         html_body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2>Reset your VenopAI password</h2>
