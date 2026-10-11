@@ -327,10 +327,21 @@ def admin_create_order_shipment(
         tracking = body.tracking_number
         sr_order_id = None
         if not tracking:
+            delivery_pincode = "500001"
+            if order.shipping_address_snapshot:
+                try:
+                    snapshot_dict = json.loads(order.shipping_address_snapshot)
+                    if isinstance(snapshot_dict, dict) and snapshot_dict.get("pincode"):
+                        delivery_pincode = str(snapshot_dict["pincode"]).strip()
+                except Exception:
+                    pass
+            elif order.shipping_address and order.shipping_address.pincode:
+                delivery_pincode = str(order.shipping_address.pincode).strip()
+
             ship_res = shiprocket_provider.create_shipment(
                 reference_id=str(order.id),
                 pickup_pincode="500001",
-                delivery_pincode=order.shipping_address_snapshot.get("pincode", "500001") if order.shipping_address_snapshot else "500001",
+                delivery_pincode=delivery_pincode,
                 weight_grams=body.weight_grams or 500,
             )
             tracking = ship_res.get("tracking_number")

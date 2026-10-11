@@ -116,7 +116,7 @@ def test_admin_orders_api_lifecycle(db):
     )
     assert res_note.status_code == 200
 
-    # ADMIN-SHIP-API-001: Create order shipment
+    # ADMIN-SHIP-API-001: Create order shipment with explicit tracking
     res_ship = client.post(
         f"/api/v1/admin/orders/{order.id}/shipment",
         headers=headers,
@@ -124,6 +124,26 @@ def test_admin_orders_api_lifecycle(db):
     )
     assert res_ship.status_code == 200
     assert res_ship.json()["data"]["carrier"] == "Delhivery Air"
+
+    # Also test auto-generation without tracking number when shipping_address_snapshot is a JSON string
+    order_auto = Order(
+        id=uuid.uuid4(),
+        order_number=f"ORD-AUTO-{uuid.uuid4().hex[:6]}",
+        user_id=cust.id,
+        status="paid",
+        total_amount=50000,
+        shipping_address_snapshot='{"recipient_name": "Test User", "pincode": "500090"}',
+    )
+    db.add(order_auto)
+    db.commit()
+
+    res_auto_ship = client.post(
+        f"/api/v1/admin/orders/{order_auto.id}/shipment",
+        headers=headers,
+        json={"carrier": "Delhivery"},
+    )
+    assert res_auto_ship.status_code == 200
+    assert res_auto_ship.json()["data"]["tracking_number"] is not None
 
 def test_admin_customers_api_lifecycle(db):
     token, admin = create_admin_token(db, role="SUPER_ADMIN")
