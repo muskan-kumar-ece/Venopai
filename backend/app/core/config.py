@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "notifications@venopai.com"
+    EMAIL_FROM: str = "notifications@venopai.in"
     CLIENT_FRONTEND_URL: str = "https://venopai.vercel.app"
     
     SENTRY_DSN: str = ""
