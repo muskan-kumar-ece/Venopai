@@ -1,5 +1,15 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service & Statutory Agreement",
+  description:
+    "Official Terms of Service for VenopAI Technologies Pvt. Ltd. Governs platform use, electronic components sales, custom fabrication orders, and intellectual property.",
+  alternates: {
+    canonical: "/terms",
+  },
+};
 
 export default function TermsPage() {
   return (
@@ -74,14 +84,14 @@ export default function TermsPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">7. Statutory Grievance Redressal</h2>
               <p className="mt-1">
-                In compliance with the <em>Information Technology Rules, 2021</em>, disputes, consumer grievances, or compliance concerns may be submitted directly to our designated Grievance Officer at <a href="mailto:grievance@venopai.com" className="text-emerald-600 underline">grievance@venopai.com</a>. Full details of our escalation matrix are published on our <Link href="/grievance" className="text-emerald-600 underline">Grievance Redressal Page</Link>.
+                In compliance with the <em>Information Technology Rules, 2021</em>, disputes, consumer grievances, or compliance concerns may be submitted directly to our designated Grievance Officer at <a href="mailto:grievance@venopai.in" className="text-emerald-600 underline">grievance@venopai.in</a>. Full details of our escalation matrix are published on our <Link href="/grievance" className="text-emerald-600 underline">Grievance Redressal Page</Link>.
               </p>
             </section>
 
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">8. Governing Law & Jurisdiction</h2>
               <p className="mt-1">
-                These terms shall be governed by and construed in accordance with the laws of India. Any legal disputes arising under these terms shall be subject to the exclusive jurisdiction of the competent courts in Bengaluru, Karnataka, India.
+                These terms shall be governed by and construed in accordance with the laws of India. Any legal disputes arising under these terms shall be subject to the exclusive jurisdiction of the competent courts in Hyderabad, Telangana, India.
               </p>
             </section>
           </div>

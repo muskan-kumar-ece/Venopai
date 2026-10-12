@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://venopai.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://venopai.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   keywords: [
     "PCB manufacturing India",
     "custom PCB design",
-    "electronics engineering Bangalore",
+    "electronics engineering Hyderabad",
     "rapid prototyping",
     "electronic components",
     "turnkey PCB assembly",
@@ -84,6 +84,10 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  alternates: {
+    canonical: siteUrl,
+  },
+  category: "technology",
 };
 
 export default function RootLayout({
@@ -91,12 +95,71 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "VenopAI Technologies Pvt. Ltd.",
+    alternateName: "VenopAI",
+    url: siteUrl,
+    logo: `${siteUrl}/icon.png`,
+    description:
+      "Turnkey electronics engineering, custom PCB design, rapid manufacturing & certified hardware marketplace.",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "3-40 Mallampet",
+      addressLocality: "Hyderabad",
+      addressRegion: "Telangana",
+      postalCode: "500090",
+      addressCountry: "IN",
+    },
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer service",
+        email: "support@venopai.in",
+        areaServed: "IN",
+        availableLanguage: ["English", "Hindi", "Telugu"],
+      },
+    ],
+    sameAs: [
+      "https://www.instagram.com/venopai/",
+      "https://twitter.com/venopai",
+      "https://github.com/venopai",
+      "https://linkedin.com/company/venopai",
+    ],
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "VenopAI",
+    url: siteUrl,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${siteUrl}/products?search={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
         <AuthProvider>
           <Header />

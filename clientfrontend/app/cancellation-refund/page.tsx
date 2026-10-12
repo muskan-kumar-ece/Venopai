@@ -1,5 +1,15 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Cancellation & Refund Policy — Custom Fabrication & Catalog",
+  description:
+    "Official Cancellation and Refund policy of VenopAI Technologies Pvt. Ltd. under the Consumer Protection (E-Commerce) Rules, 2020. Clear guidelines on stages of manufacturing cancellations.",
+  alternates: {
+    canonical: "/cancellation-refund",
+  },
+};
 
 export default function CancellationRefundPage() {
   return (
@@ -92,7 +102,7 @@ export default function CancellationRefundPage() {
                   <strong>Statutory Processing SLA:</strong>
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Inspection & Approval:</strong> Within 48 hours of returned item receipt at our Bengaluru facility.</li>
+                  <li><strong>Inspection & Approval:</strong> Within 48 hours of returned item receipt at our Hyderabad facility.</li>
                   <li><strong>Banking Credit:</strong> Within <strong className="text-zinc-900 dark:text-zinc-200">5 to 7 business days</strong> following refund initiation, subject to your card issuer or banking institution.</li>
                 </ul>
               </div>

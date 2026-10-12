@@ -37,7 +37,9 @@ class FileService:
         if user_role == "SUPER_ADMIN":
             return
 
-        req_type = (request_type or "").lower()
+        req_type = (request_type or "").strip().lower()
+        if req_type == "manufacturing_request":
+            req_type = "manufacturing"
         if req_type in ("manufacturing", "design", "software", "consultation") and user_role == "MANUFACTURING_MANAGER":
             return
 
@@ -120,6 +122,9 @@ class FileService:
                     )
 
         # 2. Validate association ownership and authorization
+        if association_type and association_type.strip().lower() == "manufacturing_request":
+            association_type = "manufacturing"
+
         assoc_uuid = None
         if association_id:
             try:

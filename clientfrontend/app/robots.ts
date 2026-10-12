@@ -1,0 +1,62 @@
+import type { MetadataRoute } from "next";
+
+export default function robots(): MetadataRoute.Robots {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://venopai.in").replace(/\/+$/, "");
+
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: [
+          "/",
+          "/products",
+          "/products/*",
+          "/manufacturing",
+          "/design",
+          "/software",
+          "/consultations",
+          "/about",
+          "/contact",
+          "/faq",
+          "/feedback",
+          "/track",
+          "/search",
+          "/terms",
+          "/privacy",
+          "/cancellation-refund",
+          "/shipping-policy",
+          "/grievance",
+        ],
+        disallow: [
+          "/account/",
+          "/account/*",
+          "/cart",
+          "/checkout/",
+          "/checkout/*",
+          "/login",
+          "/register",
+          "/forgot-password",
+          "/reset-password",
+          "/verify-email",
+          "/orders/",
+          "/orders/*",
+          "/quotes/",
+          "/quotes/*",
+          "/projects/",
+          "/projects/*",
+          "/manufacturing/requests/",
+          "/manufacturing/requests/*",
+          "/manufacturing/request",
+          "/design/requests/",
+          "/design/requests/*",
+          "/design/request",
+          "/software/request",
+          "/consultations/request",
+          "/api/",
+        ],
+      },
+    ],
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
+  };
+}

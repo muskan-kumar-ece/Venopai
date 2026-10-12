@@ -444,10 +444,10 @@ def download_order_invoice_html(
                 <h1 style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #18181b;">VenopAI Technologies</h1>
                 <p style="font-size: 12px; color: #71717a; margin-top: 4px;">Hardware Engineering & Turnkey Realization Platform</p>
                 <p style="font-size: 11px; color: #52525b; margin-top: 8px; line-height: 1.5;">
-                    4th Floor, Tech Hub, Pune-Bangalore Highway<br>
-                    Pune, Maharashtra - 411045, India<br>
-                    <strong>GSTIN:</strong> 27ABCDE1234F1Z5 &nbsp;|&nbsp; <strong>PAN:</strong> ABCDE1234F<br>
-                    <strong>Email:</strong> support@venopai.com &nbsp;|&nbsp; <strong>Phone:</strong> +91 (020) 8492-3000
+                    3-40, Mallampet, Hyderabad<br>
+                    Telangana - 500090, India<br>
+                    <strong>GSTIN:</strong> 36ABCDE1234F1Z5 &nbsp;|&nbsp; <strong>PAN:</strong> ABCDE1234F<br>
+                    <strong>Email:</strong> support@venopai.in &nbsp;|&nbsp; <strong>Phone:</strong> +91 (80) 4123-8900
                 </p>
             </div>
             <div style="text-align: right;">
@@ -542,7 +542,7 @@ def download_order_invoice_html(
         <!-- Footer Notice & Signatory -->
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #d4d4d8; display: flex; justify-content: space-between; align-items: flex-end;">
             <div style="font-size: 10px; color: #a1a1aa; max-width: 480px; line-height: 1.5;">
-                This is a computer-generated tax invoice issued in accordance with Section 31 of the Central Goods and Services Tax Act, 2017. All hardware products supplied are subject to VenopAI standard manufacturer warranty. For questions or enterprise accounts, contact accounts@venopai.com.
+                This is a computer-generated tax invoice issued in accordance with Section 31 of the Central Goods and Services Tax Act, 2017. All hardware products supplied are subject to VenopAI standard manufacturer warranty. For questions or enterprise accounts, contact accounts@venopai.in.
             </div>
             <div style="text-align: center;">
                 <div style="font-size: 11px; font-weight: 700; color: #52525b;">For VenopAI Technologies Pvt. Ltd.</div>

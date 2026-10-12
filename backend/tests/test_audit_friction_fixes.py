@@ -227,7 +227,7 @@ class TestAuditFrictionFixes:
             assert "text/html" in res.headers["content-type"]
             html = res.text
             assert "VenopAI Technologies" in html
-            assert "27ABCDE1234F1Z5" in html  # GSTIN
+            assert "36ABCDE1234F1Z5" in html  # GSTIN (Telangana)
             assert order_num in html
             assert "TAX INVOICE" in html
 

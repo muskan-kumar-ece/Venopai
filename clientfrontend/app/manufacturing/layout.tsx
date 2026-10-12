@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Rapid PCB Fabrication & Turnkey Electronics Assembly",
   description:
-    "48-Hour rapid prototyping, 1 to 16 layer PCB stacks, automated SMT/THT assembly, and instant CAD/Gerber DFM review in Bengaluru, India.",
+    "48-Hour rapid prototyping, 1 to 16 layer PCB stacks, automated SMT/THT assembly, and instant CAD/Gerber DFM review in Hyderabad, India.",
   openGraph: {
     title: "Rapid PCB Fabrication & Turnkey Electronics Assembly | VenopAI",
     description:
-      "48-Hour rapid prototyping, 1 to 16 layer PCB stacks, automated SMT/THT assembly, and instant CAD/Gerber DFM review in Bengaluru, India.",
+      "48-Hour rapid prototyping, 1 to 16 layer PCB stacks, automated SMT/THT assembly, and instant CAD/Gerber DFM review in Hyderabad, India.",
     url: "/manufacturing",
     siteName: "VenopAI",
     images: [

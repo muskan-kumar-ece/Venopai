@@ -1,5 +1,15 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy & DPDP Data Protection Notice",
+  description:
+    "VenopAI privacy and data protection commitments under the Digital Personal Data Protection Act, 2023. Transparent handling of customer CAD files, personal data, and security controls.",
+  alternates: {
+    canonical: "/privacy",
+  },
+};
 
 export default function PrivacyPolicyPage() {
   return (
@@ -112,8 +122,8 @@ export default function PrivacyPolicyPage() {
               </p>
               <div className="mt-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60">
                 <p><strong>Designated Data Protection Officer (DPO):</strong> Rajesh Kumar, Compliance Lead</p>
-                <p><strong>Email:</strong> <a href="mailto:dpo@venopai.com" className="text-emerald-600 underline">dpo@venopai.com</a> / <a href="mailto:grievance@venopai.com" className="text-emerald-600 underline">grievance@venopai.com</a></p>
-                <p><strong>Postal Address:</strong> VenopAI Technologies Pvt. Ltd., 100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru, Karnataka 560038, India</p>
+                <p><strong>Email:</strong> <a href="mailto:dpo@venopai.in" className="text-emerald-600 underline">dpo@venopai.in</a> / <a href="mailto:grievance@venopai.in" className="text-emerald-600 underline">grievance@venopai.in</a></p>
+                <p><strong>Postal Address:</strong> VenopAI Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India</p>
                 <p className="mt-2 text-[11px] text-zinc-500">
                   You also retain the statutory right to file a complaint with the <strong>Data Protection Board of India (DPBI)</strong> if our Grievance Redressal Officer does not resolve your query within thirty (30) days.
                 </p>

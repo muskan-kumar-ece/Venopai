@@ -80,6 +80,10 @@ export default function ConsultationRequestPage() {
     try {
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
+        if (file.size > 100 * 1024 * 1024) {
+          setErrorMessage(`File "${file.name}" exceeds 100MB maximum size limit.`);
+          continue;
+        }
         const formData = new FormData();
         formData.append("file", file);
         formData.append("association_type", "consultation");
@@ -107,6 +111,7 @@ export default function ConsultationRequestPage() {
 
   const handleRemoveFile = (fileId: string) => {
     setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    filesApi.deleteFile(fileId).catch(() => {});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -236,6 +241,7 @@ export default function ConsultationRequestPage() {
                   <input
                     type="file"
                     multiple
+                    accept=".pdf,.zip,.png,.jpg,.jpeg,.gerber,.gbr,.step,.stp,.stl,.dxf,.csv,.txt"
                     disabled={isUploading}
                     onChange={handleFileUpload}
                     className="hidden"

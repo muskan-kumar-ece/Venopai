@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Embedded Software, RTOS & IoT Firmware Development",
+  title: "Embedded Firmware & IoT Software Engineering",
   description:
-    "Production-grade firmware architecture for STM32, ESP32, nRF52, BLE, WiFi, and industrial IoT communication protocols.",
+    "Production-grade firmware development: Board support packages (BSP), FreeRTOS/Zephyr, wireless IoT protocols (BLE, Wi-Fi, LoRaWAN), and OTA update architecture.",
+  alternates: {
+    canonical: "/software",
+  },
   openGraph: {
-    title: "Embedded Software, RTOS & IoT Firmware Development | VenopAI",
+    title: "Embedded Firmware & IoT Software Engineering | VenopAI",
     description:
-      "Production-grade firmware architecture for STM32, ESP32, nRF52, BLE, WiFi, and industrial IoT communication protocols.",
+      "Board bring-up, RTOS drivers, BLE/Wi-Fi/LoRa stacks, and robust IoT device firmware architecture.",
     url: "/software",
     siteName: "VenopAI",
-    images: [
-      {
-        url: "/images/og/og_software.jpg",
-        width: 1200,
-        height: 630,
-        alt: "VenopAI Embedded Software Engineering",
-      },
-    ],
+    images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Embedded Software & Firmware Development | VenopAI",
-    description: "Production firmware for microcontrollers, RTOS, and wireless IoT protocols.",
-    images: ["/images/og/og_software.jpg"],
+    title: "Embedded Firmware & IoT Software Engineering | VenopAI",
+    description: "Production firmware, FreeRTOS, hardware drivers, and IoT cloud connectivity.",
+    images: ["/images/og/venopai_og_preview.jpg"],
   },
 };
 

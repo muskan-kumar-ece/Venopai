@@ -59,12 +59,18 @@ export default function CustomerFilesPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
+    const file = fileList[0];
+    if (file.size > 100 * 1024 * 1024) {
+      setUploadError("File exceeds 100MB maximum size limit.");
+      e.target.value = "";
+      return;
+    }
 
     setUploading(true);
     setUploadError(null);
     try {
       const formData = new FormData();
-      formData.append("file", fileList[0]);
+      formData.append("file", file);
       formData.append("association_type", activeTab === "all" ? "manufacturing" : activeTab);
       const res = await filesApi.uploadFile(formData);
       if (res?.data) {
@@ -173,6 +179,7 @@ export default function CustomerFilesPage() {
             <span>{uploading ? "Uploading..." : "Upload CAD / Gerber / Spec"}</span>
             <input
               type="file"
+              accept=".step,.stp,.stl,.dxf,.dwg,.gerber,.gbr,.pcb,.sch,.kicad_pcb,.kicad_sch,.zip,.pdf,.png,.jpg,.jpeg,.csv"
               onChange={handleFileUpload}
               disabled={uploading}
               className="hidden"

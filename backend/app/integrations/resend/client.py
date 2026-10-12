@@ -37,7 +37,7 @@ class ResendProvider:
 
     @property
     def sender(self) -> str:
-        return settings.EMAIL_FROM or "notifications@venopai.com"
+        return settings.EMAIL_FROM or "notifications@venopai.in"
 
     def is_mock(self) -> bool:
         """Determines whether to execute live API call or return deterministic mock."""

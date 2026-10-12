@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "1-on-1 Hardware Architecture & DFM Consultations",
+  title: "Hardware Engineering & Architecture Consultations",
   description:
-    "Consult with senior electronics hardware architects on circuit design, component selection, cost reduction, and manufacturing readiness.",
+    "1-on-1 technical advisory with senior electronics engineers: Architecture review, Bill-of-Materials (BOM) cost reduction, component obsolescence audits, and DFM validation.",
+  alternates: {
+    canonical: "/consultations",
+  },
   openGraph: {
-    title: "1-on-1 Hardware Architecture & DFM Consultations | VenopAI",
+    title: "Hardware Engineering Consultations | VenopAI",
     description:
-      "Consult with senior electronics hardware architects on circuit design, component selection, cost reduction, and manufacturing readiness.",
+      "1-on-1 engineering advisory: Schematics review, BOM optimization, regulatory compliance, and rapid prototyping consultation.",
     url: "/consultations",
     siteName: "VenopAI",
-    images: [
-      {
-        url: "/images/og/og_consultation.jpg",
-        width: 1200,
-        height: 630,
-        alt: "VenopAI Hardware Consultations",
-      },
-    ],
+    images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "1-on-1 Hardware Architecture Consultations | VenopAI",
-    description: "Expert engineering guidance for electronics hardware realization.",
-    images: ["/images/og/og_consultation.jpg"],
+    title: "Hardware Engineering Consultations | VenopAI",
+    description: "BOM optimization, schematic review, and DFM engineering consultation.",
+    images: ["/images/og/venopai_og_preview.jpg"],
   },
 };
 

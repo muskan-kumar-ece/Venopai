@@ -176,9 +176,9 @@ export default function PrintableQuotePage({
               Hardware Engineering, Rapid PCB Fabrication &amp; Turnkey Realization
             </p>
             <p className="mt-3 text-[11px] text-zinc-600 leading-relaxed">
-              4th Floor, Tech Hub, Pune-Bangalore Highway, Pune, MH - 411045, India<br />
-              <strong>GSTIN:</strong> 27ABCDE1234F1Z5 &nbsp;|&nbsp; <strong>PAN:</strong> ABCDE1234F<br />
-              <strong>Web:</strong> https://venopai.com &nbsp;|&nbsp; <strong>Contact:</strong> projects@venopai.com
+              3-40, Mallampet, Hyderabad, Telangana - 500090, India<br />
+              <strong>GSTIN:</strong> 36ABCDE1234F1Z5 &nbsp;|&nbsp; <strong>PAN:</strong> ABCDE1234F<br />
+              <strong>Web:</strong> https://venopai.in &nbsp;|&nbsp; <strong>Contact:</strong> projects@venopai.in
             </p>
           </div>
 

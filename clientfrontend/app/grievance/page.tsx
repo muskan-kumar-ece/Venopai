@@ -1,5 +1,15 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Grievance Redressal Mechanism & Statutory Nodal Officer",
+  description:
+    "Statutory Grievance Redressal Mechanism under the Information Technology Act, 2000 and Consumer Protection Rules, 2020. Contact details for our designated nodal grievance officer.",
+  alternates: {
+    canonical: "/grievance",
+  },
+};
 
 export default function GrievanceRedressalPage() {
   return (
@@ -44,8 +54,8 @@ export default function GrievanceRedressalPage() {
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400">Official Email:</span>
                   <p>
-                    <a href="mailto:grievance@venopai.com" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
-                      grievance@venopai.com
+                    <a href="mailto:grievance@venopai.in" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+                      grievance@venopai.in
                     </a>
                   </p>
                 </div>
@@ -58,7 +68,7 @@ export default function GrievanceRedressalPage() {
                 <div className="sm:col-span-2">
                   <span className="text-zinc-500 dark:text-zinc-400">Postal Address for Legal Notices:</span>
                   <p className="font-medium text-zinc-800 dark:text-zinc-200">
-                    VenopAI Technologies Pvt. Ltd., 100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru, Karnataka 560038, India
+                    VenopAI Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India
                   </p>
                 </div>
               </div>
@@ -100,7 +110,7 @@ export default function GrievanceRedressalPage() {
                   <h3 className="text-xs font-bold text-zinc-900 dark:text-white">Level 1: General Customer Support Desk</h3>
                   <p className="mt-1">
                     For delivery tracking, quote revisions, invoice downloads, or component returns, contact our customer desk at{" "}
-                    <a href="mailto:support@venopai.com" className="text-emerald-600 underline">support@venopai.com</a> or use the{" "}
+                    <a href="mailto:support@venopai.in" className="text-emerald-600 underline">support@venopai.in</a> or use the{" "}
                     <Link href="/contact" className="text-emerald-600 underline">Contact Form</Link>. Average response: under 4 business hours.
                   </p>
                 </li>
@@ -111,7 +121,7 @@ export default function GrievanceRedressalPage() {
                   <h3 className="text-xs font-bold text-zinc-900 dark:text-white">Level 2: Grievance Redressal Officer</h3>
                   <p className="mt-1">
                     If your issue is not resolved within 48 hours or you have concerns regarding data privacy, dark patterns, or unresolved claims, escalate with your Ticket ID to{" "}
-                    <a href="mailto:grievance@venopai.com" className="text-emerald-600 underline">grievance@venopai.com</a>.
+                    <a href="mailto:grievance@venopai.in" className="text-emerald-600 underline">grievance@venopai.in</a>.
                   </p>
                 </li>
                 <li className="ml-6">

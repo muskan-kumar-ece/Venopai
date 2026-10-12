@@ -1,5 +1,23 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About VenopAI — Hardware Realization & Engineering Platform",
+  description:
+    "Learn about VenopAI: Our engineering mission, Hyderabad manufacturing facility, automated DFM pipelines, and verified hardware supply chain in India.",
+  alternates: {
+    canonical: "/about",
+  },
+  openGraph: {
+    title: "About VenopAI | Engineering & Hardware Realization",
+    description:
+      "Transforming schematics into physical silicon & systems. Turnkey PCB prototyping, circuit design, and components marketplace.",
+    url: "/about",
+    siteName: "VenopAI",
+    images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
+  },
+};
 
 export default function AboutPage() {
   return (
@@ -51,7 +69,7 @@ export default function AboutPage() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Rapid Assembly & SMT</h3>
               <p className="mt-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                Our Bengaluru manufacturing hub houses automated Yamaha and Panasonic SMT pick-and-place systems capable of placing passives down to 0201 metric footprints, fine-pitch QFNs, and BGAs with 10-zone reflow profiles.
+                Our Hyderabad manufacturing hub houses automated Yamaha and Panasonic SMT pick-and-place systems capable of placing passives down to 0201 metric footprints, fine-pitch QFNs, and BGAs with 10-zone reflow profiles.
               </p>
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">

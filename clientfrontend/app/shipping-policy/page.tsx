@@ -1,4 +1,14 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shipping & Delivery Policy — Pan-India Logistics",
+  description:
+    "VenopAI shipping guidelines: Express surface and air courier transit timelines across India, Shiprocket tracking integrations, ESD-safe packaging standards, and freight terms.",
+  alternates: {
+    canonical: "/shipping-policy",
+  },
+};
 
 export default function ShippingPolicyPage() {
   return (
@@ -15,7 +25,7 @@ export default function ShippingPolicyPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">1. Integrated Logistics Network</h2>
               <p className="mt-1">
-                All shipments from the VenopAI Bengaluru fabrication facility are managed through Shiprocket&apos;s enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
+                All shipments from the VenopAI Hyderabad fabrication facility are managed through Shiprocket&apos;s enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
               </p>
             </section>
 
@@ -53,7 +63,7 @@ export default function ShippingPolicyPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">5. Transit Damage Claims</h2>
               <p className="mt-1">
-                If a package arrives visibly damaged or tampered with, please take photos before unboxing and notify support@venopai.com within 48 hours of delivery to initiate an immediate insurance claim and expedited remanufacturing.
+                If a package arrives visibly damaged or tampered with, please take photos before unboxing and notify support@venopai.in within 48 hours of delivery to initiate an immediate insurance claim and expedited remanufacturing.
               </p>
             </section>
           </div>

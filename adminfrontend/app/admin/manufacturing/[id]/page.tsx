@@ -16,13 +16,20 @@ interface QuoteVersion {
   scope_summary?: string;
   line_items: QuoteLineItem[];
   subtotal: string;
-  subtotal_paise: number;
-  tax_type: string;
-  tax_amount: string;
-  tax_paise: number;
+  subtotal_paise?: number;
+  tax_type?: string;
+  tax_amount?: string;
+  tax?: {
+    type: string;
+    amount: string;
+    amount_paise?: number;
+  };
+  tax_paise?: number;
   shipping_amount: string;
-  total_amount: string;
-  total_amount_paise: number;
+  shipping_amount_paise?: number;
+  total?: string;
+  total_amount?: string;
+  total_amount_paise?: number;
   estimated_timeline?: string;
   valid_until?: string;
   terms?: string;
@@ -32,12 +39,31 @@ interface QuoteVersion {
 
 interface QuoteData {
   id: string;
-  request_type: string;
-  request_id: string;
+  request_type?: string;
+  request_id?: string;
   status: string;
-  current_version_number: number;
+  current_version_number?: number;
   current_version?: QuoteVersion;
-  versions: QuoteVersion[];
+  versions?: QuoteVersion[];
+  // Flat fallback properties if payload is direct latest version
+  line_items?: QuoteLineItem[];
+  subtotal?: string;
+  tax_type?: string;
+  tax_amount?: string;
+  tax?: {
+    type: string;
+    amount: string;
+    amount_paise?: number;
+  };
+  shipping_amount?: string;
+  total?: string;
+  total_amount?: string;
+  estimated_timeline?: string;
+  valid_until?: string;
+  terms?: string;
+  rejection_reason?: string;
+  created_at?: string;
+  version_number?: number;
 }
 
 interface ClarificationItem {
@@ -47,8 +73,9 @@ interface ClarificationItem {
   raised_at: string;
   status: string;
   response?: {
-    response_text: string;
-    responded_at: string;
+    response_text?: string;
+    text?: string;
+    responded_at?: string;
   };
 }
 
@@ -98,8 +125,8 @@ interface RequestDetail {
   internal_notes?: string;
   files?: FileItem[] | RequestFiles;
   current_quote?: QuoteData;
-  clarifications: ClarificationItem[];
-  status_updates: StatusUpdateItem[];
+  clarifications?: ClarificationItem[];
+  status_updates?: StatusUpdateItem[];
   created_at: string;
   updated_at: string;
 }
@@ -329,9 +356,22 @@ export default function AdminManufacturingDetailPage({
       showFeedback("Deliverable file uploaded successfully.");
       await fetchDetail();
     } catch (err: unknown) {
-      // alert replaced with error state
+      showFeedback(err instanceof Error ? err.message : "Failed to upload deliverable file.");
     } finally {
       setIsUploadingDeliverable(false);
+    }
+  };
+
+  const handleDownloadFile = async (fileId: string) => {
+    try {
+      const res = await adminFilesApi.getDownloadUrl(fileId);
+      if (res?.data?.download_url) {
+        window.open(res.data.download_url, "_blank");
+      } else {
+        showFeedback("Download link could not be generated.");
+      }
+    } catch (err: unknown) {
+      showFeedback(err instanceof Error ? err.message : "Download failed");
     }
   };
 
@@ -398,7 +438,7 @@ export default function AdminManufacturingDetailPage({
   }
 
   const currentQuote = detail.current_quote;
-  const currentQuoteVersion = currentQuote?.current_version;
+  const currentQuoteVersion = currentQuote?.current_version || (currentQuote?.line_items ? (currentQuote as unknown as QuoteVersion) : undefined);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -667,14 +707,14 @@ export default function AdminManufacturingDetailPage({
                       <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white font-mono">
-                            Version #{currentQuoteVersion.version_number}
+                            Version #{currentQuoteVersion.version_number ?? 1}
                           </span>
                           <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 uppercase font-mono text-[10px]">
                             {currentQuoteVersion.status}
                           </span>
                         </div>
                         <span className="text-zinc-500 font-mono">
-                          Issued {new Date(currentQuoteVersion.created_at).toLocaleDateString()}
+                          {currentQuoteVersion.created_at ? `Issued ${new Date(currentQuoteVersion.created_at).toLocaleDateString()}` : ""}
                         </span>
                       </div>
 
@@ -687,11 +727,11 @@ export default function AdminManufacturingDetailPage({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-850 text-zinc-300">
-                          {currentQuoteVersion.line_items.map((item, idx) => (
+                          {(currentQuoteVersion.line_items || []).map((item, idx) => (
                             <tr key={idx}>
                               <td className="py-2">{item.description}</td>
                               <td className="py-2 text-right font-mono font-medium text-white">
-                                &#8377;{parseFloat(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                &#8377;{parseFloat(String(item.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </td>
                             </tr>
                           ))}
@@ -702,19 +742,19 @@ export default function AdminManufacturingDetailPage({
                       <div className="border-t border-zinc-800 pt-3 space-y-1.5 font-mono text-zinc-400">
                         <div className="flex justify-between">
                           <span>Subtotal:</span>
-                          <span className="text-white">&#8377;{currentQuoteVersion.subtotal}</span>
+                          <span className="text-white">&#8377;{currentQuoteVersion.subtotal || "0.00"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Tax ({currentQuoteVersion.tax_type}):</span>
-                          <span className="text-white">&#8377;{currentQuoteVersion.tax_amount}</span>
+                          <span>Tax ({typeof currentQuoteVersion.tax === "object" ? currentQuoteVersion.tax?.type : (currentQuoteVersion.tax_type || "GST")}):</span>
+                          <span className="text-white">&#8377;{typeof currentQuoteVersion.tax === "object" ? currentQuoteVersion.tax?.amount : (currentQuoteVersion.tax_amount || "0.00")}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Shipping:</span>
-                          <span className="text-white">&#8377;{currentQuoteVersion.shipping_amount}</span>
+                          <span className="text-white">&#8377;{currentQuoteVersion.shipping_amount || "0.00"}</span>
                         </div>
                         <div className="flex justify-between text-sm font-bold text-emerald-400 pt-2 border-t border-zinc-800">
                           <span>Total Amount:</span>
-                          <span>&#8377;{currentQuoteVersion.total_amount}</span>
+                          <span>&#8377;{currentQuoteVersion.total_amount || currentQuoteVersion.total || "0.00"}</span>
                         </div>
                       </div>
 
@@ -733,7 +773,7 @@ export default function AdminManufacturingDetailPage({
                   ) : null}
 
                   {/* Version history if > 1 */}
-                  {currentQuote.versions.length > 1 && (
+                  {Array.isArray(currentQuote.versions) && currentQuote.versions.length > 1 && (
                     <div className="border-t border-zinc-800 pt-3">
                       <p className="text-[11px] font-mono text-zinc-400 mb-2">Version History:</p>
                       <div className="space-y-1">
@@ -743,7 +783,7 @@ export default function AdminManufacturingDetailPage({
                             className="flex items-center justify-between text-xs p-2 bg-zinc-950/40 rounded border border-zinc-850"
                           >
                             <span className="font-mono">Rev #{v.version_number} ({v.status})</span>
-                            <span className="font-mono text-white">&#8377;{v.total_amount}</span>
+                            <span className="font-mono text-white">&#8377;{v.total_amount || v.total || "0.00"}</span>
                           </div>
                         ))}
                       </div>
@@ -786,7 +826,16 @@ export default function AdminManufacturingDetailPage({
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                         <span>{f.source === "admin_deliverable" || f.source === "delivered" || f.source === "team_deliverable" ? "Admin Deliverable" : "Customer CAD"}</span>
-                        <span>{((f.size_bytes || 0) / 1024).toFixed(0)} KB</span>
+                        <div className="flex items-center gap-2">
+                          <span>{((f.size_bytes || 0) / 1024).toFixed(0)} KB</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadFile(f.id)}
+                            className="text-cyan-400 hover:underline cursor-pointer font-sans text-xs"
+                          >
+                            Download
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -826,15 +875,15 @@ export default function AdminManufacturingDetailPage({
                 </button>
               </div>
 
-              {detail.clarifications.length === 0 ? (
+              {(detail.clarifications || []).length === 0 ? (
                 <p className="text-xs text-zinc-500 text-center py-4">No clarifications raised.</p>
               ) : (
                 <div className="space-y-3">
-                  {detail.clarifications.map((c) => (
+                  {(detail.clarifications || []).map((c) => (
                     <div key={c.id} className="p-3 bg-zinc-950/60 border border-zinc-850 rounded-lg text-xs space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] text-zinc-400">
-                          {c.raised_by.toUpperCase()} &bull; {new Date(c.raised_at).toLocaleDateString()}
+                          {c.raised_by.toUpperCase()} &bull; {c.raised_at ? new Date(c.raised_at).toLocaleDateString() : ""}
                         </span>
                         <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded uppercase ${
                           c.status === "answered" ? "bg-emerald-950 text-emerald-400" : "bg-orange-950 text-orange-400"
@@ -846,7 +895,7 @@ export default function AdminManufacturingDetailPage({
                       {c.response ? (
                         <div className="p-2 bg-zinc-900 rounded border border-zinc-800 text-zinc-300">
                           <span className="text-[10px] text-emerald-400 block font-mono">Customer Response:</span>
-                          {c.response.response_text}
+                          {c.response.response_text || c.response.text}
                         </div>
                       ) : (
                         <p className="text-[10px] text-zinc-500 italic">Awaiting customer response...</p>
@@ -871,15 +920,15 @@ export default function AdminManufacturingDetailPage({
                 )}
               </div>
 
-              {detail.status_updates.length === 0 ? (
+              {(detail.status_updates || []).length === 0 ? (
                 <p className="text-xs text-zinc-500 text-center py-4">No status updates posted yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {detail.status_updates.map((su) => (
+                  {(detail.status_updates || []).map((su) => (
                     <div key={su.id} className="p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-lg text-xs space-y-1">
                       <p className="text-zinc-200">{su.note}</p>
                       <p className="text-[10px] font-mono text-zinc-500">
-                        {su.author} &bull; {new Date(su.created_at).toLocaleString()}
+                        {su.author} &bull; {su.created_at ? new Date(su.created_at).toLocaleString() : ""}
                       </p>
                     </div>
                   ))}

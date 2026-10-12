@@ -196,7 +196,9 @@ def _check_admin_file_role(admin: User, request_type: str):
     user_role = getattr(admin, "role", "")
     if user_role == "SUPER_ADMIN":
         return
-    norm_req = request_type.strip().lower()
+    norm_req = (request_type or "").strip().lower()
+    if norm_req == "manufacturing_request":
+        norm_req = "manufacturing"
     if norm_req in ("manufacturing", "design", "software", "consultation") and user_role == "MANUFACTURING_MANAGER":
         return
     raise APIException(
@@ -272,6 +274,51 @@ def admin_list_all_files(
     }
 
 
+@admin_router.post(
+    "/files",
+    response_model=FileUploadResponse,
+    status_code=http_status.HTTP_201_CREATED,
+    summary="ADMIN-FILES-API-002B: Upload team deliverable file via unified admin endpoint",
+)
+async def admin_upload_file(
+    file: UploadFile = File(...),
+    association_type: str = Form("general"),
+    association_id: Optional[str] = Form(None),
+    source: str = Form("team_deliverable"),
+    admin: CurrentAdmin = None,
+    db: Session = Depends(get_db),
+):
+    """Unified admin endpoint for uploading team deliverables and project attachments."""
+    norm_type = (association_type or "general").strip().lower()
+    if norm_type == "manufacturing_request":
+        norm_type = "manufacturing"
+    if norm_type != "general":
+        _check_admin_file_role(admin, norm_type)
+
+    project_file = FileService.upload_file(
+        db=db,
+        user=admin,
+        upload_file=file,
+        association_type=norm_type,
+        association_id=association_id,
+        source=source or "team_deliverable",
+    )
+    return {
+        "data": {
+            "id": str(project_file.id),
+            "filename": project_file.filename,
+            "content_type": project_file.content_type,
+            "size_bytes": project_file.size_bytes,
+            "scan_status": project_file.scan_status,
+            "source": project_file.source,
+            "association_type": project_file.association_type,
+            "association_id": str(project_file.association_id) if project_file.association_id else None,
+            "created_at": project_file.created_at.isoformat() if project_file.created_at else "",
+        },
+        "request_id": str(uuid.uuid4()),
+    }
+
+
 @admin_router.get(
     "/requests/{request_type}/{request_id}/files",
     status_code=http_status.HTTP_200_OK,
@@ -334,12 +381,15 @@ async def admin_upload_deliverable(
     db: Session = Depends(get_db),
 ):
     """Uploads team deliverable file (CAD, GERBER, report, etc.) for request."""
-    _check_admin_file_role(admin, request_type)
+    norm_req = (request_type or "").strip().lower()
+    if norm_req == "manufacturing_request":
+        norm_req = "manufacturing"
+    _check_admin_file_role(admin, norm_req)
     project_file = FileService.upload_file(
         db=db,
         user=admin,
         upload_file=file,
-        association_type=request_type,
+        association_type=norm_req,
         association_id=request_id,
         source="team_deliverable",
     )

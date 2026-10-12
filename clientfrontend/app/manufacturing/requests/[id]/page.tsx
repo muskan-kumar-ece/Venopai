@@ -10,26 +10,45 @@ interface LineItem {
   amount: string;
 }
 
+interface QuoteVersion {
+  id: string;
+  version_number: number;
+  status: string;
+  scope_summary?: string;
+  line_items: LineItem[];
+  subtotal: string;
+  tax?: {
+    type: string;
+    amount: string;
+  };
+  tax_type?: string;
+  tax_amount?: string;
+  shipping_amount: string;
+  total: string;
+  total_amount?: string;
+  estimated_timeline?: string;
+  valid_until?: string;
+  terms?: string;
+}
+
 interface QuoteData {
   id: string;
   status: string;
-  current_version?: {
-    id: string;
-    version_number: number;
-    status: string;
-    scope_summary?: string;
-    line_items: LineItem[];
-    subtotal: string;
-    tax: {
-      type: string;
-      amount: string;
-    };
-    shipping_amount: string;
-    total: string;
-    estimated_timeline?: string;
-    valid_until?: string;
-    terms?: string;
+  current_version?: QuoteVersion;
+  line_items?: LineItem[];
+  subtotal?: string;
+  tax?: {
+    type: string;
+    amount: string;
   };
+  tax_type?: string;
+  tax_amount?: string;
+  shipping_amount?: string;
+  total?: string;
+  total_amount?: string;
+  version_number?: number;
+  estimated_timeline?: string;
+  terms?: string;
 }
 
 interface Clarification {
@@ -280,7 +299,7 @@ export default function ManufacturingDetailPage({
   }
 
   const quote = request.current_quote;
-  const quoteVersion = quote?.current_version;
+  const quoteVersion = quote?.current_version || (quote?.line_items ? (quote as unknown as QuoteVersion) : undefined);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -415,7 +434,7 @@ export default function ManufacturingDetailPage({
                   <div>
                     <div className="text-2xl font-bold text-white">₹{quoteVersion.total}</div>
                     <div className="text-xs text-neutral-400 mt-1">
-                      Includes {quoteVersion.tax.type} (₹{quoteVersion.tax.amount})
+                      Includes {quoteVersion.tax?.type || "Tax"} (₹{typeof quoteVersion.tax === "object" ? quoteVersion.tax?.amount : (quoteVersion.tax_amount || quoteVersion.tax || "0.00")})
                     </div>
                     <button
                       onClick={() => setActiveTab("quote")}
@@ -543,7 +562,7 @@ export default function ManufacturingDetailPage({
 
                 {/* Line Items */}
                 <div className="divide-y divide-neutral-800">
-                  {quoteVersion.line_items.map((item, idx) => (
+                  {(quoteVersion.line_items || []).map((item: LineItem, idx: number) => (
                     <div key={idx} className="py-3 flex items-center justify-between text-sm">
                       <span className="text-neutral-300">{item.description || item.name}</span>
                       <span className="font-mono text-neutral-100 font-medium">₹{item.amount}</span>
@@ -555,19 +574,19 @@ export default function ManufacturingDetailPage({
                 <div className="pt-4 border-t border-neutral-800 space-y-2 text-sm font-mono">
                   <div className="flex justify-between text-neutral-400">
                     <span>Subtotal</span>
-                    <span>₹{quoteVersion.subtotal}</span>
+                    <span>₹{quoteVersion.subtotal || "0.00"}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
                     <span>Shipping</span>
-                    <span>₹{quoteVersion.shipping_amount}</span>
+                    <span>₹{quoteVersion.shipping_amount || "0.00"}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400">
-                    <span>{quoteVersion.tax.type} (18%)</span>
-                    <span>₹{quoteVersion.tax.amount}</span>
+                    <span>{quoteVersion.tax?.type || "Tax"}</span>
+                    <span>₹{typeof quoteVersion.tax === "object" ? quoteVersion.tax?.amount : (quoteVersion.tax_amount || quoteVersion.tax || "0.00")}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-neutral-800">
                     <span>Total Amount</span>
-                    <span className="text-cyan-400">₹{quoteVersion.total}</span>
+                    <span className="text-cyan-400">₹{quoteVersion.total || quoteVersion.total_amount || "0.00"}</span>
                   </div>
                 </div>
 
@@ -579,7 +598,7 @@ export default function ManufacturingDetailPage({
                 )}
 
                 {/* Quote Actions */}
-                {quote?.status === "sent" && (
+                {quote?.status === "sent" && quote?.id && (
                   <div className="pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-end gap-3">
                     <button
                       onClick={() => setShowRejectForm(true)}
@@ -589,7 +608,7 @@ export default function ManufacturingDetailPage({
                       Request Revision / Reject
                     </button>
                     <button
-                      onClick={() => handleApproveQuote(quote.id)}
+                      onClick={() => quote?.id && handleApproveQuote(quote.id)}
                       disabled={isQuoteActionLoading}
                       className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold text-xs transition shadow-lg shadow-emerald-500/20"
                     >
@@ -599,7 +618,7 @@ export default function ManufacturingDetailPage({
                 )}
 
                 {/* Reject form modal/inline */}
-                {showRejectForm && (
+                {showRejectForm && quote?.id && (
                   <div className="p-4 rounded-lg bg-red-950/40 border border-red-800 space-y-3">
                     <div className="text-xs font-semibold text-red-300">Provide Feedback for Revision</div>
                     <textarea
@@ -617,7 +636,7 @@ export default function ManufacturingDetailPage({
                         Cancel
                       </button>
                       <button
-                        onClick={() => handleRejectQuote(quote.id)}
+                        onClick={() => quote?.id && handleRejectQuote(quote.id)}
                         disabled={isQuoteActionLoading}
                         className="px-4 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
                       >
@@ -628,7 +647,7 @@ export default function ManufacturingDetailPage({
                 )}
 
                 {/* Payment button if payment_pending */}
-                {request.status === "payment_pending" && (
+                {request.status === "payment_pending" && quote?.id && (
                   <div className="p-6 rounded-lg bg-purple-950/40 border border-purple-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                       <div className="text-sm font-semibold text-purple-200">Quotation Accepted — Ready for Payment</div>

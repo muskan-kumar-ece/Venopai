@@ -178,6 +178,11 @@ export default function ManufacturingIntakePage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMessage("File exceeds 100MB maximum size limit.");
+      e.target.value = "";
+      return;
+    }
     setIsUploading(true);
     setErrorMessage(null);
 
@@ -485,6 +490,7 @@ export default function ManufacturingIntakePage() {
                 <span>{isUploading ? "Uploading..." : "+ Choose File to Upload"}</span>
                 <input
                   type="file"
+                  accept=".zip,.gerber,.gbr,.drl,.step,.stp,.stl,.dxf,.pdf,.csv"
                   onChange={handleFileUpload}
                   disabled={isUploading}
                   className="hidden"

@@ -62,15 +62,19 @@ class QuoteVersionData(BaseModel):
     subtotal: str
     subtotal_paise: int
     tax: QuoteTaxDetail
+    tax_type: Optional[str] = None
+    tax_amount: Optional[str] = None
     shipping_amount: str
     shipping_amount_paise: int
     total: str
+    total_amount: Optional[str] = None
     total_paise: int
     estimated_timeline: Optional[str] = None
     valid_until: Optional[str] = None
     terms: Optional[str] = None
     created_at: str
     approval: Optional[Dict[str, Any]] = None
+    rejection_reason: Optional[str] = None
 
 class QuoteDetailData(BaseModel):
     id: str
@@ -79,6 +83,7 @@ class QuoteDetailData(BaseModel):
     project_id: Optional[str] = None
     status: str
     current_version: QuoteVersionData
+    versions: Optional[List[QuoteVersionData]] = None
     created_at: str
     updated_at: str
 

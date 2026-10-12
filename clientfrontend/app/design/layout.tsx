@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Custom PCB Design & Schematic Engineering",
+  title: "Circuit Schematic & Multi-Layer PCB Design Services",
   description:
-    "Professional high-speed digital, RF, and power electronics PCB design from block diagrams to certified production files using Altium and KiCad.",
+    "Expert electronic engineering design: High-speed multi-layer PCB layout, impedance control, EMI/EMC compliance, and turnkey fabrication preparation.",
+  alternates: {
+    canonical: "/design",
+  },
   openGraph: {
-    title: "Custom PCB Design & Schematic Engineering | VenopAI",
+    title: "Circuit & Multi-Layer PCB Design Services | VenopAI",
     description:
-      "Professional high-speed digital, RF, and power electronics PCB design from block diagrams to certified production files.",
+      "High-speed circuit design, schematic capture, impedance-matched multi-layer layout, and DFM optimization.",
     url: "/design",
     siteName: "VenopAI",
-    images: [
-      {
-        url: "/images/og/og_design.jpg",
-        width: 1200,
-        height: 630,
-        alt: "VenopAI Custom PCB Design",
-      },
-    ],
+    images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Custom PCB Design & Schematic Engineering | VenopAI",
-    description: "High-speed multi-layer PCB design, RF layout, and BOM optimization.",
-    images: ["/images/og/og_design.jpg"],
+    title: "Circuit & Multi-Layer PCB Design Services | VenopAI",
+    description: "High-speed multi-layer PCB layout, impedance matching, and EMI/EMC compliance.",
+    images: ["/images/og/venopai_og_preview.jpg"],
   },
 };
 

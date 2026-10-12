@@ -78,6 +78,8 @@ def get_quote_detail(
                 "line_items": line_items,
                 "subtotal": _rupees(version.subtotal_paise),
                 "subtotal_paise": version.subtotal_paise,
+                "tax_type": version.tax_type or "GST",
+                "tax_amount": _rupees(version.tax_paise),
                 "tax": {
                     "type": version.tax_type or "GST",
                     "amount": _rupees(version.tax_paise),
@@ -86,6 +88,7 @@ def get_quote_detail(
                 "shipping_amount": _rupees(version.shipping_amount_paise),
                 "shipping_amount_paise": version.shipping_amount_paise,
                 "total": _rupees(version.total_amount),
+                "total_amount": _rupees(version.total_amount),
                 "total_paise": version.total_amount,
                 "estimated_timeline": version.estimated_timeline,
                 "valid_until": version.valid_until.isoformat() if version.valid_until else None,
@@ -124,6 +127,8 @@ def list_quote_versions(
             "line_items": line_items,
             "subtotal": _rupees(v.subtotal_paise),
             "subtotal_paise": v.subtotal_paise,
+            "tax_type": v.tax_type or "GST",
+            "tax_amount": _rupees(v.tax_paise),
             "tax": {
                 "type": v.tax_type or "GST",
                 "amount": _rupees(v.tax_paise),
@@ -132,6 +137,7 @@ def list_quote_versions(
             "shipping_amount": _rupees(v.shipping_amount_paise),
             "shipping_amount_paise": v.shipping_amount_paise,
             "total": _rupees(v.total_amount),
+            "total_amount": _rupees(v.total_amount),
             "total_paise": v.total_amount,
             "estimated_timeline": v.estimated_timeline,
             "valid_until": v.valid_until.isoformat() if v.valid_until else None,

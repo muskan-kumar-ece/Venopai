@@ -1,5 +1,30 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Rapid PCB Manufacturing, Fabrication & Assembly",
+  description:
+    "Turnkey electronics manufacturing in India: Quick-turn 1-32 layer PCB fabrication, precision SMT assembly, CNC enclosure machining, and 3D printing.",
+  alternates: {
+    canonical: "/manufacturing",
+  },
+  openGraph: {
+    title: "Rapid PCB Manufacturing & Assembly | VenopAI",
+    description:
+      "Turnkey electronics manufacturing in India: Quick-turn 1-32 layer PCB fabrication, precision SMT assembly, CNC machining, and automated optical inspection.",
+    url: "/manufacturing",
+    siteName: "VenopAI",
+    images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rapid PCB Manufacturing & Assembly | VenopAI",
+    description:
+      "Quick-turn 1-32 layer PCB fabrication, precision SMT assembly, and CNC enclosure machining.",
+    images: ["/images/og/venopai_og_preview.jpg"],
+  },
+};
 
 export default function ManufacturingLandingPage() {
   const capabilities = [

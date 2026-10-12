@@ -80,9 +80,8 @@ export default function ContactPage() {
                 VenopAI Technologies Pvt Ltd
               </p>
               <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                100 Feet Road, HAL 2nd Stage,<br />
-                Indiranagar, Bengaluru,<br />
-                Karnataka 560038, India
+                3-40, Mallampet,<br />
+                Hyderabad, Telangana 500090, India
               </p>
             </div>
 
@@ -91,14 +90,25 @@ export default function ContactPage() {
               <div className="mt-3 space-y-2 text-xs">
                 <div>
                   <span className="text-zinc-400">Email: </span>
-                  <a href="mailto:support@venopai.com" className="font-semibold text-emerald-600 hover:underline">
-                    support@venopai.com
+                  <a href="mailto:support@venopai.in" className="font-semibold text-emerald-600 hover:underline">
+                    support@venopai.in
                   </a>
                 </div>
                 <div>
                   <span className="text-zinc-400">Engineering Lab: </span>
-                  <a href="mailto:engineering@venopai.com" className="font-semibold text-emerald-600 hover:underline">
-                    engineering@venopai.com
+                  <a href="mailto:engineering@venopai.in" className="font-semibold text-emerald-600 hover:underline">
+                    engineering@venopai.in
+                  </a>
+                </div>
+                <div>
+                  <span className="text-zinc-400">Instagram: </span>
+                  <a
+                    href="https://www.instagram.com/venopai/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-emerald-600 hover:underline"
+                  >
+                    @venopai
                   </a>
                 </div>
                 <div>
@@ -132,7 +142,7 @@ export default function ContactPage() {
               </p>
               <div className="mt-3 space-y-1.5 text-xs text-zinc-600 dark:text-zinc-300">
                 <p><strong>Designated Officer:</strong> Rajesh Kumar, Compliance Lead</p>
-                <p><strong>Email:</strong> <a href="mailto:grievance@venopai.com" className="text-emerald-600 underline">grievance@venopai.com</a></p>
+                <p><strong>Email:</strong> <a href="mailto:grievance@venopai.in" className="text-emerald-600 underline">grievance@venopai.in</a></p>
                 <p><strong>Helpline:</strong> +91 (80) 4123-8900</p>
                 <p><strong>SLA:</strong> 24h acknowledgment &bull; 15-day resolution</p>
               </div>

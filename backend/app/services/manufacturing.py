@@ -213,22 +213,54 @@ class ManufacturingService:
         current_quote = None
         quote = db.query(Quote).filter(Quote.request_id == req.id).first()
         if quote:
-            latest_v = (
+            all_versions_query = (
                 db.query(QuoteVersion)
                 .filter(QuoteVersion.quote_id == quote.id)
                 .order_by(QuoteVersion.version.desc())
-                .first()
+                .all()
             )
+            latest_v = all_versions_query[0] if all_versions_query else None
+            all_versions_list = []
+            for v in all_versions_query:
+                v_items = json.loads(v.line_items) if v.line_items else []
+                all_versions_list.append({
+                    "id": str(v.id),
+                    "version_number": v.version,
+                    "status": v.status,
+                    "scope_summary": v.scope_summary,
+                    "line_items": v_items,
+                    "subtotal": _rupees(v.subtotal_paise),
+                    "subtotal_paise": v.subtotal_paise,
+                    "tax_type": v.tax_type or "GST",
+                    "tax_amount": _rupees(v.tax_paise),
+                    "tax": {
+                        "type": v.tax_type or "GST",
+                        "amount": _rupees(v.tax_paise),
+                        "amount_paise": v.tax_paise,
+                    },
+                    "shipping_amount": _rupees(v.shipping_amount_paise),
+                    "shipping_amount_paise": v.shipping_amount_paise,
+                    "total": _rupees(v.total_amount),
+                    "total_amount": _rupees(v.total_amount),
+                    "total_paise": v.total_amount,
+                    "estimated_timeline": v.estimated_timeline,
+                    "valid_until": v.valid_until.isoformat() if v.valid_until else None,
+                    "terms": v.terms,
+                    "created_at": v.created_at.isoformat() if v.created_at else "",
+                })
+
             if latest_v:
                 line_items_parsed = json.loads(latest_v.line_items) if latest_v.line_items else []
-                current_quote = {
-                    "id": str(quote.id),
+                latest_v_dict = {
+                    "id": str(latest_v.id),
                     "version_number": latest_v.version,
                     "status": latest_v.status,
                     "scope_summary": latest_v.scope_summary,
                     "line_items": line_items_parsed,
                     "subtotal": _rupees(latest_v.subtotal_paise),
                     "subtotal_paise": latest_v.subtotal_paise,
+                    "tax_type": latest_v.tax_type or "GST",
+                    "tax_amount": _rupees(latest_v.tax_paise),
                     "tax": {
                         "type": latest_v.tax_type or "GST",
                         "amount": _rupees(latest_v.tax_paise),
@@ -237,11 +269,26 @@ class ManufacturingService:
                     "shipping_amount": _rupees(latest_v.shipping_amount_paise),
                     "shipping_amount_paise": latest_v.shipping_amount_paise,
                     "total": _rupees(latest_v.total_amount),
+                    "total_amount": _rupees(latest_v.total_amount),
                     "total_paise": latest_v.total_amount,
                     "estimated_timeline": latest_v.estimated_timeline,
                     "valid_until": latest_v.valid_until.isoformat() if latest_v.valid_until else None,
                     "terms": latest_v.terms,
                     "created_at": latest_v.created_at.isoformat() if latest_v.created_at else "",
+                }
+                current_quote = {
+                    **latest_v_dict,
+                    "id": str(quote.id),
+                    "status": quote.status,
+                    "current_version": latest_v_dict,
+                    "versions": all_versions_list,
+                }
+            else:
+                current_quote = {
+                    "id": str(quote.id),
+                    "status": quote.status,
+                    "current_version": None,
+                    "versions": [],
                 }
 
         # Clarifications
@@ -251,6 +298,7 @@ class ManufacturingService:
             if c.response_text:
                 resp_dict = {
                     "text": c.response_text,
+                    "response_text": c.response_text,
                     "responded_at": c.responded_at.isoformat() if c.responded_at else None,
                     "attached_file_ids": json.loads(c.attached_file_ids) if c.attached_file_ids else [],
                 }

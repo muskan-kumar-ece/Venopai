@@ -65,6 +65,23 @@ export default function AdminSoftwareDetailPage() {
 
   // Deliverable upload
   const [isUploadingDeliverable, setIsUploadingDeliverable] = useState(false);
+  const [deliverableFeedback, setDeliverableFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const handleDownloadDeliverable = async (fileId: string) => {
+    try {
+      const res = await adminFilesApi.getDownloadUrl(fileId);
+      if (res?.data?.download_url) {
+        window.open(res.data.download_url, "_blank");
+      } else {
+        setDeliverableFeedback({ type: "error", message: "Download URL could not be generated." });
+      }
+    } catch (err: unknown) {
+      setDeliverableFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to generate download URL",
+      });
+    }
+  };
 
   // Quote modal
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -152,6 +169,7 @@ export default function AdminSoftwareDetailPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setIsUploadingDeliverable(true);
+    setDeliverableFeedback(null);
     try {
       for (let i = 0; i < files.length; i++) {
         const formData = new FormData();
@@ -161,10 +179,13 @@ export default function AdminSoftwareDetailPage() {
         formData.append("source", "team_deliverable");
         await adminFilesApi.uploadDeliverable(formData);
       }
-      // alert replaced
+      setDeliverableFeedback({ type: "success", message: "Deliverable uploaded successfully." });
       await fetchDetail();
     } catch (err: unknown) {
-      // alert replaced
+      setDeliverableFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to upload deliverable",
+      });
     } finally {
       setIsUploadingDeliverable(false);
       e.target.value = "";
@@ -333,6 +354,16 @@ export default function AdminSoftwareDetailPage() {
               </label>
             </div>
 
+            {deliverableFeedback && (
+              <p
+                className={`text-xs font-medium ${
+                  deliverableFeedback.type === "success" ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {deliverableFeedback.message}
+              </p>
+            )}
+
             {deliverables.length === 0 ? (
               <p className="text-xs text-zinc-500 italic">No firmware binaries or code archives uploaded yet.</p>
             ) : (
@@ -340,14 +371,13 @@ export default function AdminSoftwareDetailPage() {
                 {deliverables.map((d) => (
                   <div key={d.id} className="flex items-center justify-between p-2.5 rounded border border-zinc-800 bg-zinc-950">
                     <span className="font-mono text-zinc-300 truncate">{d.filename}</span>
-                    <a
-                      href={`/api/v1/files/${d.id}/download`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-indigo-400 hover:underline ml-2"
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadDeliverable(d.id)}
+                      className="text-indigo-400 hover:underline ml-2 cursor-pointer font-medium"
                     >
                       Download
-                    </a>
+                    </button>
                   </div>
                 ))}
               </div>

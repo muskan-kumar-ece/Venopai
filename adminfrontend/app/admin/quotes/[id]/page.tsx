@@ -87,12 +87,15 @@ export default function AdminQuoteDetailPage({
 
       if (qRes.status === "fulfilled" && qRes.value?.data) {
         setQuote(qRes.value.data);
-        if (vRes.status === "fulfilled" && Array.isArray(vRes.value?.data)) {
+        const curr = qRes.value.data.current_version;
+        if (vRes.status === "fulfilled" && Array.isArray(vRes.value?.data) && vRes.value.data.length > 0) {
           setVersions(vRes.value.data);
-          setSelectedVersion(vRes.value.data[0] || qRes.value.data.current_version);
+          setSelectedVersion(vRes.value.data[0] || curr);
+        } else if (curr) {
+          setVersions([curr]);
+          setSelectedVersion(curr);
         } else {
-          setVersions([qRes.value.data.current_version]);
-          setSelectedVersion(qRes.value.data.current_version);
+          setVersions([]);
         }
       } else {
         setError("Quotation could not be retrieved from records.");
@@ -193,7 +196,7 @@ export default function AdminQuoteDetailPage({
     );
   }
 
-  const isCurrent = selectedVersion.version_number === quote.current_version.version_number;
+  const isCurrent = selectedVersion.version_number === (quote.current_version?.version_number ?? selectedVersion.version_number);
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto space-y-6">
@@ -274,7 +277,7 @@ export default function AdminQuoteDetailPage({
           <span className="text-[11px] font-mono text-zinc-500 uppercase px-2">Versions:</span>
           {versions.map((v) => {
             const isSelected = v.version_number === selectedVersion.version_number;
-            const isLatest = v.version_number === quote.current_version.version_number;
+            const isLatest = v.version_number === (quote.current_version?.version_number ?? v.version_number);
             return (
               <button
                 key={v.id}
@@ -296,12 +299,14 @@ export default function AdminQuoteDetailPage({
       {!isCurrent && (
         <div className="rounded-xl border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-300 flex items-center justify-between">
           <span>Viewing historical quotation archive (v{selectedVersion.version_number}). Actions apply to the active version.</span>
-          <button
-            onClick={() => setSelectedVersion(quote.current_version)}
-            className="text-xs font-bold underline ml-3 cursor-pointer"
-          >
-            Switch to Latest (v{quote.current_version.version_number})
-          </button>
+          {quote.current_version && (
+            <button
+              onClick={() => setSelectedVersion(quote.current_version)}
+              className="text-xs font-bold underline ml-3 cursor-pointer"
+            >
+              Switch to Latest (v{quote.current_version.version_number})
+            </button>
+          )}
         </div>
       )}
 
@@ -390,7 +395,7 @@ export default function AdminQuoteDetailPage({
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 max-w-lg w-full space-y-4 shadow-xl">
             <h3 className="text-base font-bold text-white">Issue Revised Quotation Version</h3>
             <p className="text-xs text-zinc-400">
-              Creating a revision archives current version {quote.current_version.version_number} and produces a new draft version.
+              Creating a revision archives current version {quote.current_version?.version_number || "active"} and produces a new draft version.
             </p>
 
             <form onSubmit={handleReviseSubmit} className="space-y-4">
