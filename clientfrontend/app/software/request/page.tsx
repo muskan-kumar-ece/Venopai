@@ -166,8 +166,16 @@ export default function SoftwareRequestIntakePage() {
       setErrorMessage("Please enter a project title.");
       return;
     }
+    if (title.trim().length < 3) {
+      setErrorMessage("Project title must be at least 3 characters.");
+      return;
+    }
     if (!projectOverview.trim()) {
       setErrorMessage("Please enter an overview of your software/firmware requirements.");
+      return;
+    }
+    if (projectOverview.trim().length < 10) {
+      setErrorMessage("Functional description & scope must be at least 10 characters long.");
       return;
     }
     if (!agreeNDA) {
@@ -179,9 +187,32 @@ export default function SoftwareRequestIntakePage() {
     setErrorMessage(null);
 
     try {
-      const payload = {
-        title: title.trim(),
-        project_overview: projectOverview.trim(),
+      const techParts = [
+        hardwarePlatform.trim() ? `Hardware: ${hardwarePlatform.trim()}` : null,
+        programmingLanguage.trim() ? `Language: ${programmingLanguage.trim()}` : null,
+        osFramework.trim() ? `OS/RTOS: ${osFramework.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      const reqParts = [
+        deliverablesRequired.trim() ? `Deliverables: ${deliverablesRequired.trim()}` : null,
+        interfacesProtocols.trim() ? `Protocols: ${interfacesProtocols.trim()}` : null,
+        targetTimeline.trim() ? `Target Timeline: ${targetTimeline.trim()}` : null,
+        repositoryUrl.trim() ? `Repository: ${repositoryUrl.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const synthesizedRequirements =
+        reqParts.length >= 5
+          ? reqParts
+          : deliverablesRequired.trim() ||
+            `Deliverables and technical specifications as described in scope: ${projectOverview.trim()}`;
+
+      const fileIds = attachedFiles.map((f) => f.id);
+
+      const extraData = {
         hardware_platform: hardwarePlatform.trim() || undefined,
         programming_language: programmingLanguage.trim() || undefined,
         os_framework: osFramework.trim() || undefined,
@@ -189,7 +220,18 @@ export default function SoftwareRequestIntakePage() {
         repository_url: repositoryUrl.trim() || undefined,
         deliverables_required: deliverablesRequired.trim() || undefined,
         target_timeline: targetTimeline.trim() || undefined,
-        file_ids: attachedFiles.map((f) => f.id),
+      };
+
+      const payload = {
+        title: title.trim(),
+        project_description: projectOverview.trim(),
+        project_overview: projectOverview.trim(),
+        requirements: synthesizedRequirements,
+        platform_technology: techParts || hardwarePlatform.trim() || "Embedded C / FreeRTOS",
+        reference_file_ids: fileIds,
+        file_ids: fileIds,
+        ...extraData,
+        additional_notes: JSON.stringify(extraData),
       };
 
       const res = await softwareApi.createRequest(payload);

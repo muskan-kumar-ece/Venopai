@@ -38,7 +38,9 @@ interface QuoteItem {
 interface SoftwareDetail {
   id: string;
   title: string;
-  project_overview: string;
+  project_overview?: string;
+  project_description?: string;
+  platform_technology?: string;
   status: string;
   hardware_platform?: string;
   programming_language?: string;
@@ -305,7 +307,7 @@ export default function SoftwareRequestDetailPage() {
           <div>
             <h3 className="text-xs font-mono uppercase text-neutral-400 mb-2">Scope of Work</h3>
             <p className="text-sm text-neutral-300 whitespace-pre-wrap leading-relaxed bg-neutral-950 p-4 rounded-lg border border-neutral-800">
-              {softwareReq.project_overview}
+              {softwareReq.project_overview || softwareReq.project_description}
             </p>
           </div>
 

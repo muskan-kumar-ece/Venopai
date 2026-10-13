@@ -31,7 +31,8 @@ interface SoftwareDetail {
   id: string;
   user_id: string;
   title: string;
-  project_overview: string;
+  project_overview?: string;
+  project_description?: string;
   status: string;
   hardware_platform?: string;
   programming_language?: string;
@@ -299,7 +300,7 @@ export default function AdminSoftwareDetailPage() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4">
             <h2 className="text-xs font-mono uppercase text-zinc-400">Software & Firmware Scope</h2>
             <p className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed bg-zinc-950 p-4 rounded-lg border border-zinc-800">
-              {softwareReq.project_overview}
+              {softwareReq.project_overview || softwareReq.project_description}
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-2">

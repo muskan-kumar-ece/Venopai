@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 interface SoftwareSummary {
   id: string;
   title: string;
-  project_overview: string;
+  project_overview?: string;
+  project_description?: string;
   status: string;
   hardware_platform?: string;
   programming_language?: string;
@@ -168,7 +169,7 @@ export default function SoftwareRequestsListPage() {
                       )}
                     </div>
                     <p className="text-sm text-neutral-400 line-clamp-1">
-                      {r.project_overview}
+                      {r.project_overview || r.project_description}
                     </p>
                     <div className="flex items-center gap-2 pt-1">
                       {r.hardware_platform && (

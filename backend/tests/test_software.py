@@ -364,3 +364,77 @@ def test_software_rbac_and_no_invented_roles():
     assert res_inv.status_code == 403
     db.close()
 
+
+def test_software_submission_with_frontend_aliased_payload():
+    """Verify that form submissions using frontend field conventions (project_overview,
+    hardware_platform, file_ids, etc.) succeed seamlessly and normalize correctly.
+    """
+    db = TestingSessionLocal()
+    customer, token = create_customer(db, email="firmware_dev@example.com")
+
+    payload = {
+        "title": "ESP32-S3 BLE Mesh Node",
+        "project_overview": "Comprehensive BLE mesh telemetry node with low-power deep sleep cycles.",
+        "hardware_platform": "ESP32-S3-WROOM-1",
+        "programming_language": "Embedded C / C++",
+        "os_framework": "ESP-IDF v5.1 / FreeRTOS",
+        "interfaces_protocols": "BLE 5.0, I2C, SPI",
+        "repository_url": "https://github.com/my-test/mesh-node",
+        "deliverables_required": "Production firmware binary, source repo, and pinout documentation.",
+        "target_timeline": "4 weeks",
+        "file_ids": [],
+    }
+
+    res = client.post(
+        "/api/v1/software/requests",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
+    data = res.json()["data"]
+    sw_id = data["id"]
+
+    # Verify both project_description and project_overview are available
+    assert data["project_description"] == payload["project_overview"]
+    assert data["project_overview"] == payload["project_overview"]
+    assert "ESP32-S3-WROOM-1" in data["platform_technology"]
+    assert "Production firmware binary" in data["requirements"]
+
+    # Verify GET detail returns all synthesized and aliased fields
+    res_detail = client.get(
+        f"/api/v1/software/requests/{sw_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_detail.status_code == 200
+    detail = res_detail.json()["data"]
+    assert detail["project_overview"] == payload["project_overview"]
+    assert detail["hardware_platform"] == payload["hardware_platform"]
+    assert detail["programming_language"] == payload["programming_language"]
+    assert detail["deliverables_required"] == payload["deliverables_required"]
+    db.close()
+
+
+def test_software_submission_requirements_synthesized_from_scope():
+    """Verify that if customer only enters title and project_overview without separate
+    requirements, requirements field is derived cleanly and validated.
+    """
+    db = TestingSessionLocal()
+    customer, token = create_customer(db, email="minimal_dev@example.com")
+
+    payload = {
+        "title": "Minimal Bootloader Request",
+        "project_overview": "Need a simple USB DFU bootloader for RP2040 chip.",
+    }
+
+    res = client.post(
+        "/api/v1/software/requests",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
+    data = res.json()["data"]
+    assert data["project_description"] == payload["project_overview"]
+    assert len(data["requirements"]) >= 5
+    db.close()
+
+

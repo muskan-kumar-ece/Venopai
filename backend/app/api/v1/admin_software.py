@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, status as http_status
@@ -36,14 +37,85 @@ def _serialize_software_admin(req, db: Session) -> Dict[str, Any]:
         }
         for f in files
     ]
+
+    extra_fields: Dict[str, Any] = {}
+    if req.additional_notes:
+        try:
+            extra_fields = json.loads(req.additional_notes)
+            if not isinstance(extra_fields, dict):
+                extra_fields = {}
+        except Exception:
+            extra_fields = {}
+
+    clar_list = []
+    open_clars = 0
+    if hasattr(req, "clarifications") and req.clarifications:
+        for c in req.clarifications:
+            if c.status == "awaiting_response":
+                open_clars += 1
+            att_files = []
+            if c.attached_file_ids:
+                try:
+                    att_files = json.loads(c.attached_file_ids)
+                except Exception:
+                    pass
+            clar_list.append({
+                "id": str(c.id),
+                "question": c.question,
+                "status": c.status,
+                "response_text": c.response_text,
+                "raised_at": c.raised_at.isoformat() if c.raised_at else "",
+                "responded_at": c.responded_at.isoformat() if c.responded_at else None,
+                "attached_file_ids": att_files,
+            })
+
+    update_list = []
+    if hasattr(req, "status_updates") and req.status_updates:
+        for u in req.status_updates:
+            update_list.append({
+                "id": str(u.id),
+                "note": u.note,
+                "created_at": u.created_at.isoformat() if u.created_at else "",
+            })
+
+    active_quote = None
+    if hasattr(req, "quotes") and req.quotes:
+        for q in reversed(req.quotes):
+            if q.status in ("ready", "approved", "draft", "payment_pending", "paid", "sent"):
+                latest_v = q.versions[-1] if hasattr(q, "versions") and q.versions else None
+                line_items_data = []
+                total_paise = 0
+                if latest_v:
+                    total_paise = getattr(latest_v, "total_amount", 0)
+                    try:
+                        line_items_data = json.loads(latest_v.line_items) if isinstance(latest_v.line_items, str) else (latest_v.line_items or [])
+                    except Exception:
+                        line_items_data = []
+                active_quote = {
+                    "id": str(q.id),
+                    "status": q.status,
+                    "total_paise": total_paise,
+                    "line_items": line_items_data,
+                }
+                break
+
     return {
         "id": str(req.id),
         "user_id": str(req.user_id),
         "project_id": str(req.project_id) if req.project_id else None,
         "title": req.title,
         "project_description": req.project_description,
+        "project_overview": req.project_description,
         "requirements": req.requirements,
         "platform_technology": req.platform_technology,
+        "hardware_platform": extra_fields.get("hardware_platform") or req.platform_technology,
+        "target_mcu": extra_fields.get("hardware_platform") or req.platform_technology,
+        "programming_language": extra_fields.get("programming_language"),
+        "os_framework": extra_fields.get("os_framework"),
+        "interfaces_protocols": extra_fields.get("interfaces_protocols"),
+        "repository_url": extra_fields.get("repository_url"),
+        "deliverables_required": extra_fields.get("deliverables_required") or req.requirements,
+        "target_timeline": extra_fields.get("target_timeline"),
         "additional_notes": req.additional_notes,
         "status": req.status,
         "cancellation_requested": req.cancellation_requested,
@@ -55,6 +127,10 @@ def _serialize_software_admin(req, db: Session) -> Dict[str, Any]:
         "files": file_list,
         "created_at": req.created_at.isoformat() if req.created_at else "",
         "updated_at": req.updated_at.isoformat() if req.updated_at else "",
+        "clarifications": clar_list,
+        "status_updates": update_list,
+        "active_quote": active_quote,
+        "open_clarifications_count": open_clars,
     }
 
 
