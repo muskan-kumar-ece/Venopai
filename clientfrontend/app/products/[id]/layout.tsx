@@ -34,13 +34,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
           ? `${product.description.slice(0, 160)}...`
           : `Buy ${product.name} at VenopAI. 100% genuine certified components with fast pan-India express delivery.`;
 
+        const canonicalUrl = `/products/${product.slug || id}`;
+
         return {
           title,
           description,
           openGraph: {
             title: `${title} | VenopAI`,
             description,
-            url: `/products/${id}`,
+            url: canonicalUrl,
             siteName: "VenopAI",
             images: [
               {
@@ -53,7 +55,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
             type: "website",
           },
           alternates: {
-            canonical: `/products/${id}`,
+            canonical: canonicalUrl,
           },
           twitter: {
             card: "summary_large_image",

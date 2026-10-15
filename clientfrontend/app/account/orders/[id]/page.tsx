@@ -241,13 +241,13 @@ export default function OrderDetailPage() {
           {order.items?.map((item, index) => (
             <div key={item.id || item.product_id || `item-${index}`} className="py-4 flex items-center justify-between">
               <div>
-                <div className="font-semibold text-sm text-zinc-900 dark:text-white">{item.product_name || (item as any).name || 'Hardware Item'}</div>
+                <div className="font-semibold text-sm text-zinc-900 dark:text-white">{item.product_name || item.name || 'Hardware Item'}</div>
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   SKU: {item.sku || 'N/A'} • Qty: {item.quantity} • Unit: ₹{item.unit_price}
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">₹{item.total_price || (item as any).line_total || item.unit_price}</span>
+                <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">₹{item.total_price || item.line_total || item.unit_price}</span>
                 {order.status === 'delivered' && (
                   <Link
                     href={`/account/reviews?target_type=order_item&target_id=${item.id}&product_id=${item.product_id}`}

@@ -9,9 +9,14 @@ from app.models.user import User, Address
 from app.models.order import Cart, CartItem, CheckoutSession
 from app.models.catalog import Product, Inventory, InventoryReservation
 from app.services.catalog import _rupees, _paise
+from app.core.config import settings
 from app.services.tax import calculate_gst, TaxService, TaxPricingMode
 from app.integrations.shiprocket import shiprocket_provider
+from app.integrations.shiprocket.exceptions import ShiprocketError
 from app.core.exceptions import APIException
+import logging
+
+logger = logging.getLogger("venopai.services.checkout")
 
 RESERVATION_DURATION_MINUTES = 15
 
@@ -160,7 +165,15 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
         )
 
     # 4. Authoritative serviceability check
-    is_serviceable = shiprocket_provider.check_serviceability(address.pincode)
+    try:
+        is_serviceable = shiprocket_provider.check_serviceability(address.pincode)
+    except ShiprocketError as se:
+        logger.error(f"Carrier serviceability check failed due to provider error: {se}")
+        raise APIException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SHIPPING_SERVICE_UNAVAILABLE",
+            message="Shipping carrier service is temporarily unavailable. Please retry shortly.",
+        )
     if not is_serviceable:
         raise APIException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -253,12 +266,21 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
             )
 
         # 7. Calculate Shipping & Tax
-        origin_pincode = "500001" # VenopAI Hyderabad warehouse
-        shipping_quote = shiprocket_provider.calculate_rate_and_eta(
-            origin_pincode=origin_pincode,
-            destination_pincode=address.pincode,
-            weight_grams=total_weight_grams,
-        )
+        origin_pincode = settings.SHIPROCKET_ORIGIN_PINCODE
+        try:
+            shipping_quote = shiprocket_provider.calculate_rate_and_eta(
+                origin_pincode=origin_pincode,
+                destination_pincode=address.pincode,
+                weight_grams=total_weight_grams,
+            )
+        except ShiprocketError as se:
+            logger.error(f"Carrier shipping rate calculation failed due to provider error: {se}")
+            raise APIException(
+                status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="SHIPPING_SERVICE_UNAVAILABLE",
+                message="Shipping carrier service is temporarily unavailable. Please retry shortly.",
+            )
+
         if not shipping_quote.get("serviceable", True):
             raise APIException(
                 status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -429,7 +451,16 @@ def change_checkout_address(db: Session, user: User, session_id: str, new_addres
         )
 
     # Authoritative serviceability check on new address
-    is_serviceable = shiprocket_provider.check_serviceability(new_addr.pincode)
+    try:
+        is_serviceable = shiprocket_provider.check_serviceability(new_addr.pincode)
+    except ShiprocketError as se:
+        logger.error(f"Carrier serviceability check failed on address change: {se}")
+        raise APIException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SHIPPING_SERVICE_UNAVAILABLE",
+            message="Shipping carrier service is temporarily unavailable. Please retry shortly.",
+        )
+
     if not is_serviceable:
         raise APIException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -443,14 +474,30 @@ def change_checkout_address(db: Session, user: User, session_id: str, new_addres
     if session.cart:
         for it in session.cart.items:
             if it.product:
-                total_weight += (it.product.weight_grams or 200) * it.quantity
+                total_weight += (it.product.weight_grams or settings.DEFAULT_PRODUCT_WEIGHT_GRAMS) * it.quantity
 
-    origin_pincode = "500001"
-    shipping_quote = shiprocket_provider.calculate_rate_and_eta(
-        origin_pincode=origin_pincode,
-        destination_pincode=new_addr.pincode,
-        weight_grams=total_weight,
-    )
+    origin_pincode = settings.SHIPROCKET_ORIGIN_PINCODE
+    try:
+        shipping_quote = shiprocket_provider.calculate_rate_and_eta(
+            origin_pincode=origin_pincode,
+            destination_pincode=new_addr.pincode,
+            weight_grams=total_weight,
+        )
+    except ShiprocketError as se:
+        logger.error(f"Carrier rate calculation failed on address change: {se}")
+        raise APIException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SHIPPING_SERVICE_UNAVAILABLE",
+            message="Shipping carrier service is temporarily unavailable. Please retry shortly.",
+        )
+
+    if not shipping_quote.get("serviceable", True):
+        raise APIException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="ADDRESS_UNSERVICEABLE",
+            message=f"PIN code {new_addr.pincode} is unserviceable",
+        )
+
     shipping_rate_paise = shipping_quote["rate_paise"]
 
     tax_calc = TaxService.calculate_tax(

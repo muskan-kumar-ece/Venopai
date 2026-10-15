@@ -120,8 +120,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const items = Array.isArray(data.data) ? data.data : [];
       for (const p of items) {
         if (p.id) {
+          const productRef = p.slug || p.id;
           productRoutes.push({
-            url: `${siteUrl}/products/${p.id}`,
+            url: `${siteUrl}/products/${productRef}`,
             lastModified: p.updated_at ? new Date(p.updated_at) : now,
             changeFrequency: "weekly",
             priority: 0.8,

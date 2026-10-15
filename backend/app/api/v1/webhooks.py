@@ -1,17 +1,22 @@
-import uuid
+import hashlib
+import hmac
 import json
 import logging
 import threading
+import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Header, Depends, status as http_status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DatabaseError, OperationalError
 
 from app.api.deps import get_db
+from app.core.config import settings
 from app.core.exceptions import APIException
 from app.integrations.razorpay import razorpay_provider
-from app.models.order import ProcessedWebhookEvent
+from app.models.order import ProcessedWebhookEvent, ShippingWebhookInbox
 from app.workers.tasks.payment import process_razorpay_webhook_event
+from app.workers.tasks.shipping import process_shiprocket_webhook_task
+from app.services.shipping import ShippingService
 
 logger = logging.getLogger("venopai.api.webhooks")
 router = APIRouter()
@@ -27,10 +32,33 @@ async def razorpay_webhook(
     x_razorpay_signature: str = Header(None, alias="X-Razorpay-Signature"),
     db: Session = Depends(get_db),
 ):
-    """Sections 9, 10, 11: Webhook HMAC verification, deduplication, and asynchronous Celery dispatch."""
-    body_bytes = await request.body()
+    # 1. Payload size check & bounded stream before buffering (bound to 1MB max)
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 1048576:
+                raise APIException(
+                    status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    code="PAYLOAD_TOO_LARGE",
+                    message="Webhook payload exceeds maximum size limit of 1MB",
+                )
+        except ValueError:
+            pass
 
-    # 1. HMAC signature verification on raw body (SEC-004)
+    body_chunks = []
+    total_size = 0
+    async for chunk in request.stream():
+        total_size += len(chunk)
+        if total_size > 1048576:
+            raise APIException(
+                status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                code="PAYLOAD_TOO_LARGE",
+                message="Webhook payload exceeds maximum size limit of 1MB",
+            )
+        body_chunks.append(chunk)
+    body_bytes = b"".join(body_chunks)
+
+    # 2. HMAC signature verification on raw body (SEC-004)
     if not x_razorpay_signature or not razorpay_provider.verify_webhook_signature(body_bytes, x_razorpay_signature):
         logger.warning("Razorpay webhook signature verification failed")
         raise APIException(
@@ -96,22 +124,53 @@ async def razorpay_webhook(
 async def shiprocket_webhook(
     request: Request,
     x_shiprocket_token: str = Header(None, alias="X-Shiprocket-Token"),
+    x_api_key: str = Header(None, alias="x-api-key"),
     db: Session = Depends(get_db),
 ):
-    """Doc 04 §20 (WEBHOOK-API-002): Shiprocket tracking events, deduplication, shipment updates, and notification."""
-    # Authenticate Shiprocket webhook request (SEC-004)
-    from app.core.config import settings
+    """Doc 04 §20 (WEBHOOK-API-002): Durable Shiprocket tracking events, timing-safe auth, bounded size, deduplication, and asynchronous Celery dispatch."""
+    # 1. Payload size check before buffering large payloads (bound to 1MB max)
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 1048576:
+                raise APIException(
+                    status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    code="PAYLOAD_TOO_LARGE",
+                    message="Webhook payload exceeds maximum size limit of 1MB",
+                )
+        except ValueError:
+            pass
+
+    # 2. Authenticate token timing-safely across supported headers and query param (SEC-004)
     configured_token = settings.SHIPROCKET_WEBHOOK_TOKEN
+    received_token = x_shiprocket_token or x_api_key or request.query_params.get("token")
+    
     if configured_token or settings.ENVIRONMENT == "production":
-        if not x_shiprocket_token or x_shiprocket_token != configured_token:
-            logger.warning("Shiprocket webhook authentication failed: token missing or invalid")
+        is_valid = False
+        if received_token and configured_token:
+            is_valid = hmac.compare_digest(received_token.strip(), configured_token.strip())
+        if not is_valid:
+            logger.warning("Shiprocket webhook authentication failed: token missing, invalid, or mismatched")
             raise APIException(
                 status_code=http_status.HTTP_401_UNAUTHORIZED,
                 code="UNAUTHORIZED_WEBHOOK",
                 message="Invalid or missing Shiprocket webhook token",
             )
 
-    body_bytes = await request.body()
+    # 3. Stream body with strictly enforced 1MB limit to protect against chunked memory exhaustion
+    body_chunks = []
+    total_size = 0
+    async for chunk in request.stream():
+        total_size += len(chunk)
+        if total_size > 1048576:
+            raise APIException(
+                status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                code="PAYLOAD_TOO_LARGE",
+                message="Webhook payload exceeds maximum size limit of 1MB",
+            )
+        body_chunks.append(chunk)
+    body_bytes = b"".join(body_chunks)
+
     try:
         payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
     except Exception as e:
@@ -122,99 +181,61 @@ async def shiprocket_webhook(
             message="Malformed webhook JSON payload",
         )
 
-    # Event identification & deduplication
+    # 3. Deterministic event identification & composite hash deduplication
+    raw_event_id = payload.get("event_id") or payload.get("id")
     awb = payload.get("awb") or payload.get("tracking_number") or ""
     current_status = payload.get("current_status") or payload.get("status") or "unknown"
-    event_id = payload.get("event_id") or f"sr_{awb}_{current_status}"
+    order_id_val = str(payload.get("order_id") or payload.get("shipment_id") or "")
+    current_ts = str(payload.get("current_timestamp") or payload.get("occurred_at") or "")
+
+    if raw_event_id:
+        event_id = str(raw_event_id)
+    else:
+        hash_seed = f"{awb}:{current_status}:{current_ts}:{order_id_val}".encode("utf-8")
+        event_id = f"sr_{hashlib.sha256(hash_seed).hexdigest()[:24]}"
+
+    # 4. Atomic storage in ShippingWebhookInbox for durable persistence
+    now = datetime.now(timezone.utc)
+    inbox_record = None
 
     with _webhook_lock:
-        existing = db.query(ProcessedWebhookEvent).filter(
-            ProcessedWebhookEvent.event_id == event_id
+        existing_inbox = db.query(ShippingWebhookInbox).filter(
+            ShippingWebhookInbox.event_id == event_id
         ).first()
-        if existing:
+        if existing_inbox:
             logger.info(f"Duplicate Shiprocket webhook event received: {event_id}. Returning 200.")
-            return {"status": "duplicate_ignored"}
+            return {"status": "duplicate_ignored", "event_id": event_id}
 
-        processed_entry = ProcessedWebhookEvent(
+        inbox_record = ShippingWebhookInbox(
             id=uuid.uuid4(),
             event_id=event_id,
-            event_type=f"shipment.{current_status}",
             provider="shiprocket",
-            payload=body_bytes.decode("utf-8") if body_bytes else "",
-            processed_at=datetime.now(timezone.utc),
+            event_type=f"shipment.{current_status}",
+            payload_json=body_bytes.decode("utf-8") if body_bytes else "{}",
+            status="pending",
+            attempts=0,
+            received_at=now,
         )
         try:
-            db.add(processed_entry)
+            db.add(inbox_record)
             db.commit()
+            db.refresh(inbox_record)
         except (IntegrityError, DatabaseError, OperationalError):
             db.rollback()
-            return {"status": "duplicate_ignored"}
+            logger.info(f"Duplicate Shiprocket webhook caught by database constraint: {event_id}. Returning 200.")
+            return {"status": "duplicate_ignored", "event_id": event_id}
 
-    # Process shipment status transition
-    from app.models.order import Shipment, Order
-    from app.models.project import ManufacturingRequest
-    from app.services.notification import NotificationService
+    # 5. Asynchronous Celery dispatch (with synchronous fallback)
+    inbox_id_str = str(inbox_record.id)
+    try:
+        process_shiprocket_webhook_task.delay(inbox_id_str)
+    except Exception as ce:
+        logger.warning(f"Celery dispatch failed or running in test mode: {ce}. Executing synchronous fallback.")
+        try:
+            ShippingService.process_webhook_inbox_event(db, inbox_id_str)
+        except Exception as se:
+            logger.error(f"Synchronous fallback processing failed for inbox {inbox_id_str}: {se}")
 
-    # Map Shiprocket status to VenopAI normalized vocabulary
-    raw_status = current_status.upper()
-    if "DELIVERED" in raw_status:
-        normalized_status = "delivered"
-    elif "OUT FOR DELIVERY" in raw_status:
-        normalized_status = "out_for_delivery"
-    elif any(k in raw_status for k in ["IN TRANSIT", "SHIPPED", "PICKED UP"]):
-        normalized_status = "in_transit"
-    elif "CANCEL" in raw_status:
-        normalized_status = "cancelled"
-    elif "RETURN" in raw_status or "RTO" in raw_status:
-        normalized_status = "returned"
-    else:
-        normalized_status = "in_transit"
+    return {"status": "accepted", "event_id": event_id}
 
-    shipment = None
-    if awb:
-        shipment = db.query(Shipment).filter(Shipment.tracking_number == awb).first()
-    if not shipment and payload.get("order_id"):
-        shipment = db.query(Shipment).filter(Shipment.shiprocket_order_id == str(payload["order_id"])).first()
-
-    if shipment:
-        shipment.status = normalized_status
-        if payload.get("courier_name"):
-            shipment.carrier = payload["courier_name"]
-        if payload.get("etd"):
-            try:
-                shipment.estimated_delivery = datetime.fromisoformat(payload["etd"])
-            except Exception:
-                pass
-        shipment.updated_at = datetime.now(timezone.utc)
-
-        # Transition parent entity if delivered
-        if normalized_status == "delivered":
-            if shipment.order_id:
-                order = db.query(Order).filter(Order.id == shipment.order_id).first()
-                if order and order.status != "delivered":
-                    order.status = "delivered"
-                    order.updated_at = datetime.now(timezone.utc)
-                    NotificationService.notify_status_change(db, order.user_id, "Order", "delivered")
-            elif shipment.manufacturing_request_id:
-                mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == shipment.manufacturing_request_id).first()
-                if mfg and mfg.status != "delivered":
-                    mfg.status = "delivered"
-                    mfg.updated_at = datetime.now(timezone.utc)
-                    NotificationService.notify_status_change(db, mfg.user_id, "Manufacturing Request", "delivered")
-        else:
-            user_id = None
-            if shipment.order_id:
-                order = db.query(Order).filter(Order.id == shipment.order_id).first()
-                if order:
-                    user_id = order.user_id
-            elif shipment.manufacturing_request_id:
-                mfg = db.query(ManufacturingRequest).filter(ManufacturingRequest.id == shipment.manufacturing_request_id).first()
-                if mfg:
-                    user_id = mfg.user_id
-            if user_id:
-                NotificationService.notify_shipment_update(db, user_id, f"{shipment.tracking_number} ({normalized_status})")
-
-        db.commit()
-
-    return {"status": "accepted"}
 

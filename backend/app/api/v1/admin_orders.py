@@ -15,6 +15,7 @@ from app.models.user import User, AuditEvent
 from app.models.order import Order, OrderItem, Shipment
 from app.integrations.shiprocket.client import shiprocket_provider
 from app.services.notification import NotificationService
+from app.services.shipping import ShippingService
 from app.core.exceptions import APIException
 
 router = APIRouter()
@@ -312,68 +313,12 @@ def admin_create_order_shipment(
     db: Session = Depends(get_db),
 ):
     _verify_orders_role(admin, write=True)
-    try:
-        o_uuid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    order = db.query(Order).filter(Order.id == o_uuid).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    shipment = db.query(Shipment).filter(Shipment.order_id == order.id).first()
-    if not shipment:
-        carrier = body.carrier or "Delhivery"
-        tracking = body.tracking_number
-        sr_order_id = None
-        if not tracking:
-            delivery_pincode = "500001"
-            if order.shipping_address_snapshot:
-                try:
-                    snapshot_dict = json.loads(order.shipping_address_snapshot)
-                    if isinstance(snapshot_dict, dict) and snapshot_dict.get("pincode"):
-                        delivery_pincode = str(snapshot_dict["pincode"]).strip()
-                except Exception:
-                    pass
-            elif order.shipping_address and order.shipping_address.pincode:
-                delivery_pincode = str(order.shipping_address.pincode).strip()
-
-            ship_res = shiprocket_provider.create_shipment(
-                reference_id=str(order.id),
-                pickup_pincode="500001",
-                delivery_pincode=delivery_pincode,
-                weight_grams=body.weight_grams or 500,
-            )
-            tracking = ship_res.get("tracking_number")
-            sr_order_id = ship_res.get("shiprocket_order_id")
-            carrier = ship_res.get("carrier") or carrier
-
-        shipment = Shipment(
-            id=uuid.uuid4(),
-            order_id=order.id,
-            shiprocket_order_id=sr_order_id,
-            tracking_number=tracking,
-            carrier=carrier,
-            status="created",
-            created_at=utcnow(),
-        )
-        db.add(shipment)
-
-    order.status = "shipped"
-    order.updated_at = utcnow()
-
-    audit = AuditEvent(
-        user_id=admin.id,
-        action="CREATE_SHIPMENT",
-        resource_type="shipment",
-        resource_id=str(shipment.id),
-        details={"order_id": str(order.id), "tracking_number": shipment.tracking_number},
+    shipment = ShippingService.create_order_shipment(
+        db=db,
+        admin_user=admin,
+        order_id=order_id,
+        data=body.model_dump(),
     )
-    db.add(audit)
-    db.commit()
-    db.refresh(shipment)
-
-    NotificationService.notify_shipment_update(db, order.user_id, f"{shipment.tracking_number} (shipped)")
 
     return {
         "data": {
@@ -381,8 +326,12 @@ def admin_create_order_shipment(
             "order_id": str(shipment.order_id),
             "carrier": shipment.carrier,
             "tracking_number": shipment.tracking_number,
+            "shiprocket_order_id": shipment.shiprocket_order_id,
+            "shiprocket_shipment_id": shipment.shiprocket_shipment_id,
+            "booking_status": shipment.booking_status,
             "status": shipment.status,
             "created_at": shipment.created_at.isoformat() if shipment.created_at else None,
         },
         "request_id": getattr(request.state, "request_id", str(uuid.uuid4())),
     }
+

@@ -3,6 +3,9 @@ set -e
 
 PORT_TO_USE="${PORT:-10000}"
 
+echo "==> [STARTUP] Running database migrations..."
+alembic upgrade head || true
+
 echo "==> [STARTUP] Starting Celery Worker and Beat in background..."
 celery -A app.workers.celery_app.celery_app worker -B --loglevel=info --concurrency=1 &
 CELERY_PID=$!

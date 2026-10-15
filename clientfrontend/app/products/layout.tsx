@@ -27,6 +27,9 @@ export const metadata: Metadata = {
       "Shop genuine microcontrollers, sensors, power modules, ICs, and development boards.",
     images: ["/images/og/venopai_og_preview.jpg"],
   },
+  alternates: {
+    canonical: "/products",
+  },
 };
 
 export default function ProductsLayout({ children }: { children: React.ReactNode }) {

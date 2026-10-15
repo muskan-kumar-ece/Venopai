@@ -63,9 +63,20 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
     
+    SHIPROCKET_MODE: str = "simulation"
     SHIPROCKET_EMAIL: str = ""
     SHIPROCKET_PASSWORD: str = ""
     SHIPROCKET_WEBHOOK_TOKEN: str = ""
+    SHIPROCKET_API_BASE_URL: str = "https://apiv2.shiprocket.in/v1/external"
+    SHIPROCKET_REQUEST_TIMEOUT_SECONDS: float = 15.0
+    SHIPROCKET_CONNECT_TIMEOUT_SECONDS: float = 5.0
+    SHIPROCKET_TOKEN_CACHE_BUFFER_SECONDS: int = 3600
+    SHIPROCKET_ORIGIN_PINCODE: str = "500090"
+    SHIPROCKET_COURIER_SELECTION_STRATEGY: str = "cheapest"
+    DEFAULT_PRODUCT_WEIGHT_GRAMS: int = 200
+    VOLUMETRIC_WEIGHT_DIVISOR: int = 5000
+    SHIPROCKET_SERVICEABILITY_CACHE_TTL_SECONDS: int = 3600
+    SHIPROCKET_PICKUP_LOCATION_NAME: str = "Primary"
     
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
@@ -96,7 +107,22 @@ class Settings(BaseSettings):
     # Document 01 §34 Open Questions & Document 02 §19: Consultation Inactivity Thresholds
     # Configurable operational defaults: 14 days auto-close, 10 days reminder notification
     CONSULTATION_INACTIVITY_DAYS: int = 14
-    CONSULTATION_REMINDER_DAYS: int = 10
+    @field_validator("SHIPROCKET_ORIGIN_PINCODE")
+    @classmethod
+    def validate_origin_pincode(cls, v: str) -> str:
+        clean = v.strip()
+        if not (len(clean) == 6 and clean.isdigit() and clean[0] != "0"):
+            raise ValueError("SHIPROCKET_ORIGIN_PINCODE must be a valid 6-digit Indian PIN code without leading zero.")
+        return clean
+
+    @field_validator("SHIPROCKET_COURIER_SELECTION_STRATEGY")
+    @classmethod
+    def validate_courier_strategy(cls, v: str) -> str:
+        clean = v.strip().lower()
+        valid = {"cheapest", "recommended", "fastest"}
+        if clean not in valid:
+            raise ValueError(f"SHIPROCKET_COURIER_SELECTION_STRATEGY must be one of {valid}.")
+        return clean
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
@@ -120,6 +146,8 @@ class Settings(BaseSettings):
                 raise ValueError("CRITICAL SECURITY ERROR: CLOUDINARY credentials are required in production.")
 
             # 4. Shiprocket Configuration
+            if self.SHIPROCKET_MODE.lower() not in ("simulation", "live"):
+                raise ValueError("CRITICAL SECURITY ERROR: SHIPROCKET_MODE must be either 'simulation' or 'live'.")
             if not self.SHIPROCKET_EMAIL or not self.SHIPROCKET_PASSWORD or not self.SHIPROCKET_WEBHOOK_TOKEN:
                 raise ValueError("CRITICAL SECURITY ERROR: SHIPROCKET credentials and webhook token are required in production.")
 

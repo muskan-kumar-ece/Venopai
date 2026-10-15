@@ -10,9 +10,13 @@ from app.core.exceptions import APIException
 def _serialize_address(address: Address, check_serviceability: bool = True) -> Dict[str, Any]:
     warning = None
     if check_serviceability:
-        serviceable = shiprocket_provider.check_serviceability(address.pincode)
-        if not serviceable:
-            warning = f"PIN code {address.pincode} may not be currently serviceable for delivery"
+        try:
+            serviceable = shiprocket_provider.check_serviceability(address.pincode)
+            if not serviceable:
+                warning = f"PIN code {address.pincode} may not be currently serviceable for delivery"
+        except Exception:
+            # If provider is unreachable, do not falsely report PIN code as unserviceable
+            warning = None
 
     return {
         "id": str(address.id),

@@ -210,16 +210,109 @@ class Shipment(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, unique=True)
     manufacturing_request_id = Column(UUID(as_uuid=True), ForeignKey("manufacturing_requests.id"), nullable=True, unique=True)
-    shiprocket_order_id = Column(String(100), nullable=True)
-    tracking_number = Column(String(100), nullable=True)
+    
+    # Provider identifiers (Shiprocket API)
+    shiprocket_order_id = Column(String(100), nullable=True, index=True)
+    shiprocket_shipment_id = Column(String(100), nullable=True, index=True)
+    courier_company_id = Column(Integer, nullable=True)
+    
+    # Tracking & Carrier
+    tracking_number = Column(String(100), nullable=True, index=True)  # AWB code
     carrier = Column(String(100), nullable=True)
     estimated_delivery = Column(DateTime(timezone=True), nullable=True)
+    
+    # State Machine: Internal booking lifecycle
+    booking_status = Column(String(50), default="pending", nullable=False, index=True)
+    # Customer-facing normalized tracking status
     status = Column(String(50), default="pending", index=True)
+    
+    # Failure & Reconciliation tracking
+    last_booking_error = Column(Text, nullable=True)
+    reconciliation_notes = Column(Text, nullable=True)
+    idempotency_key = Column(String(255), unique=True, index=True, nullable=True)
+    
+    # Phase 4: Labels, Manifests, and Pickup Scheduling
+    label_url = Column(Text, nullable=True)
+    label_generated_at = Column(DateTime(timezone=True), nullable=True)
+    label_status = Column(String(50), default="pending", nullable=False, index=True)
+    
+    manifest_url = Column(Text, nullable=True)
+    manifest_generated_at = Column(DateTime(timezone=True), nullable=True)
+    manifest_status = Column(String(50), default="pending", nullable=False, index=True)
+    
+    pickup_token_number = Column(String(100), nullable=True, index=True)
+    pickup_scheduled_date = Column(DateTime(timezone=True), nullable=True)
+    pickup_status = Column(String(50), default="pending", nullable=False, index=True)
+    pickup_generated_at = Column(DateTime(timezone=True), nullable=True)
+    
+    last_operation_error = Column(Text, nullable=True)
+    last_tracking_synced_at = Column(DateTime(timezone=True), nullable=True)
+    tracking_exception_notes = Column(Text, nullable=True)
+    raw_carrier_status = Column(String(100), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     order = relationship("Order", back_populates="shipment")
     manufacturing_request = relationship("ManufacturingRequest", backref="shipment")
+
+
+class ShippingManifest(Base):
+    """Phase 4: Administrative batch shipping manifests."""
+    __tablename__ = "shipping_manifests"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    manifest_url = Column(Text, nullable=True)
+    shipment_ids = Column(Text, nullable=True)  # JSON serialized list of shipment UUIDs
+    order_ids = Column(Text, nullable=True)  # JSON serialized list of Shiprocket order IDs
+    status = Column(String(50), default="generated", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    @property
+    def manifest_type(self) -> str:
+        if self.shipment_ids:
+            try:
+                ids = json.loads(self.shipment_ids)
+                if isinstance(ids, list) and len(ids) > 1:
+                    return "batch"
+            except Exception:
+                pass
+        return "single"
+
+
+class ShipmentTrackingEvent(Base):
+    """Phase 5: Durable chronological tracking scans from carrier webhooks & polling."""
+    __tablename__ = "shipment_tracking_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shipment_id = Column(UUID(as_uuid=True), ForeignKey("shipments.id", ondelete="CASCADE"), nullable=False, index=True)
+    tracking_number = Column(String(100), nullable=False, index=True)
+    status = Column(String(50), nullable=False, index=True)  # Normalized status: in_transit, delivered, etc.
+    raw_status = Column(String(100), nullable=True)  # Raw carrier status e.g. "PICKED UP"
+    activity = Column(Text, nullable=True)
+    location = Column(String(255), nullable=True)
+    carrier = Column(String(100), nullable=True)
+    occurred_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+
+    shipment = relationship("Shipment", backref="tracking_events")
+
+
+class ShippingWebhookInbox(Base):
+    """Phase 5: Durable webhook inbox for asynchronous processing & bounded retries."""
+    __tablename__ = "shipping_webhook_inbox"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(String(255), unique=True, index=True, nullable=False)
+    provider = Column(String(50), default="shiprocket", nullable=False)
+    shipment_id = Column(UUID(as_uuid=True), ForeignKey("shipments.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_type = Column(String(100), nullable=False)
+    payload_json = Column(Text, nullable=False)
+    status = Column(String(50), default="pending", nullable=False, index=True)  # pending, processed, failed, duplicate
+    attempts = Column(Integer, default=0, nullable=False)
+    last_error = Column(Text, nullable=True)
+    provider_timestamp = Column(DateTime(timezone=True), nullable=True)
+    received_at = Column(DateTime(timezone=True), default=utcnow)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+
+    shipment = relationship("Shipment", backref="webhook_events")
 
 
 class ProcessedWebhookEvent(Base):
@@ -231,3 +324,4 @@ class ProcessedWebhookEvent(Base):
     provider = Column(String(50), default="razorpay", nullable=False)
     payload = Column(Text, nullable=True)
     processed_at = Column(DateTime(timezone=True), default=utcnow)
+
