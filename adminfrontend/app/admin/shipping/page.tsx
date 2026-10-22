@@ -283,8 +283,9 @@ export default function AdminShippingPage() {
                     </td>
                     <td className="py-3 px-3 text-right">
                       <button
+                        type="button"
                         onClick={() => handleOpenTracking(s)}
-                        className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium transition cursor-pointer"
+                        className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 text-[11px] font-medium transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
                         Track Parcel &rarr;
                       </button>
@@ -386,7 +387,8 @@ export default function AdminShippingPage() {
             <button
               type="submit"
               disabled={calculating}
-              className="w-full rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-750 disabled:opacity-50 transition cursor-pointer"
+              aria-busy={calculating}
+              className="w-full rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-700 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               {calculating ? "Calculating..." : "Estimate Shipping Rates"}
             </button>
@@ -416,8 +418,10 @@ export default function AdminShippingPage() {
                 <h3 className="text-sm font-bold text-white font-mono">{activeTrackingShipment.tracking_number || "AWB"}</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveTrackingShipment(null)}
-                className="text-xs px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 hover:text-white"
+                className="text-xs px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                aria-label="Close tracking details modal"
               >
                 ✕
               </button>
@@ -452,8 +456,9 @@ export default function AdminShippingPage() {
 
             <div className="flex justify-end pt-2">
               <button
+                type="button"
                 onClick={() => setActiveTrackingShipment(null)}
-                className="px-4 py-1.5 rounded-lg bg-zinc-800 text-xs text-zinc-200 hover:bg-zinc-700"
+                className="px-4 py-1.5 rounded-lg bg-zinc-800 text-xs text-zinc-200 hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Close
               </button>

@@ -353,11 +353,20 @@ export default function CartPage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleAddRecommended(prod.id)}
                       disabled={addingRecId === prod.id}
-                      className="mt-3.5 w-full rounded-lg bg-zinc-900 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50"
+                      aria-busy={addingRecId === prod.id}
+                      className="mt-3.5 w-full rounded-lg bg-zinc-900 py-2 text-xs font-semibold text-white hover:bg-zinc-800 active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     >
-                      {addingRecId === prod.id ? "Adding..." : "+ Add to Cart"}
+                      {addingRecId === prod.id ? (
+                        <>
+                          <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
+                          <span>Adding...</span>
+                        </>
+                      ) : (
+                        "+ Add to Cart"
+                      )}
                     </button>
                   </div>
                 );
@@ -383,9 +392,10 @@ export default function CartPage() {
           </h1>
         </div>
         <button
+          type="button"
           onClick={clearAll}
           disabled={isUpdating}
-          className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-medium transition-colors cursor-pointer"
+          className="text-xs text-red-600 hover:text-red-700 active:scale-95 dark:text-red-400 font-medium transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded px-1.5 py-0.5"
         >
           Clear Cart
         </button>
@@ -437,23 +447,25 @@ export default function CartPage() {
 
               <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6">
                 {/* Quantity selector */}
-                <div className="flex items-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800">
+                <div className="flex items-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 shadow-2xs">
                   <button
                     type="button"
                     disabled={isUpdating || item.quantity <= 1}
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700 rounded-l-xl disabled:opacity-40 cursor-pointer"
+                    className="px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-200 active:scale-90 active:bg-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:active:bg-zinc-600 rounded-l-xl disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    aria-label="Decrease quantity"
                   >
                     -
                   </button>
-                  <span className="px-3 py-1 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span className="px-3 py-1 text-xs font-semibold font-mono text-zinc-900 dark:text-zinc-100 select-none">
                     {item.quantity}
                   </span>
                   <button
                     type="button"
                     disabled={isUpdating}
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-700 rounded-r-xl cursor-pointer"
+                    className="px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-200 active:scale-90 active:bg-zinc-300 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:active:bg-zinc-600 rounded-r-xl disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
@@ -469,8 +481,9 @@ export default function CartPage() {
                   type="button"
                   disabled={isUpdating}
                   onClick={() => removeItem(item.id)}
-                  className="text-zinc-400 hover:text-red-500 transition-colors p-1.5 cursor-pointer"
-                  aria-label="Remove item"
+                  className="text-zinc-400 hover:text-red-500 active:scale-90 transition-all p-1.5 cursor-pointer rounded-lg disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                  aria-label={`Remove ${item.name} from cart`}
+                  title="Remove item"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -519,7 +532,7 @@ export default function CartPage() {
 
             <Link
               href="/checkout"
-              className={`mt-4 block w-full text-center rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 transition-colors ${
+              className={`mt-4 block w-full text-center rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                 cart.items.length === 0 ? "pointer-events-none opacity-50" : ""
               }`}
             >
@@ -552,9 +565,17 @@ export default function CartPage() {
                 type="button"
                 onClick={() => handleCheckPincode()}
                 disabled={checkingPincode || pincode.length !== 6}
-                className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition cursor-pointer disabled:opacity-40"
+                aria-busy={checkingPincode}
+                className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 active:scale-95 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex items-center gap-1.5"
               >
-                {checkingPincode ? "..." : "Check"}
+                {checkingPincode ? (
+                  <>
+                    <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
+                    <span>Checking...</span>
+                  </>
+                ) : (
+                  "Check"
+                )}
               </button>
             </div>
 

@@ -23,7 +23,77 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ==========================================================================
+   Tactile & Immediate Button Interaction System
+   Provides instant press feedback, eliminates 300ms touch delay, and ensures
+   accessible keyboard focus and strict disabled behaviors across all controls.
+   ========================================================================== */
+
+/* Base interactive button properties */
+button,
+[role="button"],
+.interactive-press {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity, filter;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+/* Immediate tactile press feedback on mouse down / finger press */
+button:not([disabled]):not([aria-disabled="true"]):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.interactive-press:active {
+  transform: scale(0.975);
+  transition-duration: 75ms;
+}
+
+/* Subtle active brightness for filled buttons */
+button:not([disabled]):not([aria-disabled="true"]):not(.no-active-darken):active,
+[role="button"]:not([aria-disabled="true"]):not(.no-active-darken):active {
+  filter: brightness(0.95);
+}
+
+/* Accessible focus rings on keyboard tab navigation only */
+button:focus-visible,
+[role="button"]:focus-visible,
+.interactive-press:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* Strict disabled controls: non-interactive, clear cursor, zero active scaling */
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"],
+.interactive-press[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  opacity: 0.55 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Respect user's vestibular / reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  .interactive-press,
+  button:active,
+  [role="button"]:active,
+  .interactive-press:active {
+    transform: none !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 
 /* Custom sleek thin scrollbar for dark & light mode */
 .custom-scrollbar {

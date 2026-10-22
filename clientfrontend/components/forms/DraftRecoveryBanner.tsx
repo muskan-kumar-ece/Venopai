@@ -95,14 +95,14 @@ export function DraftRecoveryBanner({
             type="button"
             onClick={handleDiscard}
             disabled={isDiscarding}
-            className="rounded-lg border border-red-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-red-600 shadow-xs hover:bg-red-50 focus:outline-hidden dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
+            className="rounded-lg border border-red-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-red-600 shadow-xs hover:bg-red-50 active:scale-[0.97] dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
           >
             {isDiscarding ? "Resetting..." : "Discard & Start Fresh"}
           </button>
           <button
             type="button"
             onClick={handleDismiss}
-            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 focus:outline-hidden dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400"
+            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 active:scale-[0.97] dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             Keep Working
           </button>

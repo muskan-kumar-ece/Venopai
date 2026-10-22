@@ -297,13 +297,14 @@ function AccountReviewsContent() {
 
               <div>
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Rating (1 to 5 Stars) *</label>
-                <div className="flex gap-2 text-2xl cursor-pointer text-amber-400">
+                <div className="flex gap-2 text-2xl text-amber-400">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       type="button"
                       key={star}
                       onClick={() => setRating(star)}
-                      className="hover:scale-110 transition cursor-pointer"
+                      aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                      className="hover:scale-110 active:scale-90 transition-transform cursor-pointer p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >
                       {star <= rating ? '★' : '☆'}
                     </button>
@@ -326,14 +327,15 @@ function AccountReviewsContent() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !targetId}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                  aria-busy={submitting}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex items-center gap-1.5"
                 >
                   {submitting ? 'Submitting...' : 'Submit Review'}
                 </button>
@@ -389,14 +391,15 @@ function AccountReviewsContent() {
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                  aria-busy={submitting}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex items-center gap-1.5"
                 >
                   {submitting ? 'Updating...' : 'Update Review'}
                 </button>

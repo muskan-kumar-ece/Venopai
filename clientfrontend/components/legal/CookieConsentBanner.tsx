@@ -73,14 +73,14 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={() => handleConsent("essential")}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 focus:outline-none dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition"
+            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 active:scale-[0.97] dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             Essential Only
           </button>
           <button
             type="button"
             onClick={() => handleConsent("all")}
-            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 focus:outline-none dark:bg-emerald-600 dark:hover:bg-emerald-500 transition"
+            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 active:scale-[0.97] dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             Accept All
           </button>

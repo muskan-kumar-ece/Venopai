@@ -248,14 +248,15 @@ export default function QuickCategoryModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition cursor-pointer"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:opacity-50 disabled:pointer-events-none"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 focus:outline-none transition disabled:opacity-50 cursor-pointer shadow-sm shadow-emerald-950"
+              aria-busy={loading}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed cursor-pointer shadow-sm shadow-emerald-950"
             >
               {loading ? (
                 <>

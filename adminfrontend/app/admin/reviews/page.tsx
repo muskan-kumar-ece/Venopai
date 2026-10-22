@@ -198,18 +198,20 @@ export default function AdminReviewsPage() {
                       </Link>
                       {item.is_visible ? (
                         <button
+                          type="button"
                           onClick={() => {
                             setHideModalReviewId(item.id);
                             setHideReason("");
                           }}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-red-300 bg-red-950/60 border border-red-800 rounded hover:bg-red-900 transition"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-red-300 bg-red-950/60 border border-red-800 rounded hover:bg-red-900 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                         >
                           Hide Review
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => setRestoreReviewId(item.id)}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-emerald-300 bg-emerald-950/60 border border-emerald-800 rounded hover:bg-emerald-900 transition"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-emerald-300 bg-emerald-950/60 border border-emerald-800 rounded hover:bg-emerald-900 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                         >
                           Restore
                         </button>
@@ -246,15 +248,16 @@ export default function AdminReviewsPage() {
               <button
                 type="button"
                 onClick={() => setHideModalReviewId(null)}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!hideReason.trim() || actionInProgress}
+                aria-busy={actionInProgress}
                 onClick={confirmHide}
-                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition"
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 {actionInProgress ? "Hiding..." : "Confirm Suppression"}
               </button>
@@ -275,15 +278,16 @@ export default function AdminReviewsPage() {
               <button
                 type="button"
                 onClick={() => setRestoreReviewId(null)}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={actionInProgress}
+                aria-busy={actionInProgress}
                 onClick={confirmRestore}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 {actionInProgress ? "Restoring..." : "Restore Public Visibility"}
               </button>

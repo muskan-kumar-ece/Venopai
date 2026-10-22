@@ -477,8 +477,9 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleShareProduct}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 active:scale-95 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   title="Share Component"
+                  aria-label="Share this component link"
                 >
                   {shareCopied ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Copied!</span>
@@ -569,21 +570,23 @@ export default function ProductDetailPage() {
               {/* Quantity Picker & Add to Cart */}
               <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center rounded-xl border border-zinc-300 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900">
+                  <div className="flex items-center rounded-xl border border-zinc-300 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900 shadow-2xs">
                     <button
                       type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="h-8 w-8 rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 flex items-center justify-center font-bold"
+                      className="h-8 w-8 rounded-lg text-zinc-600 hover:bg-zinc-100 active:scale-90 active:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:active:bg-zinc-700 flex items-center justify-center font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      aria-label="Decrease quantity"
                     >
                       -
                     </button>
-                    <span className="w-12 text-center text-sm font-bold text-zinc-900 dark:text-white">
+                    <span className="w-12 text-center text-sm font-bold font-mono text-zinc-900 dark:text-white select-none">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => setQuantity(quantity + 1)}
-                      className="h-8 w-8 rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 flex items-center justify-center font-bold"
+                      className="h-8 w-8 rounded-lg text-zinc-600 hover:bg-zinc-100 active:scale-90 active:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:active:bg-zinc-700 flex items-center justify-center font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      aria-label="Increase quantity"
                     >
                       +
                     </button>
@@ -593,10 +596,14 @@ export default function ProductDetailPage() {
                     type="button"
                     onClick={handleAddToCart}
                     disabled={addingToCart}
-                    className="flex-1 rounded-xl bg-zinc-900 py-3.5 px-6 text-sm font-bold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 transition-all cursor-pointer flex items-center justify-center gap-2"
+                    aria-busy={addingToCart}
+                    className="flex-1 rounded-xl bg-zinc-900 py-3.5 px-6 text-sm font-bold text-white shadow-sm hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 transition-all cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
                     {addingToCart ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>Adding to Cart...</span>
+                      </div>
                     ) : cartSuccess ? (
                       <span className="text-emerald-400 dark:text-white font-bold">&#10003; Added to Cart</span>
                     ) : (
@@ -613,9 +620,17 @@ export default function ProductDetailPage() {
                     type="button"
                     onClick={handleBuyNow}
                     disabled={buyingNow}
-                    className="rounded-xl bg-emerald-600 py-3.5 px-6 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50 transition-all cursor-pointer"
+                    aria-busy={buyingNow}
+                    className="rounded-xl bg-emerald-600 py-3.5 px-6 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
-                    {buyingNow ? "Processing..." : "Buy Now"}
+                    {buyingNow ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      "Buy Now"
+                    )}
                   </button>
                 </div>
               </div>
@@ -645,9 +660,17 @@ export default function ProductDetailPage() {
                   <button
                     type="submit"
                     disabled={checkingPincode}
-                    className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                    aria-busy={checkingPincode}
+                    className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-bold text-white hover:bg-zinc-800 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex items-center gap-1.5"
                   >
-                    {checkingPincode ? "Checking..." : "Verify"}
+                    {checkingPincode ? (
+                      <>
+                        <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
+                        <span>Checking...</span>
+                      </>
+                    ) : (
+                      "Verify"
+                    )}
                   </button>
                 </form>
 

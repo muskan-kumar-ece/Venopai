@@ -128,7 +128,8 @@ function AdminLoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center rounded-lg bg-emerald-600 py-2.5 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors cursor-pointer"
+          aria-busy={loading}
+          className="w-full flex items-center justify-center rounded-lg bg-emerald-600 py-2.5 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           {loading ? (
             <div className="flex items-center gap-2">
@@ -150,7 +151,7 @@ function AdminLoginForm() {
             <button
               type="button"
               onClick={() => handleQuickFill("superadmin@venopai.com")}
-              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               <span className="font-semibold text-emerald-400 block">SUPER_ADMIN</span>
               <span className="text-[10px] text-zinc-500">Full system access</span>
@@ -158,7 +159,7 @@ function AdminLoginForm() {
             <button
               type="button"
               onClick={() => handleQuickFill("order_mgr@venopai.com")}
-              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <span className="font-semibold text-blue-400 block">ORDER_MGR</span>
               <span className="text-[10px] text-zinc-500">Catalog & Inventory</span>
@@ -166,7 +167,7 @@ function AdminLoginForm() {
             <button
               type="button"
               onClick={() => handleQuickFill("mfg_mgr@venopai.com")}
-              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
             >
               <span className="font-semibold text-cyan-400 block">MFG_MGR</span>
               <span className="text-[10px] text-zinc-500">Fabrication Queues</span>
@@ -174,7 +175,7 @@ function AdminLoginForm() {
             <button
               type="button"
               onClick={() => handleQuickFill("finance_mgr@venopai.com")}
-              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white transition cursor-pointer"
+              className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-1.5 text-left text-[11px] text-zinc-300 hover:border-zinc-700 hover:bg-zinc-850 hover:text-white active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
             >
               <span className="font-semibold text-purple-400 block">FINANCE_MGR</span>
               <span className="text-[10px] text-zinc-500">Refunds & Payments</span>

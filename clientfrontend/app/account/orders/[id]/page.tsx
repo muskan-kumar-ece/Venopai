@@ -173,16 +173,19 @@ export default function OrderDetailPage() {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={handleDownloadInvoice}
             disabled={downloadingInvoice}
-            className="px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition cursor-pointer"
+            aria-busy={downloadingInvoice}
+            className="px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {downloadingInvoice ? 'Fetching...' : '📄 Download Invoice'}
           </button>
           {order.can_cancel && (
             <button
+              type="button"
               onClick={() => setShowCancelModal(true)}
-              className="px-3.5 py-2 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/70 rounded-xl text-xs font-semibold transition cursor-pointer"
+              className="px-3.5 py-2 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-950/70 active:scale-95 rounded-xl text-xs font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
               Cancel Order
             </button>
@@ -331,15 +334,18 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setShowCancelModal(false)}
-                className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 active:scale-95 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Keep Order
               </button>
               <button
+                type="button"
                 onClick={handleCancelOrder}
                 disabled={cancelling}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
+                aria-busy={cancelling}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>

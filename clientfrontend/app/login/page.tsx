@@ -125,7 +125,7 @@ function LoginForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   title={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600 active:scale-90 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
                 >
                   {showPassword ? (
                     /* Eye Off Icon */
@@ -158,7 +158,8 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center rounded-xl bg-zinc-900 py-3 px-4 text-sm font-semibold text-white shadow-md hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:focus:ring-offset-zinc-950 transition-all cursor-pointer font-medium active:scale-[0.99]"
+              aria-busy={loading}
+              className="w-full flex items-center justify-center rounded-xl bg-zinc-900 py-3 px-4 text-sm font-semibold text-white shadow-md hover:bg-zinc-800 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:focus-visible:ring-offset-zinc-950 transition-all cursor-pointer"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -180,7 +181,7 @@ function LoginForm() {
                   setPassword("CustomerPass123!");
                   setError(null);
                 }}
-                className="w-full text-center text-xs text-zinc-500 hover:text-emerald-500 py-2 px-3 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500/50 transition cursor-pointer"
+                className="w-full text-center text-xs text-zinc-500 hover:text-emerald-500 active:scale-[0.98] py-2 px-3 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500/50 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 Quick Fill Test Customer (<span className="font-mono text-emerald-600 dark:text-emerald-400">customer@venopai.com</span>)
               </button>

@@ -24,7 +24,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {actionLabel && actionHref && (
         <Link
           href={actionHref}
-          className="inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm"
+          className="inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {actionLabel}
         </Link>

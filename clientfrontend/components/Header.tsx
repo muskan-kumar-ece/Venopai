@@ -180,8 +180,9 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((prev) => !prev)}
-                className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 p-1 pr-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 p-1 pr-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 active:scale-[0.97] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 aria-expanded={userMenuOpen}
+                aria-label="Toggle user account menu"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
                   {initials}
@@ -307,7 +308,7 @@ export function Header() {
                     <button
                       type="button"
                       onClick={() => logout()}
-                      className="w-full flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 active:scale-[0.98] dark:text-red-400 dark:hover:bg-red-950/40 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     >
                       <span>🚪</span>
                       <span>Sign Out</span>
@@ -320,13 +321,13 @@ export function Header() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white transition-colors"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 active:scale-[0.97] dark:text-zinc-300 dark:hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors"
+                className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 active:scale-[0.97] dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 Register
               </Link>
@@ -337,8 +338,9 @@ export function Header() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="flex p-2 text-zinc-600 lg:hidden hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-            aria-label="Open mobile menu"
+            className="flex p-2 text-zinc-600 lg:hidden hover:text-zinc-900 active:scale-95 dark:text-zinc-400 dark:hover:text-white transition-transform rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+            aria-label={mobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
+            aria-expanded={mobileMenuOpen}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {mobileMenuOpen ? (
@@ -372,7 +374,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={() => logout()}
-                  className="mt-2 block text-left text-red-600 font-medium py-1"
+                  className="mt-2 block text-left text-red-600 font-medium py-1 active:scale-[0.98] transition-transform cursor-pointer"
                 >
                   Sign Out
                 </button>
@@ -381,13 +383,13 @@ export function Header() {
               <div className="border-t border-zinc-200 pt-3 flex gap-2 dark:border-zinc-800">
                 <Link
                   href="/login"
-                  className="flex-1 text-center rounded-lg border border-zinc-300 py-2 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+                  className="flex-1 text-center py-2 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 active:scale-[0.97] transition-all"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  className="flex-1 text-center rounded-lg bg-emerald-600 py-2 text-xs font-semibold text-white"
+                  className="flex-1 text-center py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white active:scale-[0.97] transition-all"
                 >
                   Register
                 </Link>

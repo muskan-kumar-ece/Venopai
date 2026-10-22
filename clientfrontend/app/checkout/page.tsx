@@ -777,6 +777,7 @@ export default function CheckoutPage() {
             </div>
 
             <button
+              type="button"
               disabled={
                 isSubmitting ||
                 paymentStatus === "initiating" ||
@@ -785,8 +786,9 @@ export default function CheckoutPage() {
                 !session ||
                 !agreeCheckoutTerms
               }
+              aria-busy={paymentStatus === "initiating" || paymentStatus === "confirming"}
               onClick={handleInitiatePayment}
-              className="mt-4 w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+              className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
             >
               {paymentStatus === "initiating" ? (
                 <>
@@ -916,15 +918,16 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  className="rounded-lg px-4 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 active:scale-95 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-500"
+                  disabled={isSubmitting}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  Save Address
+                  {isSubmitting ? "Saving..." : "Save Address"}
                 </button>
               </div>
             </form>

@@ -427,8 +427,9 @@ export function SearchBar() {
                 setQuery(nextPrediction.fullText);
                 inputRef.current?.focus();
               }}
-              className="hidden sm:inline-flex items-center gap-1 rounded bg-zinc-200/60 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 rounded bg-zinc-200/60 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-95 transition-all cursor-pointer"
               title="Press Tab to complete"
+              aria-label="Autocomplete suggestion"
             >
               <span>Tab</span>
               <span>⇥</span>
@@ -459,7 +460,7 @@ export function SearchBar() {
             <button
               type="button"
               onClick={handleClear}
-              className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 active:scale-90 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               title="Clear search"
               aria-label="Clear search"
             >
@@ -500,7 +501,7 @@ export function SearchBar() {
                     <button
                       type="button"
                       onClick={clearAllRecentSearches}
-                      className="text-[11px] font-normal text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      className="text-[11px] font-normal text-zinc-400 hover:text-red-500 active:scale-95 dark:hover:text-red-400 transition-all cursor-pointer"
                     >
                       Clear all
                     </button>
@@ -530,7 +531,7 @@ export function SearchBar() {
                           <button
                             type="button"
                             onClick={(e) => removeRecentSearch(e, item)}
-                            className="rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 opacity-60 hover:opacity-100 transition-opacity"
+                            className="rounded p-1 text-zinc-400 hover:text-zinc-700 active:scale-90 dark:hover:text-zinc-200 opacity-60 hover:opacity-100 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Remove"
                             aria-label={`Remove recent search ${item}`}
                           >
@@ -565,7 +566,7 @@ export function SearchBar() {
                           setQuery(item);
                           handleExecuteSearch(item);
                         }}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium cursor-pointer active:scale-95 transition-all ${
                           isNavActive
                             ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/30"
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -590,7 +591,7 @@ export function SearchBar() {
                       key={cat.slug || cat.id}
                       type="button"
                       onClick={() => handleSelectCategory(cat)}
-                      className="flex items-center gap-2 rounded-lg border border-zinc-200/60 bg-white p-2 text-left text-xs font-medium text-zinc-700 transition-colors hover:border-emerald-500 hover:text-emerald-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400 cursor-pointer"
+                      className="flex items-center gap-2 rounded-lg border border-zinc-200/60 bg-white p-2 text-left text-xs font-medium text-zinc-700 transition-all hover:border-emerald-500 hover:text-emerald-600 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400 cursor-pointer"
                     >
                       <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
                         ⚡
@@ -632,7 +633,7 @@ export function SearchBar() {
                   <button
                     type="button"
                     onClick={() => handleExecuteSearch(query)}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     View Catalog Results
                     <span>→</span>

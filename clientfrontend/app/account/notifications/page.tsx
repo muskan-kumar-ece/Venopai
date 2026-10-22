@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { notificationsApi, getCustomerToken } from "@/lib/api/client";

@@ -131,7 +131,7 @@ export function AdminSidebar() {
                       <Link
                         key={link.href}
                         href={link.href}
-                        className={`block rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                        className={`block rounded-lg px-2.5 py-1.5 text-xs font-medium active:scale-[0.98] transition-all ${
                           isActive
                             ? "bg-zinc-850 text-white font-semibold shadow-sm border border-zinc-750"
                             : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
@@ -159,7 +159,7 @@ export function AdminSidebar() {
               <button
                 type="button"
                 onClick={() => logout()}
-                className="text-[11px] text-zinc-400 hover:text-red-400 transition cursor-pointer"
+                className="text-[11px] text-zinc-400 hover:text-red-400 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded px-1.5 py-0.5"
               >
                 Sign Out
               </button>

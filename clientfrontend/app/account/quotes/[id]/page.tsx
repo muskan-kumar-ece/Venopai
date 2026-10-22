@@ -318,7 +318,7 @@ export default function QuoteDetailPage({
           <Link
             href={`/account/quotes/${quoteId}/print`}
             target="_blank"
-            className="px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            className="px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-200 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -329,14 +329,16 @@ export default function QuoteDetailPage({
           {canAct && (
             <>
               <button
+                type="button"
                 onClick={() => setShowRejectModal(true)}
-                className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-95 text-zinc-700 dark:text-zinc-200 rounded-xl text-xs font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
                 Request Revision
               </button>
               <button
+                type="button"
                 onClick={() => setShowApproveModal(true)}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 ✓ Approve Quote
               </button>
@@ -345,11 +347,20 @@ export default function QuoteDetailPage({
 
           {canPay && (
             <button
+              type="button"
               onClick={handlePayWithRazorpay}
               disabled={paying}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-2"
+              aria-busy={paying}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              {paying ? "Opening Gateway..." : `💳 Pay ₹${selectedVersion.total} with Razorpay`}
+              {paying ? (
+                <>
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Opening Gateway...</span>
+                </>
+              ) : (
+                `💳 Pay ₹${selectedVersion.total} with Razorpay`
+              )}
             </button>
           )}
         </div>
@@ -378,9 +389,10 @@ export default function QuoteDetailPage({
             const isLatest = v.version_number === quote.current_version.version_number;
             return (
               <button
+                type="button"
                 key={v.id}
                 onClick={() => setSelectedVersion(v)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                   isSelected
                     ? "bg-emerald-600 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
@@ -401,8 +413,9 @@ export default function QuoteDetailPage({
             <strong>Historical Version (v{selectedVersion.version_number}):</strong> This version has been superseded by a newer quotation.
           </div>
           <button
+            type="button"
             onClick={() => setSelectedVersion(quote.current_version)}
-            className="text-xs font-bold underline ml-4 whitespace-nowrap cursor-pointer"
+            className="text-xs font-bold underline ml-4 whitespace-nowrap active:scale-95 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
           >
             Switch to Latest (v{quote.current_version.version_number})
           </button>

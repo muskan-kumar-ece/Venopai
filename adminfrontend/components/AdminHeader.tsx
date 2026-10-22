@@ -31,8 +31,9 @@ export function AdminHeader() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="md:hidden p-1 text-zinc-400 hover:text-white"
+            className="md:hidden p-1 text-zinc-400 hover:text-white active:scale-90 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
             aria-label="Toggle Navigation"
+            aria-expanded={mobileMenuOpen}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -66,14 +67,14 @@ export function AdminHeader() {
               </Link>
               <Link
                 href="/admin/settings/security"
-                className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-white transition"
+                className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all"
               >
                 Security
               </Link>
               <button
                 type="button"
                 onClick={() => logout()}
-                className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-red-900 hover:bg-red-950/40 hover:text-red-300 transition cursor-pointer"
+                className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-red-900 hover:bg-red-950/40 hover:text-red-300 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 Sign Out
               </button>
@@ -81,7 +82,7 @@ export function AdminHeader() {
           ) : (
             <Link
               href="/admin/login"
-              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition"
+              className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 active:scale-95 transition-all"
             >
               Sign In
             </Link>
