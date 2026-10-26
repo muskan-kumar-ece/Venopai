@@ -37,6 +37,8 @@ class PaymentConfirmResponse(BaseModel):
 class PaymentDetailData(BaseModel):
     id: str
     payment_id: Optional[str] = None
+    source_type: str = "direct"
+    source_id: Optional[str] = None
     status: str
     amount: str
     currency: str = "INR"

@@ -784,7 +784,7 @@ export const adminPaymentsApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   },
-  refundPayment: (paymentId: string, data: { amount?: number; reason?: string }, token?: string) =>
+  refundPayment: (paymentId: string, data: { amount_paise?: number; reason?: string }, token?: string) =>
     apiClient.post(`/admin/payments/${paymentId}/refund`, data, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
@@ -1088,7 +1088,6 @@ export const adminFeedbackApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }),
 };
-
 
 
 

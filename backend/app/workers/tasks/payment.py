@@ -88,6 +88,7 @@ def process_razorpay_webhook_event(self, payload: dict):
             ProcessedWebhookEvent.event_id == event_id
         ).first()
         if event_record:
+            event_record.status = "processed"
             event_record.processed_at = datetime.now(timezone.utc)
             db.commit()
         else:
@@ -98,6 +99,7 @@ def process_razorpay_webhook_event(self, payload: dict):
                     event_type=event or "unknown",
                     provider="razorpay",
                     payload=json.dumps(payload),
+                    status="processed",
                     processed_at=datetime.now(timezone.utc),
                 )
                 db.add(processed)

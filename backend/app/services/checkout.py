@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 import uuid
+import json
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -68,7 +69,18 @@ def _serialize_checkout_session(
             "country": addr.country,
         }
 
-    # Build items snapshot if not provided
+    # Prefer the authoritative checkout-time snapshot so catalog edits do not
+    # change the contents or prices of an already-created payment session.
+    if items_snapshot is None and session.items_snapshot:
+        try:
+            parsed_snapshot = json.loads(session.items_snapshot)
+            if isinstance(parsed_snapshot, list):
+                items_snapshot = parsed_snapshot
+        except (TypeError, ValueError):
+            items_snapshot = None
+
+    # Legacy sessions created before item snapshots were stored fall back to
+    # the current cart representation.
     if items_snapshot is None and session.cart:
         items_snapshot = []
         for it in session.cart.items:
@@ -325,6 +337,7 @@ def create_checkout_session(db: Session, user: User, address_id: str) -> Dict[st
             igst_amount_paise=tax_calc.igst_paise,
             total_paise=total_paise,
             reservation_expires_at=expires_at,
+            items_snapshot=json.dumps(items_snapshot),
         )
         db.add(checkout_session)
 

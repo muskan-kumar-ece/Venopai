@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/account/EmptyState';
 interface Payment {
   id: string;
   source_type: string;
-  source_id: string;
+  source_id?: string | null;
   amount: string;
   currency: string;
   status: string;
@@ -99,20 +99,22 @@ export default function PaymentsPage() {
                       <StatusBadge status={p.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-xs">
-                      {p.source_type === 'order' ? (
+                      {p.source_type === 'order' && p.source_id ? (
                         <Link
                           href={`/account/orders/${p.source_id}`}
                           className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                         >
                           View Order & Invoice &rarr;
                         </Link>
-                      ) : (
+                      ) : p.source_type === 'quote' && p.source_id ? (
                         <Link
                           href={`/account/quotes/${p.source_id}`}
                           className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                         >
                           View Quote &rarr;
                         </Link>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-500">Payment intent</span>
                       )}
                     </td>
                   </tr>

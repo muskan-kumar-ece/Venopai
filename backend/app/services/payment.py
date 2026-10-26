@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from fastapi import status as http_status
 
@@ -121,6 +122,16 @@ class PaymentService:
                     Payment.checkout_session_id == session.id,
                     Payment.status == "pending",
                 ).first()
+                terminal_payment = db.query(Payment).filter(
+                    Payment.checkout_session_id == session.id,
+                    Payment.status.in_(("successful", "partially_refunded", "refunded")),
+                ).first()
+                if terminal_payment:
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="SESSION_ALREADY_COMPLETED",
+                        message="This checkout session already has a completed payment",
+                    )
 
             elif source_type_normalized == "quote":
                 try:
@@ -159,21 +170,48 @@ class PaymentService:
                         message="No valid quote version exists",
                     )
 
+                quote_status = (quote.status or "").strip().lower()
+                if quote_status == "paid":
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_ALREADY_PAID",
+                        message="This quote has already been paid",
+                    )
+                if quote_status in ("superseded", "expired", "rejected", "cancelled"):
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_NOT_PAYABLE",
+                        message=f"Quote is in {quote.status} state and cannot accept payment",
+                    )
+
+                version_status = (latest_version.status or "").strip().lower()
+                if version_status != "approved":
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_NOT_APPROVED",
+                        message="Payment can only be initiated for the current approved quote version",
+                    )
+
+                if latest_version.valid_until:
+                    valid_until = _as_utc(latest_version.valid_until)
+                    if valid_until and valid_until <= now:
+                        latest_version.status = "expired"
+                        quote.status = "expired"
+                        db.commit()
+                        raise APIException(
+                            status_code=http_status.HTTP_409_CONFLICT,
+                            code="QUOTE_EXPIRED",
+                            message="Quote has expired and cannot accept payment",
+                        )
+
                 # Check approval status
                 approval = latest_version.approval
-                is_approved = (approval and approval.status == "APPROVED") or (quote.status == "APPROVED")
+                is_approved = (approval and (approval.status or "").upper() == "APPROVED") or quote_status == "approved"
                 if not is_approved:
                     raise APIException(
                         status_code=http_status.HTTP_409_CONFLICT,
                         code="QUOTE_NOT_APPROVED",
                         message="Payment cannot be initiated until the quote is Approved by customer",
-                    )
-
-                if quote.status in ("SUPERSEDED", "EXPIRED", "REJECTED"):
-                    raise APIException(
-                        status_code=http_status.HTTP_409_CONFLICT,
-                        code="QUOTE_SUPERSEDED",
-                        message=f"Quote is in {quote.status} state and cannot accept payment",
                     )
 
                 amount_paise = latest_version.total_amount
@@ -185,6 +223,17 @@ class PaymentService:
                     Payment.quote_id == quote.id,
                     Payment.status == "pending",
                 ).first()
+
+                terminal_payment = db.query(Payment).filter(
+                    Payment.quote_id == quote.id,
+                    Payment.status.in_(("successful", "partially_refunded", "refunded")),
+                ).first()
+                if terminal_payment:
+                    raise APIException(
+                        status_code=http_status.HTTP_409_CONFLICT,
+                        code="QUOTE_ALREADY_PAID",
+                        message="This quote already has a completed payment",
+                    )
 
             else:
                 raise APIException(
@@ -237,7 +286,30 @@ class PaymentService:
                 created_at=now,
             )
             db.add(payment)
-            db.commit()
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+                existing_payment = db.query(Payment).filter(
+                    (Payment.checkout_session_id == checkout_session_id) if checkout_session_id else (Payment.quote_id == quote_id),
+                    Payment.status == "pending",
+                ).first()
+                if existing_payment:
+                    return {
+                        "payment_id": str(existing_payment.id),
+                        "provider": "razorpay",
+                        "razorpay_order_id": existing_payment.razorpay_order_id,
+                        "gateway_order_id": existing_payment.razorpay_order_id,
+                        "amount": _rupees(existing_payment.amount),
+                        "amount_paise": existing_payment.amount,
+                        "currency": existing_payment.currency,
+                        "key_id": settings.RAZORPAY_KEY_ID or "rzp_test_mock_key",
+                    }
+                raise APIException(
+                    status_code=http_status.HTTP_409_CONFLICT,
+                    code="PAYMENT_ALREADY_EXISTS",
+                    message="A payment is already being processed for this source",
+                )
             db.refresh(payment)
 
             return {
@@ -281,6 +353,13 @@ class PaymentService:
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 code="PAYMENT_NOT_FOUND",
                 message="Payment record not found or not owned by user",
+            )
+
+        if payment.status in ("refunded", "partially_refunded"):
+            raise APIException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                code="PAYMENT_TERMINAL_REFUND",
+                message="A refunded payment cannot be confirmed again",
             )
 
         # Verify Razorpay order ID matches payment
@@ -363,6 +442,11 @@ class PaymentService:
                 message="Terminal failed payment cannot be transitioned to successful",
             )
 
+        # Refunded states are terminal. Webhooks are handled as safe no-ops,
+        # while the customer callback is rejected above in confirm_payment.
+        if payment.status in ("refunded", "partially_refunded"):
+            return db.query(Order).filter(Order.id == payment.order_id).first() if payment.order_id else None
+
         # 2. Transition Payment to successful
         payment.status = "successful"
         payment.razorpay_payment_id = gateway_payment_id
@@ -384,6 +468,36 @@ class PaymentService:
             )
 
             if session:
+                existing_order = db.query(Order).filter(
+                    Order.checkout_session_id == session.id
+                ).order_by(Order.created_at.asc()).first()
+                if existing_order:
+                    session.status = "completed"
+                    payment.order_id = existing_order.id
+                    order_result = existing_order
+                    db.commit()
+                    db.refresh(existing_order)
+                    return existing_order
+
+                reservation_expired = session.status == "expired"
+                session_expiry = _as_utc(session.reservation_expires_at)
+                if session_expiry and session_expiry <= now:
+                    reservation_expired = True
+
+                reservations = (
+                    db.query(InventoryReservation)
+                    .filter(
+                        InventoryReservation.checkout_session_id == session.id,
+                        InventoryReservation.status == "ACTIVE",
+                    )
+                    .all()
+                )
+                if not reservations or any(
+                    _as_utc(res.expires_at) and _as_utc(res.expires_at) <= now
+                    for res in reservations
+                ):
+                    reservation_expired = True
+
                 session.status = "completed"
 
                 order_number = generate_order_number(db)
@@ -407,7 +521,7 @@ class PaymentService:
                     order_number=order_number,
                     user_id=session.user_id,
                     checkout_session_id=session.id,
-                    status="paid",  # ORD-001: Starts at paid
+                    status="payment_received_stock_conflict" if reservation_expired else "paid",
                     subtotal_paise=session.subtotal_paise,
                     shipping_rate_paise=session.shipping_rate_paise,
                     tax_type=session.tax_type,
@@ -426,13 +540,41 @@ class PaymentService:
                 payment.order_id = order.id
                 order_result = order
 
-                # Create OrderItems snapshots from Cart
-                if session.cart:
+                # Create OrderItems from the immutable checkout snapshot. Legacy
+                # sessions fall back to the cart for backward compatibility.
+                snapshot_items = None
+                if session.items_snapshot:
+                    try:
+                        parsed_snapshot = json.loads(session.items_snapshot)
+                        if isinstance(parsed_snapshot, list):
+                            snapshot_items = parsed_snapshot
+                    except (TypeError, ValueError):
+                        snapshot_items = None
+
+                if snapshot_items is not None:
+                    for item_data in snapshot_items:
+                        try:
+                            product_id = uuid.UUID(str(item_data["product_id"]))
+                            quantity = int(item_data["quantity"])
+                            unit_price_paise = _paise(str(item_data["unit_price"])) or 0
+                        except (KeyError, TypeError, ValueError):
+                            continue
+                        db.add(OrderItem(
+                            id=uuid.uuid4(),
+                            order_id=order.id,
+                            product_id=product_id,
+                            product_name=item_data.get("name") or "Product",
+                            quantity=quantity,
+                            price_at_time_of_order=unit_price_paise,
+                            unit_price_paise=unit_price_paise,
+                            total_paise=unit_price_paise * quantity,
+                        ))
+                elif session.cart:
                     for it in session.cart.items:
                         prod = it.product
                         p_name = prod.name if prod else "Product"
                         p_price = prod.price_paise if prod else 0
-                        order_item = OrderItem(
+                        db.add(OrderItem(
                             id=uuid.uuid4(),
                             order_id=order.id,
                             product_id=it.product_id,
@@ -441,31 +583,25 @@ class PaymentService:
                             price_at_time_of_order=p_price,
                             unit_price_paise=p_price,
                             total_paise=p_price * it.quantity,
-                        )
-                        db.add(order_item)
+                        ))
 
-                # Finalize Inventory (INV-005): permanently decrement stock and consume reservation
-                reservations = (
-                    db.query(InventoryReservation)
-                    .filter(
-                        InventoryReservation.checkout_session_id == session.id,
-                        InventoryReservation.status == "ACTIVE",
-                    )
-                    .all()
-                )
+                # Finalize inventory only while every reservation is valid. A
+                # late capture becomes an explicit admin stock-conflict order;
+                # it must never silently oversell or skip stock accounting.
                 for res in reservations:
-                    inv = (
-                        db.query(Inventory)
-                        .filter(Inventory.id == res.inventory_id)
-                        .with_for_update()
-                        .first()
-                    )
+                    inv = db.query(Inventory).filter(
+                        Inventory.id == res.inventory_id
+                    ).with_for_update().first()
                     if inv:
-                        inv.stock_quantity = max(0, inv.stock_quantity - res.quantity)
                         inv.reserved_quantity = max(0, inv.reserved_quantity - res.quantity)
+                        if not reservation_expired:
+                            inv.stock_quantity = max(0, inv.stock_quantity - res.quantity)
 
-                    res.status = "CONSUMED"
-                    res.order_id = order.id
+                    if reservation_expired:
+                        res.status = "EXPIRED"
+                    else:
+                        res.status = "CONSUMED"
+                        res.order_id = order.id
                     res.released_at = now
 
                 # Clear cart items
@@ -475,13 +611,14 @@ class PaymentService:
                 audit = AuditEvent(
                     id=uuid.uuid4(),
                     user_id=payment.user_id,
-                    action="COMMERCE_ORDER_PAID",
+                    action="COMMERCE_ORDER_PAID_STOCK_CONFLICT" if reservation_expired else "COMMERCE_ORDER_PAID",
                     entity_type="Order",
                     entity_id=order.id,
                     details=json.dumps({
                         "order_number": order.order_number,
                         "payment_id": str(payment.id),
                         "total_paise": order.total_paise,
+                        "stock_conflict": reservation_expired,
                     }),
                     created_at=now,
                 )
@@ -496,8 +633,13 @@ class PaymentService:
                 .first()
             )
             if quote:
-                quote.status = "approved"
+                quote.status = "paid"
                 quote.updated_at = now
+                latest_version = db.query(QuoteVersion).filter(
+                    QuoteVersion.quote_id == quote.id
+                ).order_by(QuoteVersion.version.desc()).first()
+                if latest_version:
+                    latest_version.status = "paid"
 
                 # Unlock linked requests (by direct request_id or project_id)
                 if getattr(quote, "request_id", None) and getattr(quote, "request_type", "") == "manufacturing":
@@ -583,6 +725,13 @@ class PaymentService:
         return {
             "id": str(payment.id),
             "payment_id": str(payment.id),
+            "source_type": payment.source_type,
+            "source_id": (
+                str(payment.quote_id) if payment.source_type == "quote" else
+                str(payment.order_id) if payment.source_type == "order" else
+                str(payment.checkout_session_id) if payment.source_type == "checkout_session" else
+                None
+            ),
             "status": payment.status,
             "amount": _rupees(payment.amount),
             "currency": payment.currency,
@@ -603,6 +752,13 @@ class PaymentService:
             {
                 "id": str(p.id),
                 "payment_id": str(p.id),
+                "source_type": p.source_type,
+                "source_id": (
+                    str(p.quote_id) if p.source_type == "quote" else
+                    str(p.order_id) if p.source_type == "order" else
+                    str(p.checkout_session_id) if p.source_type == "checkout_session" else
+                    None
+                ),
                 "status": p.status,
                 "amount": _rupees(p.amount),
                 "currency": p.currency,

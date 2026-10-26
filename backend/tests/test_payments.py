@@ -249,7 +249,7 @@ def test_payment_initiate_service_quote_flow():
     db.flush()
     quote_id = str(quote.id)
 
-    q_ver = QuoteVersion(quote_id=quote.id, version=1, total_amount=450000)
+    q_ver = QuoteVersion(quote_id=quote.id, version=1, status="approved", total_amount=450000)
     db.add(q_ver)
     db.commit()
 
@@ -601,6 +601,8 @@ def test_payment_get_detail_and_list_with_idor():
     resp_owner = client.get(f"/api/v1/payments/{payment_id}", headers=headers1)
     assert resp_owner.status_code == 200
     assert resp_owner.json()["data"]["payment_id"] == payment_id
+    assert resp_owner.json()["data"]["source_type"] == "checkout_session"
+    assert resp_owner.json()["data"]["source_id"] == session_data1["checkout_session_id"]
 
     # Non-owner receives 404 (IDOR protection)
     resp_other = client.get(f"/api/v1/payments/{payment_id}", headers=headers2)
@@ -610,6 +612,8 @@ def test_payment_get_detail_and_list_with_idor():
     resp_list = client.get("/api/v1/payments", headers=headers1)
     assert resp_list.status_code == 200
     assert len(resp_list.json()["data"]) >= 1
+    assert resp_list.json()["data"][0]["source_type"] == "checkout_session"
+    assert resp_list.json()["data"][0]["source_id"] == session_data1["checkout_session_id"]
 
 
 def test_admin_refund_rbac_and_execution():
@@ -772,3 +776,254 @@ def test_atomic_webhook_event_deduplication_under_concurrency():
     assert db.query(ProcessedWebhookEvent).filter(ProcessedWebhookEvent.event_id == "evt_concurrent_race_999").count() == 1
     db.close()
 
+
+def test_quote_payment_cannot_be_reinitiated_after_success():
+    db = TestingSessionLocal()
+    user = create_user(db, email="quote_paid_once@example.com")
+    project = Project(user_id=user.id, name="Paid Quote Project")
+    db.add(project)
+    db.flush()
+    quote = Quote(user_id=user.id, project_id=project.id, status="approved", request_type="manufacturing")
+    db.add(quote)
+    db.flush()
+    version = QuoteVersion(
+        quote_id=quote.id,
+        version=1,
+        status="approved",
+        total_amount=125000,
+        valid_until=datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    db.add(version)
+    db.flush()
+    db.add(QuoteApproval(quote_version_id=version.id, user_id=user.id, status="APPROVED"))
+    db.commit()
+    quote_id = str(quote.id)
+    headers = get_user_headers(user)
+    db.close()
+
+    first = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "quote", "source_id": quote_id},
+        headers=headers,
+    )
+    assert first.status_code == 201
+    payment_id = first.json()["data"]["payment_id"]
+    gateway_order_id = first.json()["data"]["gateway_order_id"]
+
+    confirmed = client.post(
+        f"/api/v1/payments/{payment_id}/confirm",
+        json={
+            "razorpay_payment_id": "pay_quote_once",
+            "razorpay_order_id": gateway_order_id,
+            "razorpay_signature": "mock_valid_signature",
+        },
+        headers=headers,
+    )
+    assert confirmed.status_code == 200
+
+    second = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "quote", "source_id": quote_id},
+        headers=headers,
+    )
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "QUOTE_ALREADY_PAID"
+
+    db = TestingSessionLocal()
+    assert db.query(Payment).filter(Payment.quote_id == uuid.UUID(quote_id)).count() == 1
+    assert db.query(Quote).filter(Quote.id == uuid.UUID(quote_id)).one().status == "paid"
+    db.close()
+
+
+def test_expired_approved_quote_cannot_accept_payment():
+    db = TestingSessionLocal()
+    user = create_user(db, email="expired_approved_quote@example.com")
+    project = Project(user_id=user.id, name="Expired Quote Project")
+    db.add(project)
+    db.flush()
+    quote = Quote(user_id=user.id, project_id=project.id, status="approved", request_type="manufacturing")
+    db.add(quote)
+    db.flush()
+    version = QuoteVersion(
+        quote_id=quote.id,
+        version=1,
+        status="approved",
+        total_amount=50000,
+        valid_until=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+    db.add(version)
+    db.flush()
+    db.add(QuoteApproval(quote_version_id=version.id, user_id=user.id, status="APPROVED"))
+    db.commit()
+    quote_id = str(quote.id)
+    headers = get_user_headers(user)
+    db.close()
+
+    response = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "quote", "source_id": quote_id},
+        headers=headers,
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "QUOTE_EXPIRED"
+
+
+def test_webhook_dispatch_failure_remains_retryable():
+    webhook_secret = "retryable_webhook_secret"
+    settings.RAZORPAY_WEBHOOK_SECRET = webhook_secret
+    event_payload = {
+        "event": "payment.captured",
+        "event_id": "evt_dispatch_retry_001",
+        "payload": {"payment": {"entity": {"id": "pay_retry_001", "order_id": "order_retry_001"}}},
+    }
+    raw_body = json.dumps(event_payload).encode("utf-8")
+    valid_sig = hmac.new(webhook_secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    headers = {
+        "Content-Type": "application/json",
+        "X-Razorpay-Signature": valid_sig,
+        "X-Razorpay-Event-Id": "evt_dispatch_retry_001",
+    }
+
+    failed_client = TestClient(app, raise_server_exceptions=False)
+    with patch("app.api.v1.webhooks.process_razorpay_webhook_event.delay", side_effect=RuntimeError("broker unavailable")):
+        failed = failed_client.post("/api/v1/webhooks/razorpay", content=raw_body, headers=headers)
+    assert failed.status_code == 500
+
+    db = TestingSessionLocal()
+    event = db.query(ProcessedWebhookEvent).filter(
+        ProcessedWebhookEvent.event_id == "evt_dispatch_retry_001"
+    ).one()
+    assert event.status == "pending"
+    db.close()
+
+    with patch("app.api.v1.webhooks.process_razorpay_webhook_event.delay", return_value=None):
+        retried = client.post("/api/v1/webhooks/razorpay", content=raw_body, headers=headers)
+    assert retried.status_code == 200
+    assert retried.json()["status"] == "accepted"
+
+
+def test_expired_checkout_capture_creates_stock_conflict_without_decrementing_inventory():
+    from app.services.checkout import release_expired_reservations
+
+    db = TestingSessionLocal()
+    user, prod, _, _, session_data = setup_checkout_env(db, stock=10, quantity=2)
+    db.close()
+    headers = get_user_headers(user)
+    init_res = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "checkout_session", "source_id": session_data["checkout_session_id"]},
+        headers=headers,
+    )
+    assert init_res.status_code == 201
+    payment_id = init_res.json()["data"]["payment_id"]
+    gateway_order_id = init_res.json()["data"]["gateway_order_id"]
+
+    db = TestingSessionLocal()
+    session = db.query(CheckoutSession).filter(
+        CheckoutSession.id == uuid.UUID(session_data["checkout_session_id"])
+    ).one()
+    session.reservation_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    reservations = db.query(InventoryReservation).filter(
+        InventoryReservation.checkout_session_id == session.id,
+        InventoryReservation.status == "ACTIVE",
+    ).all()
+    for reservation in reservations:
+        reservation.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db.commit()
+    release_expired_reservations(db)
+    db.close()
+
+    confirmed = client.post(
+        f"/api/v1/payments/{payment_id}/confirm",
+        json={
+            "razorpay_payment_id": "pay_late_capture",
+            "razorpay_order_id": gateway_order_id,
+            "razorpay_signature": "mock_valid_signature",
+        },
+        headers=headers,
+    )
+    assert confirmed.status_code == 200
+
+    db = TestingSessionLocal()
+    order = db.query(Order).filter(Order.id == uuid.UUID(confirmed.json()["data"]["order_id"])).one()
+    inventory = db.query(Inventory).filter(Inventory.product_id == prod.id).one()
+    assert order.status == "payment_received_stock_conflict"
+    assert inventory.stock_quantity == 10
+    assert inventory.reserved_quantity == 0
+    db.close()
+
+
+def test_refunded_payment_confirmation_is_terminal():
+    db = TestingSessionLocal()
+    user, _, _, _, session_data = setup_checkout_env(db)
+    db.close()
+    headers = get_user_headers(user)
+
+    init_res = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "checkout_session", "source_id": session_data["checkout_session_id"]},
+        headers=headers,
+    )
+    payment_id = init_res.json()["data"]["payment_id"]
+    gateway_order_id = init_res.json()["data"]["gateway_order_id"]
+    first_confirm = client.post(
+        f"/api/v1/payments/{payment_id}/confirm",
+        json={
+            "razorpay_payment_id": "pay_refunded_terminal",
+            "razorpay_order_id": gateway_order_id,
+            "razorpay_signature": "mock_valid_signature",
+        },
+        headers=headers,
+    )
+    assert first_confirm.status_code == 200
+
+    db = TestingSessionLocal()
+    payment = db.query(Payment).filter(Payment.id == uuid.UUID(payment_id)).one()
+    payment.status = "refunded"
+    db.commit()
+    db.close()
+
+    second_confirm = client.post(
+        f"/api/v1/payments/{payment_id}/confirm",
+        json={
+            "razorpay_payment_id": "pay_refunded_terminal",
+            "razorpay_order_id": gateway_order_id,
+            "razorpay_signature": "mock_valid_signature",
+        },
+        headers=headers,
+    )
+    assert second_confirm.status_code == 409
+    assert second_confirm.json()["error"]["code"] == "PAYMENT_TERMINAL_REFUND"
+
+
+def test_checkout_order_items_keep_checkout_time_prices():
+    db = TestingSessionLocal()
+    user, prod, _, _, session_data = setup_checkout_env(db, price_paise=100000)
+    headers = get_user_headers(user)
+    db.query(Product).filter(Product.id == prod.id).update({"price_paise": 200000})
+    db.commit()
+    db.close()
+
+    init_res = client.post(
+        "/api/v1/payments/initiate",
+        json={"source_type": "checkout_session", "source_id": session_data["checkout_session_id"]},
+        headers=headers,
+    )
+    payment_id = init_res.json()["data"]["payment_id"]
+    gateway_order_id = init_res.json()["data"]["gateway_order_id"]
+    confirmed = client.post(
+        f"/api/v1/payments/{payment_id}/confirm",
+        json={
+            "razorpay_payment_id": "pay_snapshot_price",
+            "razorpay_order_id": gateway_order_id,
+            "razorpay_signature": "mock_valid_signature",
+        },
+        headers=headers,
+    )
+    assert confirmed.status_code == 200
+
+    db = TestingSessionLocal()
+    item = db.query(OrderItem).filter(OrderItem.order_id == uuid.UUID(confirmed.json()["data"]["order_id"])).one()
+    assert item.unit_price_paise == 100000
+    assert item.total_paise == 200000
+    db.close()

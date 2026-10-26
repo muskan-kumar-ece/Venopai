@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, Text, Index
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, Text, Index, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -50,6 +50,7 @@ class CheckoutSession(Base):
     igst_amount_paise = Column(Integer, nullable=True)
     total_paise = Column(Integer, nullable=False)
     reservation_expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    items_snapshot = Column(Text, nullable=True)  # JSON snapshot of checkout-time product names/prices/quantities
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -170,6 +171,37 @@ class Payment(Base):
     quote = relationship("Quote", back_populates="payments")
     checkout_session = relationship("CheckoutSession", back_populates="payments")
     refunds = relationship("Refund", back_populates="payment")
+
+    __table_args__ = (
+        Index(
+            "uq_payments_pending_checkout_session",
+            "checkout_session_id",
+            unique=True,
+            postgresql_where=text("checkout_session_id IS NOT NULL AND status = 'pending'"),
+            sqlite_where=text("checkout_session_id IS NOT NULL AND status = 'pending'"),
+        ),
+        Index(
+            "uq_payments_pending_quote",
+            "quote_id",
+            unique=True,
+            postgresql_where=text("quote_id IS NOT NULL AND status = 'pending'"),
+            sqlite_where=text("quote_id IS NOT NULL AND status = 'pending'"),
+        ),
+        Index(
+            "uq_payments_terminal_checkout_session",
+            "checkout_session_id",
+            unique=True,
+            postgresql_where=text("checkout_session_id IS NOT NULL AND status IN ('successful', 'partially_refunded', 'refunded')"),
+            sqlite_where=text("checkout_session_id IS NOT NULL AND status IN ('successful', 'partially_refunded', 'refunded')"),
+        ),
+        Index(
+            "uq_payments_terminal_quote",
+            "quote_id",
+            unique=True,
+            postgresql_where=text("quote_id IS NOT NULL AND status IN ('successful', 'partially_refunded', 'refunded')"),
+            sqlite_where=text("quote_id IS NOT NULL AND status IN ('successful', 'partially_refunded', 'refunded')"),
+        ),
+    )
 
     @property
     def source_type(self) -> str:
@@ -323,5 +355,5 @@ class ProcessedWebhookEvent(Base):
     event_type = Column(String(100), nullable=False)
     provider = Column(String(50), default="razorpay", nullable=False)
     payload = Column(Text, nullable=True)
-    processed_at = Column(DateTime(timezone=True), default=utcnow)
-
+    status = Column(String(20), default="pending", nullable=False)  # pending, queued, processed
+    processed_at = Column(DateTime(timezone=True), nullable=True)

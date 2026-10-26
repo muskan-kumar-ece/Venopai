@@ -76,7 +76,8 @@ export default function AdminPaymentsPage() {
 
   const handleOpenRefund = (payment: PaymentItem) => {
     setRefundPaymentId(payment.id);
-    setRefundAmountRupees(payment.amount_rupees);
+    const remainingPaise = Math.max(0, payment.amount_paise - payment.refund_amount_paise);
+    setRefundAmountRupees((remainingPaise / 100).toFixed(2));
     setRefundReason("");
     setRefundError(null);
     setShowRefundModal(true);
@@ -93,11 +94,17 @@ export default function AdminPaymentsPage() {
     setRefundError(null);
 
     try {
-      const payload: { amount?: number; reason: string } = {
+      const payload: { amount_paise?: number; reason: string } = {
         reason: refundReason.trim(),
       };
       if (refundAmountRupees.trim()) {
-        payload.amount = Math.round(parseFloat(refundAmountRupees) * 100);
+        const amountRupees = Number(refundAmountRupees);
+        if (!Number.isFinite(amountRupees) || amountRupees <= 0) {
+          setRefundError("Refund amount must be greater than zero.");
+          setIsRefunding(false);
+          return;
+        }
+        payload.amount_paise = Math.round(amountRupees * 100);
       }
 
       await adminPaymentsApi.refundPayment(refundPaymentId.trim(), payload);
@@ -185,7 +192,7 @@ export default function AdminPaymentsPage() {
               className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 focus:outline-none"
             >
               <option value="all">All Statuses</option>
-              <option value="captured">Captured / Success</option>
+              <option value="successful">Successful</option>
               <option value="pending">Pending</option>
               <option value="refunded">Refunded</option>
               <option value="failed">Failed</option>
@@ -256,7 +263,7 @@ export default function AdminPaymentsPage() {
                       {p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="py-3 px-3 text-right">
-                      {(p.status === "captured" || p.status === "successful") && (
+                          {(p.status === "captured" || p.status === "successful" || p.status === "partially_refunded") && (
                         <button
                           onClick={() => handleOpenRefund(p)}
                           className="px-2.5 py-1 rounded bg-purple-950/60 hover:bg-purple-900/60 text-purple-300 border border-purple-800 text-[11px] font-medium transition cursor-pointer"

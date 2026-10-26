@@ -716,7 +716,7 @@ export const checkoutApi = {
     apiClient.post('/checkout/sessions', data),
   updateAddress: (sessionId: string, data: { address_id: string }) =>
     apiClient.post(`/checkout/sessions/${sessionId}/address`, data),
-  initiatePayment: (data: { checkout_session_id?: string; request_id?: string }) =>
+  initiatePayment: (data: { source_type: 'checkout_session' | 'quote'; source_id: string }) =>
     apiClient.post('/payments/initiate', data),
   confirmPayment: (paymentId: string, data: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) =>
     apiClient.post(`/payments/${paymentId}/confirm`, data),

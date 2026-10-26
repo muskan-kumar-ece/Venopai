@@ -285,7 +285,7 @@ class Quote(Base):
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
     request_type = Column(String(50), default="manufacturing", nullable=False)
     request_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    status = Column(String(50), default="draft", nullable=False)  # draft, sent, viewed, approved, rejected, expired, superseded, cancelled
+    status = Column(String(50), default="draft", nullable=False)  # draft, sent, viewed, approved, paid, rejected, expired, superseded, cancelled
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -305,7 +305,7 @@ class QuoteVersion(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     quote_id = Column(UUID(as_uuid=True), ForeignKey("quotes.id"), nullable=False, index=True)
     version = Column(Integer, nullable=False, default=1)
-    status = Column(String(50), default="draft", nullable=False)  # draft, sent, viewed, approved, rejected, expired, superseded
+    status = Column(String(50), default="draft", nullable=False)  # draft, sent, viewed, approved, paid, rejected, expired, superseded
     scope_summary = Column(Text, nullable=True)
     line_items = Column(Text, nullable=True)  # JSON serialized list of line items
     subtotal_paise = Column(Integer, nullable=False, default=0)

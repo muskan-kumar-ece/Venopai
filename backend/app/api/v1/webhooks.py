@@ -4,7 +4,7 @@ import json
 import logging
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, Header, Depends, status as http_status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DatabaseError, OperationalError
@@ -90,28 +90,60 @@ async def razorpay_webhook(
             ProcessedWebhookEvent.event_id == event_id
         ).first()
         if existing:
-            logger.info(f"Duplicate Razorpay webhook event received (fast-path): {event_id}. Returning 200.")
-            return {"status": "duplicate_ignored"}
+            if existing.status == "processed":
+                logger.info(f"Duplicate Razorpay webhook event received (fast-path): {event_id}. Returning 200.")
+                return {"status": "duplicate_ignored"}
+            if (
+                existing.status == "queued"
+                and existing.processed_at
+                and datetime.now(timezone.utc) - existing.processed_at.replace(tzinfo=timezone.utc) < timedelta(minutes=5)
+            ):
+                logger.info(f"Duplicate queued Razorpay webhook event received: {event_id}. Returning 200.")
+                return {"status": "duplicate_ignored"}
+            logger.info(f"Retrying pending Razorpay webhook event: {event_id}")
+            existing.status = "queued"
+            existing.processed_at = datetime.now(timezone.utc)
+            db.commit()
+            payload["event_id"] = event_id
+            should_dispatch = True
+        else:
+            should_dispatch = True
 
         # Atomic reservation in DB (handles concurrent race condition where both pass fast-path)
-        processed_entry = ProcessedWebhookEvent(
-            id=uuid.uuid4(),
-            event_id=event_id,
-            event_type=payload.get("event") or "unknown",
-            provider="razorpay",
-            payload=body_bytes.decode("utf-8"),
-            processed_at=datetime.now(timezone.utc),
-        )
-        try:
-            db.add(processed_entry)
-            db.commit()
-        except (IntegrityError, DatabaseError, OperationalError):
-            db.rollback()
-            logger.info(f"Duplicate Razorpay webhook event received (atomic unique constraint / concurrency collision): {event_id}. Returning 200.")
-            return {"status": "duplicate_ignored"}
+        if not existing:
+            processed_entry = ProcessedWebhookEvent(
+                id=uuid.uuid4(),
+                event_id=event_id,
+                event_type=payload.get("event") or "unknown",
+                provider="razorpay",
+                payload=body_bytes.decode("utf-8"),
+                status="queued",
+                processed_at=datetime.now(timezone.utc),
+            )
+            try:
+                db.add(processed_entry)
+                db.commit()
+            except (IntegrityError, DatabaseError, OperationalError):
+                db.rollback()
+                logger.info(f"Duplicate Razorpay webhook event received (atomic unique constraint / concurrency collision): {event_id}. Returning 200.")
+                return {"status": "duplicate_ignored"}
 
     # 4. Asynchronous Celery dispatch (dispatched ONLY if atomic INSERT succeeded)
-    process_razorpay_webhook_event.delay(payload)
+    if should_dispatch:
+        # Return the durable row to pending if broker dispatch fails. A
+        # Razorpay retry can then claim and re-enqueue it instead of being
+        # suppressed as an already-processed event.
+        try:
+            process_razorpay_webhook_event.delay(payload)
+        except Exception:
+            pending = db.query(ProcessedWebhookEvent).filter(
+                ProcessedWebhookEvent.event_id == event_id
+            ).first()
+            if pending and pending.status != "processed":
+                pending.status = "pending"
+                pending.processed_at = None
+                db.commit()
+            raise
 
     return {"status": "accepted"}
 
@@ -237,5 +269,3 @@ async def shiprocket_webhook(
             logger.error(f"Synchronous fallback processing failed for inbox {inbox_id_str}: {se}")
 
     return {"status": "accepted", "event_id": event_id}
-
-

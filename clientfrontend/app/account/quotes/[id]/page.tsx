@@ -199,17 +199,21 @@ export default function QuoteDetailPage({
       const isMockGateway = !key_id || key_id.includes("mock");
 
       const confirmCall = async (rzpPayId: string, rzpOrdId: string, sig: string) => {
-        await apiClient.post(
-          `/payments/${payment_id}/confirm`,
-          {
-            razorpay_payment_id: rzpPayId,
-            razorpay_order_id: rzpOrdId,
-            razorpay_signature: sig,
-          },
-          { headers }
-        );
-        setBanner({ type: "success", message: "Payment verified successfully! Engagement activated." });
-        await loadQuoteAndVersions();
+        try {
+          await apiClient.post(
+            `/payments/${payment_id}/confirm`,
+            {
+              razorpay_payment_id: rzpPayId,
+              razorpay_order_id: rzpOrdId,
+              razorpay_signature: sig,
+            },
+            { headers }
+          );
+          setBanner({ type: "success", message: "Payment verified successfully! Engagement activated." });
+          await loadQuoteAndVersions();
+        } finally {
+          setPaying(false);
+        }
       };
 
       const isDevelopment = process.env.NODE_ENV !== "production";
@@ -259,10 +263,11 @@ export default function QuoteDetailPage({
       if (window.Razorpay) {
         const rzp = new window.Razorpay(options);
         rzp.open();
+        return;
       }
+      throw new Error("Razorpay checkout is unavailable.");
     } catch (err: unknown) {
       setBanner({ type: "error", message: err instanceof Error ? err.message : "Payment failed" });
-    } finally {
       setPaying(false);
     }
   };
