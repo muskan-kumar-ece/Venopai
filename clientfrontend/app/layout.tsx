@@ -21,12 +21,17 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://venopai.in";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "VenopAI — Electronics Engineering, PCB Design & Rapid Manufacturing",
-    template: "%s | VenopAI",
+    default: "Venopai — Electronics Engineering, PCB Design & Rapid Manufacturing",
+    template: "%s | Venopai",
   },
   description:
-    "Turnkey electronics engineering, custom PCB design, embedded firmware development, rapid fabrication, and certified hardware marketplace.",
+    "Venopai is India's premier turnkey electronics engineering and hardware realization platform. Custom PCB design, embedded firmware development, rapid prototyping, and certified electronic components marketplace.",
   keywords: [
+    "Venopai",
+    "venopai",
+    "venopai.in",
+    "Venopai Technologies",
+    "VenopAI",
     "PCB manufacturing India",
     "custom PCB design",
     "electronics engineering Hyderabad",
@@ -35,11 +40,10 @@ export const metadata: Metadata = {
     "turnkey PCB assembly",
     "embedded firmware",
     "STM32 ESP32",
-    "VenopAI",
   ],
-  authors: [{ name: "VenopAI Technologies Pvt. Ltd." }],
-  creator: "VenopAI",
-  publisher: "VenopAI Technologies Pvt. Ltd.",
+  authors: [{ name: "Venopai Technologies Pvt. Ltd." }],
+  creator: "Venopai",
+  publisher: "Venopai Technologies Pvt. Ltd.",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -49,17 +53,17 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
-    title: "VenopAI — Electronics Engineering, PCB Design & Rapid Manufacturing",
+    title: "Venopai — Electronics Engineering, PCB Design & Rapid Manufacturing",
     description:
-      "Integrated hardware realization platform: 48-Hour rapid PCB prototyping, high-speed circuit design, firmware, and certified components marketplace.",
+      "Venopai is India's leading hardware realization platform: Rapid PCB prototyping, high-speed circuit design, firmware, and certified components marketplace.",
     url: siteUrl,
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [
       {
         url: "/images/og/venopai_og_preview.jpg",
         width: 1200,
         height: 630,
-        alt: "VenopAI — Electronics Engineering & Rapid Manufacturing Platform",
+        alt: "Venopai — Electronics Engineering & Rapid Manufacturing Platform",
       },
     ],
     locale: "en_IN",
@@ -67,9 +71,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "VenopAI — Tech Today. Brighter Tomorrow.",
+    title: "Venopai — Tech Today. Brighter Tomorrow.",
     description:
-      "Rapid PCB prototyping, multi-layer circuit design, and certified electronics components in India.",
+      "Venopai: Rapid PCB prototyping, multi-layer circuit design, and certified electronics components in India.",
     images: ["/images/og/venopai_og_preview.jpg"],
     creator: "@venopai",
   },
@@ -98,12 +102,13 @@ export default function RootLayout({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "VenopAI Technologies Pvt. Ltd.",
-    alternateName: "VenopAI",
+    name: "Venopai",
+    legalName: "Venopai Technologies Pvt. Ltd.",
+    alternateName: ["Venopai", "venopai", "VenopAI", "venopai.in", "Venopai Technologies"],
     url: siteUrl,
     logo: `${siteUrl}/icon.png`,
     description:
-      "Turnkey electronics engineering, custom PCB design, rapid manufacturing & certified hardware marketplace.",
+      "Venopai: Turnkey electronics engineering, custom PCB design, rapid manufacturing & certified hardware marketplace.",
     address: {
       "@type": "PostalAddress",
       streetAddress: "3-40 Mallampet",
@@ -132,7 +137,8 @@ export default function RootLayout({
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "VenopAI",
+    name: "Venopai",
+    alternateName: ["venopai", "Venopai Technologies", "VenopAI", "venopai.in"],
     url: siteUrl,
     potentialAction: {
       "@type": "SearchAction",

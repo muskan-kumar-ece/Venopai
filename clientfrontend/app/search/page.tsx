@@ -126,6 +126,12 @@ function SearchContent() {
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {total} product{total === 1 ? "" : "s"} found
           </p>
+          {q.trim().toLowerCase().includes("venop") && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <span className="font-semibold">Official Venopai Catalog:</span>
+              <span>Showing verified hardware components. Explore <Link href="/manufacturing" className="underline font-semibold hover:text-emerald-900 dark:hover:text-emerald-100">PCB Manufacturing</Link>, <Link href="/design" className="underline font-semibold hover:text-emerald-900 dark:hover:text-emerald-100">Hardware Design</Link>, or <Link href="/software" className="underline font-semibold hover:text-emerald-900 dark:hover:text-emerald-100">Embedded Software</Link>.</span>
+            </div>
+          )}
         </div>
 
         {/* Filters and sorting */}

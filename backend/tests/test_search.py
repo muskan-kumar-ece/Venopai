@@ -232,3 +232,32 @@ def test_search_rate_limiting(monkeypatch):
     assert 429 in responses
 
 
+def test_search_brand_query_venopai_returns_active_products():
+    """Brand search for 'venopai' surfaces active catalog products rather than returning 0 results."""
+    db = TestingSessionLocal()
+    p = create_product(db, "Venopai Prototyping Board", "Core engineering hardware", stock=10)
+    db.close()
+
+    res = client.get("/api/v1/search/products?q=venopai")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["pagination"]["total_items"] >= 1
+    assert any(prod["id"] == str(p.id) for prod in data["data"])
+
+
+def test_autocomplete_brand_query_venopai_returns_suggestions_and_products():
+    """Autocomplete for 'venopai' returns brand suggestions, top products, and categories."""
+    db = TestingSessionLocal()
+    create_product(db, "Venopai High-Speed Board", "Development board", stock=5)
+    db.close()
+
+    res = client.get("/api/v1/search/autocomplete?q=venopai")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert "suggestions" in data
+    assert any("Venopai" in s for s in data["suggestions"])
+    assert "products" in data
+    assert len(data["products"]) >= 1
+
+
+

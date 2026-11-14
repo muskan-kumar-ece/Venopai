@@ -462,7 +462,7 @@ export default function ManufacturingDetailPage({
         {activeTab === "clarifications" && (
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-neutral-900/30 border border-neutral-800 text-xs text-neutral-400">
-              Structured clarification items raised by VenopAI engineers. Once you reply to all pending questions, your request returns directly to engineering review.
+              Structured clarification items raised by Venopai engineers. Once you reply to all pending questions, your request returns directly to engineering review.
             </div>
 
             {request.clarifications.length === 0 ? (

@@ -70,7 +70,7 @@ function RegisterForm() {
         <Link href="/" className="inline-block mb-3">
           <img
             src="/images/brand/venopai_wordmark.png"
-            alt="VenoPai"
+            alt="Venopai"
             className="h-8 w-auto object-contain mx-auto dark:brightness-110"
           />
         </Link>

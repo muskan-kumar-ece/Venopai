@@ -1,5 +1,5 @@
 /**
- * VenopAI Client-Side Local Database Engine (IndexedDB + LocalStorage Fallback)
+ * Venopai Client-Side Local Database Engine (IndexedDB + LocalStorage Fallback)
  * 
  * Provides resilient, asynchronous, zero-dependency persistence for form drafts
  * with automated sensitive field filtering, TTL expiration, and cross-tab awareness.

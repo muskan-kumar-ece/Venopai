@@ -710,7 +710,7 @@ class ShiprocketProvider(ShippingProvider):
         )
 
         cust = customer_details or {}
-        cust_name = str(cust.get("recipient_name") or cust.get("name") or "VenopAI Customer").strip()
+        cust_name = str(cust.get("recipient_name") or cust.get("name") or "Venopai Customer").strip()
         name_parts = cust_name.split(" ", 1)
         first_name = name_parts[0] if name_parts[0] else "Customer"
         last_name = name_parts[1] if len(name_parts) > 1 and name_parts[1] else "User"
@@ -739,7 +739,7 @@ class ShiprocketProvider(ShippingProvider):
                 })
         else:
             normalized_items.append({
-                "name": f"VenopAI Hardware Package ({clean_ref})",
+                "name": f"Venopai Hardware Package ({clean_ref})",
                 "sku": f"SKU-{clean_ref}",
                 "units": 1,
                 "selling_price": 100.0,

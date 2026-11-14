@@ -332,7 +332,7 @@ function CategoryProductsContent({ slug }: { slug: string }) {
                         <div className="flex h-full w-full items-center justify-center text-zinc-400">
                           <img
                             src="/images/brand/venopai_cart_icon.png"
-                            alt="VenoPai"
+                            alt="Venopai"
                             className="h-12 w-12 object-contain opacity-30"
                           />
                         </div>

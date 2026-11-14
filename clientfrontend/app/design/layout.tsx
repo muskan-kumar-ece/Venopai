@@ -8,17 +8,17 @@ export const metadata: Metadata = {
     canonical: "/design",
   },
   openGraph: {
-    title: "Circuit & Multi-Layer PCB Design Services | VenopAI",
+    title: "Circuit & Multi-Layer PCB Design Services | Venopai",
     description:
       "High-speed circuit design, schematic capture, impedance-matched multi-layer layout, and DFM optimization.",
     url: "/design",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Circuit & Multi-Layer PCB Design Services | VenopAI",
+    title: "Circuit & Multi-Layer PCB Design Services | Venopai",
     description: "High-speed multi-layer PCB layout, impedance matching, and EMI/EMC compliance.",
     images: ["/images/og/venopai_og_preview.jpg"],
   },

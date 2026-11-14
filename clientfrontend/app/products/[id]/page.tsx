@@ -915,7 +915,7 @@ export default function ProductDetailPage() {
                           <div className="flex h-full w-full items-center justify-center text-zinc-400">
                             <img
                               src="/images/brand/venopai_cart_icon.png"
-                              alt="VenoPai"
+                              alt="Venopai"
                               className="h-10 w-10 object-contain opacity-30"
                             />
                           </div>

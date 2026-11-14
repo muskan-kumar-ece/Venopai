@@ -8,17 +8,17 @@ export const metadata: Metadata = {
     canonical: "/consultations",
   },
   openGraph: {
-    title: "Hardware Engineering Consultations | VenopAI",
+    title: "Hardware Engineering Consultations | Venopai",
     description:
       "1-on-1 engineering advisory: Schematics review, BOM optimization, regulatory compliance, and rapid prototyping consultation.",
     url: "/consultations",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hardware Engineering Consultations | VenopAI",
+    title: "Hardware Engineering Consultations | Venopai",
     description: "BOM optimization, schematic review, and DFM engineering consultation.",
     images: ["/images/og/venopai_og_preview.jpg"],
   },

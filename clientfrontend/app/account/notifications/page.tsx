@@ -56,7 +56,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
-        <strong>Information Note:</strong> In VenopAI V1, notifications are delivered to your verified email address. This view provides an immutable send-history log for transactional transparency.
+        <strong>Information Note:</strong> In Venopai V1, notifications are delivered to your verified email address. This view provides an immutable send-history log for transactional transparency.
       </div>
 
       {error && (

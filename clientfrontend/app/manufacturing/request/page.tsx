@@ -577,9 +577,9 @@ export default function ManufacturingIntakePage() {
                   <span className="font-semibold text-white">Intellectual Property & Mutual NDA Undertaking:</span>{" "}
                   I confirm that I own or hold valid licenses to submit these Gerber files, CAD schematics, and BOM specs. I agree to the{" "}
                   <Link href="/terms#confidentiality" target="_blank" className="text-cyan-400 underline font-medium">
-                    VenopAI Engineering Confidentiality Terms
+                    Venopai Engineering Confidentiality Terms
                   </Link>
-                  . VenopAI guarantees that all uploaded technical files are processed with 256-bit AES encryption under strict confidentiality solely for feasibility estimation, quoting, and manufacturing. <span className="text-red-400">*</span>
+                  . Venopai guarantees that all uploaded technical files are processed with 256-bit AES encryption under strict confidentiality solely for feasibility estimation, quoting, and manufacturing. <span className="text-red-400">*</span>
                 </div>
               </label>
               <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">

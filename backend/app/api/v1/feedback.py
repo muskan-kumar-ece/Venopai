@@ -29,7 +29,7 @@ def submit_feedback(
     formatted = FeedbackService.format_feedback_dict(feedback, is_admin=False)
     return {
         "data": formatted,
-        "message": "Feedback submitted successfully. Thank you for helping improve VenopAI.",
+        "message": "Feedback submitted successfully. Thank you for helping improve Venopai.",
         "request_id": get_request_id(request),
     }
 

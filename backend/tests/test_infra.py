@@ -11,7 +11,7 @@ def test_health_endpoint():
     assert response.json() == {"status": "ok", "service": "venopai-backend"}
 
 def test_config_loads():
-    assert settings.PROJECT_NAME == "VenopAI"
+    assert settings.PROJECT_NAME == "Venopai"
     assert "postgresql" in settings.DATABASE_URL
     assert "redis" in settings.REDIS_URL
 

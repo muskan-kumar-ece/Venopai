@@ -409,7 +409,7 @@ def download_order_invoice_html(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tax Invoice - {invoice_no} | VenopAI Technologies</title>
+    <title>Tax Invoice - {invoice_no} | Venopai Technologies</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
         body {{ background-color: #f4f4f5; color: #18181b; padding: 30px 15px; }}
@@ -441,7 +441,7 @@ def download_order_invoice_html(
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 24px; border-bottom: 2px solid #18181b;">
             <div>
-                <h1 style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #18181b;">VenopAI Technologies</h1>
+                <h1 style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #18181b;">Venopai Technologies</h1>
                 <p style="font-size: 12px; color: #71717a; margin-top: 4px;">Hardware Engineering & Turnkey Realization Platform</p>
                 <p style="font-size: 11px; color: #52525b; margin-top: 8px; line-height: 1.5;">
                     3-40, Mallampet, Hyderabad<br>
@@ -542,10 +542,10 @@ def download_order_invoice_html(
         <!-- Footer Notice & Signatory -->
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed #d4d4d8; display: flex; justify-content: space-between; align-items: flex-end;">
             <div style="font-size: 10px; color: #a1a1aa; max-width: 480px; line-height: 1.5;">
-                This is a computer-generated tax invoice issued in accordance with Section 31 of the Central Goods and Services Tax Act, 2017. All hardware products supplied are subject to VenopAI standard manufacturer warranty. For questions or enterprise accounts, contact accounts@venopai.in.
+                This is a computer-generated tax invoice issued in accordance with Section 31 of the Central Goods and Services Tax Act, 2017. All hardware products supplied are subject to Venopai standard manufacturer warranty. For questions or enterprise accounts, contact accounts@venopai.in.
             </div>
             <div style="text-align: center;">
-                <div style="font-size: 11px; font-weight: 700; color: #52525b;">For VenopAI Technologies Pvt. Ltd.</div>
+                <div style="font-size: 11px; font-weight: 700; color: #52525b;">For Venopai Technologies Pvt. Ltd.</div>
                 <div style="height: 40px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 12px; color: #047857; font-weight: bold; border-bottom: 1px solid #71717a; margin-top: 8px;">
                     ✓ Digitally Signed &amp; Verified
                 </div>

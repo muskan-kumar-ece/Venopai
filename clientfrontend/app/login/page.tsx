@@ -49,7 +49,7 @@ function LoginForm() {
             <Link href="/" className="inline-block mb-4 transition-transform hover:scale-[1.02]">
               <img
                 src="/images/brand/venopai_wordmark.png"
-                alt="VenoPai"
+                alt="Venopai"
                 className="h-8 w-auto object-contain dark:brightness-110"
               />
             </Link>
@@ -208,7 +208,7 @@ function LoginForm() {
           <div className="rounded-2xl overflow-hidden border border-zinc-700/60 shadow-2xl bg-zinc-900">
             <img
               src="/images/brand/venopai_brand_card.jpg"
-              alt="VenoPai - Tech Today. Brighter Tomorrow."
+              alt="Venopai - Tech Today. Brighter Tomorrow."
               className="w-full h-auto object-cover rounded-xl"
             />
           </div>

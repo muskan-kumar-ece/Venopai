@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Search Catalog",
   description:
-    "Search components, development boards, and hardware modules in the VenopAI engineering catalog.",
+    "Search components, development boards, and hardware modules in the Venopai engineering catalog.",
   robots: {
     index: false,
     follow: true,

@@ -84,7 +84,7 @@ class ResendProvider:
             "Content-Type": "application/json",
         }
         payload: Dict[str, Any] = {
-            "from": f"VenopAI <{self.sender}>",
+            "from": f"Venopai <{self.sender}>",
             "to": [to],
             "subject": subject,
             "html": html_body,

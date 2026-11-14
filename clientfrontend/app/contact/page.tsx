@@ -64,7 +64,7 @@ export default function ContactPage() {
             SUPPORT & INQUIRIES
           </span>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
-            Connect with VenopAI Engineering
+            Connect with Venopai Engineering
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             Have questions regarding PCB fabrication tolerances, component sourcing, or bulk contract manufacturing? Our engineering specialists respond within 4 business hours.
@@ -77,7 +77,7 @@ export default function ContactPage() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Engineering HQ & Lab</h3>
               <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">
-                VenopAI Technologies Pvt Ltd
+                Venopai Technologies Pvt Ltd
               </p>
               <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
                 3-40, Mallampet,<br />

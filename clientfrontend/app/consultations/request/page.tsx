@@ -285,9 +285,9 @@ export default function ConsultationRequestPage() {
                 <span className="font-semibold text-white">Confidentiality & Mutual NDA Undertaking:</span>{" "}
                 I confirm that I own or hold valid rights to submit these project details and technical questions. I agree to the{" "}
                 <Link href="/terms#confidentiality" target="_blank" className="text-emerald-400 underline font-medium">
-                  VenopAI Engineering Confidentiality Terms
+                  Venopai Engineering Confidentiality Terms
                 </Link>
-                . VenopAI guarantees that consultation queries and architecture discussions are conducted under strict mutual confidentiality. <span className="text-red-400">*</span>
+                . Venopai guarantees that consultation queries and architecture discussions are conducted under strict mutual confidentiality. <span className="text-red-400">*</span>
               </div>
             </label>
             <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">

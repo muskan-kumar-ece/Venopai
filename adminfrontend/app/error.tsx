@@ -11,7 +11,7 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("VenopAI Admin Console Exception:", error);
+    console.error("Venopai Admin Console Exception:", error);
   }, [error]);
 
   return (

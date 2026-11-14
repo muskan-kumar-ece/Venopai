@@ -10,16 +10,16 @@ export const metadata: Metadata = {
     canonical: "/manufacturing",
   },
   openGraph: {
-    title: "Rapid PCB Manufacturing & Assembly | VenopAI",
+    title: "Rapid PCB Manufacturing & Assembly | Venopai",
     description:
       "Turnkey electronics manufacturing in India: Quick-turn 1-32 layer PCB fabrication, precision SMT assembly, CNC machining, and automated optical inspection.",
     url: "/manufacturing",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rapid PCB Manufacturing & Assembly | VenopAI",
+    title: "Rapid PCB Manufacturing & Assembly | Venopai",
     description:
       "Quick-turn 1-32 layer PCB fabrication, precision SMT assembly, and CNC enclosure machining.",
     images: ["/images/og/venopai_og_preview.jpg"],
@@ -62,7 +62,7 @@ export default function ManufacturingLandingPage() {
           <div className="flex items-center gap-3">
             <Link href="/" className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-              VenopAI <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">MFG</span>
+              Venopai <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">MFG</span>
             </Link>
           </div>
           <nav className="flex items-center gap-4">

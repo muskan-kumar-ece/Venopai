@@ -387,7 +387,7 @@ export default function CheckoutPage() {
         key: key_id,
         amount: amount_paise,
         currency: "INR",
-        name: "VenopAI",
+        name: "Venopai",
         description: `Order Checkout - Session ${session.checkout_session_id.slice(0, 8)}`,
         order_id: gateway_order_id,
         prefill: {

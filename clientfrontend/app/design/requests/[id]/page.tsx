@@ -287,7 +287,7 @@ export default function DesignRequestDetailPage() {
                   Official Engineering Deliverables Ready
                 </h3>
                 <p className="text-xs text-neutral-300 mt-0.5">
-                  Verified fabrication-ready files (Gerbers, Schematics, BOM, 3D Models) uploaded by the VenopAI hardware engineering staff.
+                  Verified fabrication-ready files (Gerbers, Schematics, BOM, 3D Models) uploaded by the Venopai hardware engineering staff.
                 </p>
               </div>
 

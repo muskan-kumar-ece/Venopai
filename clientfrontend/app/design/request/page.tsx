@@ -328,7 +328,7 @@ export default function DesignRequestIntakePage() {
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-6 sm:p-8 space-y-6">
             <h2 className="text-lg font-semibold text-white">2. Scope of Work Required</h2>
             <p className="text-xs text-neutral-400">
-              Select all engineering services you need VenopAI to perform for this project:
+              Select all engineering services you need Venopai to perform for this project:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -535,9 +535,9 @@ export default function DesignRequestIntakePage() {
                 <span className="font-semibold text-white">Intellectual Property & Mutual NDA Undertaking:</span>{" "}
                 I confirm that I own or hold valid licenses to submit these hardware schematics and specifications. I agree to the{" "}
                 <Link href="/terms#confidentiality" target="_blank" className="text-cyan-400 underline font-medium">
-                  VenopAI Engineering Confidentiality Terms
+                  Venopai Engineering Confidentiality Terms
                 </Link>
-                . VenopAI guarantees that all uploaded technical files are held under strict confidentiality and used exclusively for feasibility evaluation, design execution, and quoting. <span className="text-red-400">*</span>
+                . Venopai guarantees that all uploaded technical files are held under strict confidentiality and used exclusively for feasibility evaluation, design execution, and quoting. <span className="text-red-400">*</span>
               </div>
             </label>
             <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">

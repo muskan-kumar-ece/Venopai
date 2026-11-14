@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Service & Statutory Agreement",
   description:
-    "Official Terms of Service for VenopAI Technologies Pvt. Ltd. Governs platform use, electronic components sales, custom fabrication orders, and intellectual property.",
+    "Official Terms of Service for Venopai Technologies Pvt. Ltd. Governs platform use, electronic components sales, custom fabrication orders, and intellectual property.",
   alternates: {
     canonical: "/terms",
   },
@@ -32,7 +32,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">1. Acceptance of Terms & Entity Information</h2>
               <p className="mt-1">
-                By creating an account, browsing the hardware catalog, uploading CAD schematics, requesting engineering quotations, or placing orders on VenopAI (the &quot;Platform&quot;), operated by <strong className="text-zinc-900 dark:text-zinc-200">VenopAI Technologies Pvt. Ltd.</strong> (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), CIN: <code className="font-mono text-zinc-700 dark:text-zinc-300">U72900KA2026PTC189201</code>, you agree to be legally bound by these Terms of Service, the <Link href="/privacy" className="text-emerald-600 underline">Privacy Policy</Link>, and the <Link href="/cancellation-refund" className="text-emerald-600 underline">Cancellation & Refund Policy</Link>.
+                By creating an account, browsing the hardware catalog, uploading CAD schematics, requesting engineering quotations, or placing orders on Venopai (the &quot;Platform&quot;), operated by <strong className="text-zinc-900 dark:text-zinc-200">Venopai Technologies Pvt. Ltd.</strong> (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), CIN: <code className="font-mono text-zinc-700 dark:text-zinc-300">U72900KA2026PTC189201</code>, you agree to be legally bound by these Terms of Service, the <Link href="/privacy" className="text-emerald-600 underline">Privacy Policy</Link>, and the <Link href="/cancellation-refund" className="text-emerald-600 underline">Cancellation & Refund Policy</Link>.
               </p>
             </section>
 
@@ -41,10 +41,10 @@ export default function TermsPage() {
                 2. Intellectual Property Rights & Mutual Non-Disclosure Agreement (NDA)
               </h2>
               <p className="mt-1 text-zinc-700 dark:text-zinc-300">
-                <strong>Client IP Ownership:</strong> The Client retains sole, exclusive, and unencumbered ownership of all intellectual property, proprietary schematics, Gerber archives, IPC-2581 files, BOM lists, STEP 3D models, and firmware source code uploaded to the Platform. VenopAI claims zero IP ownership over customer designs.
+                <strong>Client IP Ownership:</strong> The Client retains sole, exclusive, and unencumbered ownership of all intellectual property, proprietary schematics, Gerber archives, IPC-2581 files, BOM lists, STEP 3D models, and firmware source code uploaded to the Platform. Venopai claims zero IP ownership over customer designs.
               </p>
               <p className="mt-2 text-zinc-700 dark:text-zinc-300">
-                <strong>Confidentiality Commitment:</strong> VenopAI treats all customer technical artifacts under strict confidentiality. Files are encrypted via 256-bit AES at rest and TLS 1.3 in transit. Artifacts are inspected strictly by authorized production engineers solely for Design for Manufacturing (DFM) verification, quotation estimation, and fabrication execution. We will never sell, monetize, disclose, or use customer designs for third-party production.
+                <strong>Confidentiality Commitment:</strong> Venopai treats all customer technical artifacts under strict confidentiality. Files are encrypted via 256-bit AES at rest and TLS 1.3 in transit. Artifacts are inspected strictly by authorized production engineers solely for Design for Manufacturing (DFM) verification, quotation estimation, and fabrication execution. We will never sell, monetize, disclose, or use customer designs for third-party production.
               </p>
             </section>
 
@@ -58,7 +58,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">4. Pricing, GST & Prohibition of Dark Patterns</h2>
               <p className="mt-1">
-                All prices are stated in Indian Rupees (INR). In accordance with the <em>Guidelines for Prevention and Regulation of Dark Patterns, 2023</em> and the <em>Consumer Protection (E-Commerce) Rules, 2020</em>, VenopAI practices complete pricing transparency:
+                All prices are stated in Indian Rupees (INR). In accordance with the <em>Guidelines for Prevention and Regulation of Dark Patterns, 2023</em> and the <em>Consumer Protection (E-Commerce) Rules, 2020</em>, Venopai practices complete pricing transparency:
               </p>
               <ul className="mt-2 list-disc pl-5 space-y-1">
                 <li>No hidden fees, dripping charges, or pre-selected basket-sneaking items.</li>

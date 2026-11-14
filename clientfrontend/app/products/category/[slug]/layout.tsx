@@ -36,15 +36,15 @@ export async function generateMetadata({
       canonical: `/products/category/${slug}`,
     },
     openGraph: {
-      title: `${title} | VenopAI`,
+      title: `${title} | Venopai`,
       description,
       url: `/products/category/${slug}`,
-      siteName: "VenopAI",
+      siteName: "Venopai",
       images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | VenopAI`,
+      title: `${title} | Venopai`,
       description,
       images: ["/images/og/venopai_og_preview.jpg"],
     },

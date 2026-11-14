@@ -53,7 +53,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             Authentication Required
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-            Please sign in to access your VenopAI account, orders, design files, and engineering projects.
+            Please sign in to access your Venopai account, orders, design files, and engineering projects.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link

@@ -408,7 +408,7 @@ export default function ProjectsListPage() {
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[11px] text-zinc-500 mt-1.5">
-                  Per VenopAI project rules, projects are created with name only. Requests and files can be linked inside.
+                  Per Venopai project rules, projects are created with name only. Requests and files can be linked inside.
                 </p>
               </div>
 

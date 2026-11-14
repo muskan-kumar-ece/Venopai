@@ -119,7 +119,7 @@ function PublicTrackingContent() {
               Track Your Hardware Delivery
             </h1>
             <p className="mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-              Enter your VenopAI Order Number (e.g., <code className="font-mono text-zinc-800 dark:text-zinc-200">ORD-2026-0001</code>) or courier Air Waybill (AWB) number to track progress from manufacturing to your doorstep.
+              Enter your Venopai Order Number (e.g., <code className="font-mono text-zinc-800 dark:text-zinc-200">ORD-2026-0001</code>) or courier Air Waybill (AWB) number to track progress from manufacturing to your doorstep.
             </p>
 
             {/* Tracking Search Form */}

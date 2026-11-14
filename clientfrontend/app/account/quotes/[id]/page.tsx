@@ -241,7 +241,7 @@ export default function QuoteDetailPage({
         key: key_id,
         amount: amount_paise,
         currency: "INR",
-        name: "VenopAI Engineering",
+        name: "Venopai Engineering",
         description: `Quotation Payment #${quote.id.slice(0, 8)}`,
         order_id: gateway_order_id,
         prefill: {

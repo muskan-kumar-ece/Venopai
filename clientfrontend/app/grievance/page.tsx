@@ -48,7 +48,7 @@ export default function GrievanceRedressalPage() {
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400">Entity:</span>
                   <p className="font-semibold text-zinc-900 dark:text-white">
-                    VenopAI Technologies Pvt. Ltd.
+                    Venopai Technologies Pvt. Ltd.
                   </p>
                 </div>
                 <div>
@@ -68,7 +68,7 @@ export default function GrievanceRedressalPage() {
                 <div className="sm:col-span-2">
                   <span className="text-zinc-500 dark:text-zinc-400">Postal Address for Legal Notices:</span>
                   <p className="font-medium text-zinc-800 dark:text-zinc-200">
-                    VenopAI Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India
+                    Venopai Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India
                   </p>
                 </div>
               </div>

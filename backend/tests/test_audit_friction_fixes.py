@@ -226,7 +226,7 @@ class TestAuditFrictionFixes:
             assert res.status_code == 200
             assert "text/html" in res.headers["content-type"]
             html = res.text
-            assert "VenopAI Technologies" in html
+            assert "Venopai Technologies" in html
             assert "36ABCDE1234F1Z5" in html  # GSTIN (Telangana)
             assert order_num in html
             assert "TAX INVOICE" in html
@@ -235,7 +235,7 @@ class TestAuditFrictionFixes:
             token = create_access_token(subject=str(user.id), audience="customer")
             res_token = client.get(f"/api/v1/orders/{order.id}/invoice/download?token={token}")
             assert res_token.status_code == 200
-            assert "VenopAI Technologies" in res_token.text
+            assert "Venopai Technologies" in res_token.text
 
             # Test 3: Unauthorized user without token returns 401
             res_unauth = client.get(f"/api/v1/orders/{order.id}/invoice/download")

@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy & DPDP Data Protection Notice",
   description:
-    "VenopAI privacy and data protection commitments under the Digital Personal Data Protection Act, 2023. Transparent handling of customer CAD files, personal data, and security controls.",
+    "Venopai privacy and data protection commitments under the Digital Personal Data Protection Act, 2023. Transparent handling of customer CAD files, personal data, and security controls.",
   alternates: {
     canonical: "/privacy",
   },
@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
                 Notice to Data Principals (Section 5 & 6, DPDP Act 2023)
               </h2>
               <p className="mt-1 text-zinc-700 dark:text-zinc-300">
-                VenopAI Technologies Pvt. Ltd. operates as a <strong>Data Fiduciary</strong> under the Digital Personal Data Protection Act, 2023. This notice informs you of the personal data we collect, the specified purposes for which it is processed, how you can exercise your statutory rights, and our designated grievance redressal mechanism.
+                Venopai Technologies Pvt. Ltd. operates as a <strong>Data Fiduciary</strong> under the Digital Personal Data Protection Act, 2023. This notice informs you of the personal data we collect, the specified purposes for which it is processed, how you can exercise your statutory rights, and our designated grievance redressal mechanism.
               </p>
             </section>
 
@@ -62,7 +62,7 @@ export default function PrivacyPolicyPage() {
                 2. Absolute Confidentiality of Technical Engineering Files
               </h2>
               <p className="mt-1">
-                Gerber archives, IPC-2581 layout packages, Bill of Materials (BOM), 3D CAD models, firmware binaries, and schematics uploaded to VenopAI are classified as <strong>Strictly Confidential Intellectual Property</strong>.
+                Gerber archives, IPC-2581 layout packages, Bill of Materials (BOM), 3D CAD models, firmware binaries, and schematics uploaded to Venopai are classified as <strong>Strictly Confidential Intellectual Property</strong>.
               </p>
               <ul className="mt-2 list-disc pl-5 space-y-1">
                 <li>All engineering assets are encrypted in transit via TLS 1.3 and at rest with 256-bit AES encryption.</li>
@@ -123,7 +123,7 @@ export default function PrivacyPolicyPage() {
               <div className="mt-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60">
                 <p><strong>Designated Data Protection Officer (DPO):</strong> Rajesh Kumar, Compliance Lead</p>
                 <p><strong>Email:</strong> <a href="mailto:dpo@venopai.in" className="text-emerald-600 underline">dpo@venopai.in</a> / <a href="mailto:grievance@venopai.in" className="text-emerald-600 underline">grievance@venopai.in</a></p>
-                <p><strong>Postal Address:</strong> VenopAI Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India</p>
+                <p><strong>Postal Address:</strong> Venopai Technologies Pvt. Ltd., 3-40, Mallampet, Hyderabad, Telangana 500090, India</p>
                 <p className="mt-2 text-[11px] text-zinc-500">
                   You also retain the statutory right to file a complaint with the <strong>Data Protection Board of India (DPBI)</strong> if our Grievance Redressal Officer does not resolve your query within thirty (30) days.
                 </p>

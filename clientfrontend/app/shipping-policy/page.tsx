@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Shipping & Delivery Policy — Pan-India Logistics",
   description:
-    "VenopAI shipping guidelines: Express surface and air courier transit timelines across India, Shiprocket tracking integrations, ESD-safe packaging standards, and freight terms.",
+    "Venopai shipping guidelines: Express surface and air courier transit timelines across India, Shiprocket tracking integrations, ESD-safe packaging standards, and freight terms.",
   alternates: {
     canonical: "/shipping-policy",
   },
@@ -25,7 +25,7 @@ export default function ShippingPolicyPage() {
             <section>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white">1. Integrated Logistics Network</h2>
               <p className="mt-1">
-                All shipments from the VenopAI Hyderabad fabrication facility are managed through Shiprocket&apos;s enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
+                All shipments from the Venopai Hyderabad fabrication facility are managed through Shiprocket&apos;s enterprise delivery network, integrating premium courier carriers including Delhivery, Blue Dart, DTDC, and Shadowfax.
               </p>
             </section>
 

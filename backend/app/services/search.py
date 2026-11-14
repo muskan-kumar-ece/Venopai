@@ -6,6 +6,27 @@ from sqlalchemy import or_, func, case
 from app.models.catalog import Product, Category, Inventory
 from app.services.catalog import _paise, _rupees, _parse_json_list, _stock_status
 
+BRAND_QUERY_TERMS = {
+    "venopai",
+    "venop",
+    "venop ai",
+    "venopai electronics",
+    "venopai catalog",
+    "venopai hardware",
+    "venopai in",
+}
+
+BRAND_AUTOCOMPLETE_SUGGESTIONS = [
+    "Venopai Hardware Catalog",
+    "Venopai PCB Prototyping",
+    "Venopai Microcontrollers & Dev",
+    "Venopai Sensors & Modules",
+]
+
+def _is_brand_query(query: str) -> bool:
+    clean = query.strip().lower()
+    return clean in BRAND_QUERY_TERMS or clean.startswith("venopai ") or clean.startswith("venop ")
+
 def search_products(
     db: Session,
     query: str,
@@ -19,20 +40,34 @@ def search_products(
 ) -> Tuple[List[Product], int, List[dict]]:
     """SRCH-001: Keyword search over active products across name, description, and specifications.
     SRCH-002: If total == 0, returns category suggestions.
+    Brand-aware: Searching 'venopai' surfaces active catalog products rather than returning empty.
     """
     clean_q = query.strip()
-    pattern = f"%{clean_q}%"
+    is_brand = _is_brand_query(clean_q)
 
     q = db.query(Product).filter(Product.status == "active")
 
-    # Filter over name, description, specifications
-    q = q.filter(
-        or_(
-            Product.name.ilike(pattern),
-            Product.description.ilike(pattern),
-            Product.specifications.ilike(pattern),
+    # If it is a brand query, check if there is an additional specific term (e.g. "venopai stm32")
+    sub_term = clean_q
+    if is_brand:
+        for prefix in ("venopai electronics", "venopai catalog", "venopai hardware", "venopai in", "venopai", "venop ai", "venop"):
+            if sub_term.lower().startswith(prefix):
+                sub_term = sub_term[len(prefix):].strip()
+                break
+
+    if is_brand and not sub_term:
+        # Generic brand query (e.g. "venopai"): show all active products
+        pass
+    else:
+        target_term = sub_term if is_brand else clean_q
+        pattern = f"%{target_term}%"
+        q = q.filter(
+            or_(
+                Product.name.ilike(pattern),
+                Product.description.ilike(pattern),
+                Product.specifications.ilike(pattern),
+            )
         )
-    )
 
     # Category filter (M:N)
     if category_id:
@@ -107,6 +142,55 @@ def autocomplete(
     clean_q = query.strip()
     if len(clean_q) < 2:
         return ([], [], []) if include_rich else []
+
+    is_brand = _is_brand_query(clean_q)
+    if is_brand:
+        sub_term = clean_q
+        for prefix in ("venopai electronics", "venopai catalog", "venopai hardware", "venopai in", "venopai", "venop ai", "venop"):
+            if sub_term.lower().startswith(prefix):
+                sub_term = sub_term[len(prefix):].strip()
+                break
+
+        if not sub_term:
+            suggestions = list(BRAND_AUTOCOMPLETE_SUGGESTIONS)
+            if not include_rich:
+                return suggestions
+
+            product_rows = (
+                db.query(Product)
+                .filter(Product.status == "active")
+                .order_by(Product.created_at.desc())
+                .limit(4)
+                .all()
+            )
+            products = []
+            for p in product_rows:
+                imgs = _parse_json_list(p.images)
+                primary_img = imgs[0] if imgs else None
+                cat_name = p.categories[0].name if p.categories else None
+                products.append({
+                    "id": str(p.id),
+                    "name": p.name,
+                    "price": _rupees(p.price_paise) or "0.00",
+                    "primary_image_url": primary_img,
+                    "category_name": cat_name,
+                    "stock_status": _stock_status(p.inventory),
+                })
+
+            cat_rows = (
+                db.query(Category)
+                .filter(Category.is_active == True)
+                .order_by(Category.position.asc(), Category.name.asc())
+                .limit(3)
+                .all()
+            )
+            categories = [
+                {"id": str(c.id), "name": c.name, "slug": c.slug}
+                for c in cat_rows
+            ]
+            return suggestions, products, categories
+        else:
+            clean_q = sub_term
 
     pattern = f"%{clean_q}%"
     starts_pattern = f"{clean_q}%"

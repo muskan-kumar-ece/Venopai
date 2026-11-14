@@ -57,7 +57,7 @@ export default function AdminHomePage() {
           </div>
           <h1 className="text-xl font-bold text-white">Staff Authentication Required</h1>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            The VenopAI Operations Console is restricted to authorized operations, engineering, and fulfillment personnel.
+            The Venopai Operations Console is restricted to authorized operations, engineering, and fulfillment personnel.
           </p>
           <div className="pt-2">
             <Link

@@ -43,7 +43,7 @@ export function AdminHeader() {
           <Link href="/admin" className="flex items-center gap-2.5 group">
             <img
               src="/images/brand/venopai_wordmark.png"
-              alt="VenoPai"
+              alt="Venopai"
               className="h-6 w-auto object-contain brightness-110 group-hover:opacity-90 transition-opacity"
             />
             <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-300">

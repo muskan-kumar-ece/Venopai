@@ -80,13 +80,13 @@ export function Header() {
             {/* Desktop Brand Wordmark */}
             <img
               src="/images/brand/venopai_wordmark.png"
-              alt="VenoPai"
+              alt="Venopai"
               className="h-8 w-auto object-contain hidden sm:block dark:brightness-110 group-hover:opacity-95 transition-opacity"
             />
             {/* Mobile Compact Emblem */}
             <img
               src="/images/brand/venopai_cart_icon.png"
-              alt="VenoPai"
+              alt="Venopai"
               className="h-8 w-8 object-contain sm:hidden group-hover:scale-105 transition-transform"
             />
           </Link>

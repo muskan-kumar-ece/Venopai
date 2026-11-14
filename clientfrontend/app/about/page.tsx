@@ -3,18 +3,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About VenopAI — Hardware Realization & Engineering Platform",
+  title: "About Venopai — Hardware Realization & Engineering Platform",
   description:
-    "Learn about VenopAI: Our engineering mission, Hyderabad manufacturing facility, automated DFM pipelines, and verified hardware supply chain in India.",
+    "Learn about Venopai: Our engineering mission, Hyderabad manufacturing facility, automated DFM pipelines, and verified hardware supply chain in India.",
   alternates: {
     canonical: "/about",
   },
   openGraph: {
-    title: "About VenopAI | Engineering & Hardware Realization",
+    title: "About Venopai | Engineering & Hardware Realization",
     description:
       "Transforming schematics into physical silicon & systems. Turnkey PCB prototyping, circuit design, and components marketplace.",
     url: "/about",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
   },
 };
@@ -32,7 +32,7 @@ export default function AboutPage() {
             Transforming Schematics into Physical Silicon & Systems
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-600 dark:text-zinc-400">
-            VenopAI bridges the friction between electronics design and hardware fabrication. We combine intelligent engineering verification, instant DFM analysis, and advanced pick-and-place lines.
+            Venopai bridges the friction between electronics design and hardware fabrication. We combine intelligent engineering verification, instant DFM analysis, and advanced pick-and-place lines.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export default function AboutPage() {
           <div className="rounded-2xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Our Engineering Mission</h2>
             <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-              Hardware development has historically suffered from fractured supplier networks, opaque pricing, inconsistent lead times, and uncoordinated manufacturing steps. VenopAI provides a unified, deterministic pipeline from CAD schematic to populated circuit board, firmware flash, and automated bench testing.
+              Hardware development has historically suffered from fractured supplier networks, opaque pricing, inconsistent lead times, and uncoordinated manufacturing steps. Venopai provides a unified, deterministic pipeline from CAD schematic to populated circuit board, firmware flash, and automated bench testing.
             </p>
           </div>
 

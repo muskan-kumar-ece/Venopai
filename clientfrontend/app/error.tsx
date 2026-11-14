@@ -12,7 +12,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // Log error to console / Sentry
-    console.error("VenopAI Client Boundary Error:", error);
+    console.error("Venopai Client Boundary Error:", error);
   }, [error]);
 
   return (

@@ -85,7 +85,7 @@ export default function PCBDesignLandingPage() {
                 Production-Grade PCB &amp; Hardware Engineering
               </h1>
               <p className="text-base sm:text-lg text-neutral-400 max-w-2xl leading-relaxed">
-                From architecture to layout, thermal analysis, and BOM sourcing. Designed according to IPC standards and ready for instant transition to VenopAI prototype fabrication.
+                From architecture to layout, thermal analysis, and BOM sourcing. Designed according to IPC standards and ready for instant transition to Venopai prototype fabrication.
               </p>
               <div className="pt-2 flex flex-wrap items-center gap-4">
                 <Link

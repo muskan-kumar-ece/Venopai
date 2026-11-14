@@ -494,9 +494,9 @@ export default function SoftwareRequestIntakePage() {
                 <span className="font-semibold text-white">Intellectual Property & Mutual NDA Undertaking:</span>{" "}
                 I confirm that I own or hold valid licenses to submit these firmware specifications and source repositories. I agree to the{" "}
                 <Link href="/terms#confidentiality" target="_blank" className="text-indigo-400 underline font-medium">
-                  VenopAI Engineering Confidentiality Terms
+                  Venopai Engineering Confidentiality Terms
                 </Link>
-                . VenopAI guarantees that all uploaded technical artifacts and repository links are maintained under strict confidentiality and used exclusively for feasibility assessment and development. <span className="text-red-400">*</span>
+                . Venopai guarantees that all uploaded technical artifacts and repository links are maintained under strict confidentiality and used exclusively for feasibility assessment and development. <span className="text-red-400">*</span>
               </div>
             </label>
             <div className="flex items-center gap-2 text-[11px] text-neutral-400 pl-7">

@@ -72,7 +72,7 @@ export default function AccountDashboard() {
         const user = profileRes.status === 'fulfilled' ? profileRes.value?.data : null;
         
         const ordersList = ordersRes.status === 'fulfilled' ? ordersRes.value?.data || [] : [];
-        // Authoritative VenopAI Order Lifecycle: paid, processing, ready_to_ship, shipped
+        // Authoritative Venopai Order Lifecycle: paid, processing, ready_to_ship, shipped
         const activeOrders = ordersList.filter((o: { status: string }) =>
           ['paid', 'processing', 'ready_to_ship', 'shipped', 'created', 'confirmed'].includes(o.status?.toLowerCase())
         );

@@ -3,7 +3,7 @@ from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "VenopAI"
+    PROJECT_NAME: str = "Venopai"
     ENVIRONMENT: str = "development"
     API_V1_STR: str = "/api/v1"
     

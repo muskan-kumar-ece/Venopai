@@ -58,7 +58,7 @@ function AdminLoginForm() {
       <div className="mb-6 text-center">
         <img
           src="/images/brand/venopai_wordmark.png"
-          alt="VenoPai"
+          alt="Venopai"
           className="h-8 w-auto object-contain mx-auto mb-4 brightness-110"
         />
         <div className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-800/80 bg-emerald-950/60 px-3 py-1 text-xs font-mono text-emerald-400">

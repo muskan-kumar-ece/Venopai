@@ -70,7 +70,7 @@ const FEEDBACK_TYPES: FeedbackTypeOption[] = [
     id: "general_feedback",
     name: "General Experience",
     icon: "💬",
-    description: "Tell us about your experience using the VenopAI hardware platform.",
+    description: "Tell us about your experience using the Venopai hardware platform.",
     badge: "General",
     badgeColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60",
   },
@@ -216,7 +216,7 @@ export default function FeedbackPage() {
             CUSTOMER FEEDBACK & ERROR REPORTING
           </div>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl text-zinc-900 dark:text-white">
-            Help Shape VenopAI Engineering
+            Help Shape Venopai Engineering
           </h1>
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
             Report bugs, request hardware realization features, or flag an issue with your order. Every submission is triaged directly by our engineering and fulfillment staff.

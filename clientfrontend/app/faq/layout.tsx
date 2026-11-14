@@ -8,10 +8,10 @@ export const metadata: Metadata = {
     canonical: "/faq",
   },
   openGraph: {
-    title: "Frequently Asked Questions | VenopAI",
+    title: "Frequently Asked Questions | Venopai",
     description: "Everything you need to know about rapid PCB fabrication, assembly standards, payment terms, and delivery across India.",
     url: "/faq",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
   },
 };

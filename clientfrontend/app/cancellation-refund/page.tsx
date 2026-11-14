@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Cancellation & Refund Policy — Custom Fabrication & Catalog",
   description:
-    "Official Cancellation and Refund policy of VenopAI Technologies Pvt. Ltd. under the Consumer Protection (E-Commerce) Rules, 2020. Clear guidelines on stages of manufacturing cancellations.",
+    "Official Cancellation and Refund policy of Venopai Technologies Pvt. Ltd. under the Consumer Protection (E-Commerce) Rules, 2020. Clear guidelines on stages of manufacturing cancellations.",
   alternates: {
     canonical: "/cancellation-refund",
   },
@@ -35,7 +35,7 @@ export default function CancellationRefundPage() {
                 Policy Scope & Principles
               </h2>
               <p className="mt-1">
-                At VenopAI (operated by <strong className="text-zinc-900 dark:text-zinc-200">VenopAI Technologies Pvt. Ltd.</strong>), we operate two distinct commerce models: standard catalog hardware sales and customized contract engineering/PCB fabrication services. This policy delineates your statutory rights and conditions for order cancellations, replacements, and monetary refunds.
+                At Venopai (operated by <strong className="text-zinc-900 dark:text-zinc-200">Venopai Technologies Pvt. Ltd.</strong>), we operate two distinct commerce models: standard catalog hardware sales and customized contract engineering/PCB fabrication services. This policy delineates your statutory rights and conditions for order cancellations, replacements, and monetary refunds.
               </p>
             </section>
 
@@ -118,7 +118,7 @@ export default function CancellationRefundPage() {
               </div>
               <div className="mt-3 space-y-2">
                 <p>
-                  For valid defective returns approved by our engineering desk, VenopAI schedules reverse pickup through our logistics partner (<strong className="text-zinc-900 dark:text-zinc-200">Shiprocket</strong>) with full transit insurance at no charge to the customer.
+                  For valid defective returns approved by our engineering desk, Venopai schedules reverse pickup through our logistics partner (<strong className="text-zinc-900 dark:text-zinc-200">Shiprocket</strong>) with full transit insurance at no charge to the customer.
                 </p>
               </div>
             </section>

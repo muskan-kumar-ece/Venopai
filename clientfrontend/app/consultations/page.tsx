@@ -158,7 +158,7 @@ export default function ConsultationsLandingPage() {
                 {/* Footer deliverable badge */}
                 <div className="relative mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs font-mono">
                   <span className="text-zinc-400">Architect:</span>
-                  <span className="text-zinc-900 dark:text-white font-medium">VenopAI Principal PE</span>
+                  <span className="text-zinc-900 dark:text-white font-medium">Venopai Principal PE</span>
                 </div>
               </div>
             </div>

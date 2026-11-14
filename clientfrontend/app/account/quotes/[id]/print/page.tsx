@@ -167,7 +167,7 @@ export default function PrintableQuotePage({
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 pb-8 border-b-2 border-zinc-900">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-tight text-zinc-900">VenopAI Technologies</span>
+              <span className="text-2xl font-black tracking-tight text-zinc-900">Venopai Technologies</span>
               <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 font-mono">
                 ENGINEERING DEPT
               </span>
@@ -279,14 +279,14 @@ export default function PrintableQuotePage({
           <div className="max-w-md">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Institutional PO &amp; Banking Details</span>
             <div className="mt-2 rounded-xl bg-zinc-50 p-4 border border-zinc-200 text-[11px] text-zinc-600 leading-relaxed font-mono">
-              <strong>Account Name:</strong> VenopAI Technologies Pvt. Ltd.<br />
+              <strong>Account Name:</strong> Venopai Technologies Pvt. Ltd.<br />
               <strong>Bank:</strong> HDFC Bank Ltd., Kothrud Branch, Pune<br />
               <strong>Account Number:</strong> 50200084920194<br />
               <strong>IFSC Code:</strong> HDFC0000148<br />
               <strong>Account Type:</strong> Current Account
             </div>
             <p className="mt-2 text-[10px] text-zinc-400">
-              For online credit/debit/UPI payments, approve this quote inside the VenopAI customer portal to trigger immediate Razorpay gateway settlement.
+              For online credit/debit/UPI payments, approve this quote inside the Venopai customer portal to trigger immediate Razorpay gateway settlement.
             </p>
           </div>
 
@@ -330,7 +330,7 @@ export default function PrintableQuotePage({
           </div>
 
           <div className="text-right">
-            <div className="text-xs font-bold text-zinc-800">For VenopAI Technologies Pvt. Ltd.</div>
+            <div className="text-xs font-bold text-zinc-800">For Venopai Technologies Pvt. Ltd.</div>
             <div className="mt-4 font-mono text-xs font-bold text-emerald-700">
               ✓ Digitally Approved &amp; Validated
             </div>

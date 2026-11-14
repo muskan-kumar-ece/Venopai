@@ -18,18 +18,18 @@ def send_verification_email_task(self, email: str, token: str, full_name: str):
         verify_url = f"{base_url}/verify-email?token={token}&email={email}"
         html_body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Verify your VenopAI account</h2>
+            <h2>Verify your Venopai account</h2>
             <p>Hello {full_name},</p>
-            <p>Thank you for registering with VenopAI. Please verify your email address by clicking the link below:</p>
+            <p>Thank you for registering with Venopai. Please verify your email address by clicking the link below:</p>
             <p><a href="{verify_url}" style="display: inline-block; padding: 10px 20px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 4px;">Verify Email</a></p>
             <p>If you did not create an account, you can safely ignore this email.</p>
         </div>
         """
         resend_provider.send(
             to=email,
-            subject="Verify your VenopAI Account",
+            subject="Verify your Venopai Account",
             html_body=html_body,
-            text_body=f"Verify your VenopAI account: {verify_url}",
+            text_body=f"Verify your Venopai account: {verify_url}",
         )
         return True
     except Exception as exc:
@@ -46,7 +46,7 @@ def send_password_reset_email_task(self, email: str, token: str):
         reset_url = f"{base_url}/reset-password?token={token}"
         html_body = f"""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Reset your VenopAI password</h2>
+            <h2>Reset your Venopai password</h2>
             <p>We received a request to reset your password. Click the link below to set a new password:</p>
             <p><a href="{reset_url}" style="display: inline-block; padding: 10px 20px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 4px;">Reset Password</a></p>
             <p>If you did not request a password reset, please contact support immediately.</p>
@@ -54,9 +54,9 @@ def send_password_reset_email_task(self, email: str, token: str):
         """
         resend_provider.send(
             to=email,
-            subject="Reset your VenopAI Password",
+            subject="Reset your Venopai Password",
             html_body=html_body,
-            text_body=f"Reset your VenopAI password: {reset_url}",
+            text_body=f"Reset your Venopai password: {reset_url}",
         )
         return True
     except Exception as exc:

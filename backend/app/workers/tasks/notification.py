@@ -49,7 +49,7 @@ def send_notification_email_task(self, notification_id: str):
                 <h2 style="color: #0f172a;">{notification.title}</h2>
                 <p style="color: #334155; font-size: 16px; line-height: 1.5;">{notification.message}</p>
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="color: #64748b; font-size: 12px;">VenopAI Engineering Realization Platform</p>
+                <p style="color: #64748b; font-size: 12px;">Venopai Engineering Realization Platform</p>
             </div>
             """
             res = resend_provider.send(

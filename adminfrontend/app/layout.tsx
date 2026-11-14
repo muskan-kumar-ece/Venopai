@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VenopAI Admin — Manufacturing & Operations",
+  title: "Venopai Admin — Manufacturing & Operations",
   description: "Operational console for hardware realization, engineering requests, and custom manufacturing.",
   icons: {
     icon: [

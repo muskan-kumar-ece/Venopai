@@ -741,7 +741,7 @@ export default function AdminTeamPage() {
                 onClick={() => {
                   const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/login` : '/admin/login';
                   copyToClipboard(
-                    `VenopAI Admin Console Credentials:\nURL: ${loginUrl}\nEmail: ${createdCredential.email}\nPassword: ${createdCredential.temporary_password}\nRole: ${createdCredential.role}`
+                    `Venopai Admin Console Credentials:\nURL: ${loginUrl}\nEmail: ${createdCredential.email}\nPassword: ${createdCredential.temporary_password}\nRole: ${createdCredential.role}`
                   );
                 }}
                 className="rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 transition"

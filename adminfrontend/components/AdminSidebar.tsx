@@ -102,7 +102,7 @@ export function AdminSidebar() {
           <Link href="/admin" className="flex items-center gap-2 group">
             <img
               src="/images/brand/venopai_wordmark.png"
-              alt="VenoPai"
+              alt="Venopai"
               className="h-7 w-auto object-contain brightness-110 group-hover:opacity-90 transition-opacity"
             />
             <span className="text-[10px] font-mono uppercase bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">

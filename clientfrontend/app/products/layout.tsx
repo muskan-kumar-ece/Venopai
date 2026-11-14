@@ -5,24 +5,24 @@ export const metadata: Metadata = {
   description:
     "Shop genuine microcontrollers, sensors, power modules, ICs, development boards, and rapid prototyping kits with express pan-India delivery.",
   openGraph: {
-    title: "Hardware Catalog & Electronic Components | VenopAI",
+    title: "Hardware Catalog & Electronic Components | Venopai",
     description:
       "Shop genuine microcontrollers, sensors, power modules, ICs, development boards, and rapid prototyping kits with express pan-India delivery.",
     url: "/products",
-    siteName: "VenopAI",
+    siteName: "Venopai",
     images: [
       {
         url: "/images/og/venopai_og_preview.jpg",
         width: 1200,
         height: 630,
-        alt: "VenopAI Hardware Catalog",
+        alt: "Venopai Hardware Catalog",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hardware Catalog & Electronic Components | VenopAI",
+    title: "Hardware Catalog & Electronic Components | Venopai",
     description:
       "Shop genuine microcontrollers, sensors, power modules, ICs, and development boards.",
     images: ["/images/og/venopai_og_preview.jpg"],

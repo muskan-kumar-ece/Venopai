@@ -27,6 +27,7 @@ interface AutocompleteResponseData {
 }
 
 const TRENDING_SEARCHES = [
+  "Venopai Official Catalog",
   "ESP32-S3-WROOM-1 DevBoard",
   "STM32F401 BlackPill Core Board",
   "BME680 Environmental Sensor Module",

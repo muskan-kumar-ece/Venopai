@@ -41,7 +41,7 @@ const faqs: FAQItem[] = [
   },
   {
     category: "Security & IP",
-    q: "How does VenopAI protect intellectual property and proprietary design files?",
+    q: "How does Venopai protect intellectual property and proprietary design files?",
     a: "Your files are stored in private encrypted object storage and accessed strictly on a need-to-know basis by assigned fabrication engineers. We operate under mutual non-disclosure (NDA) policies and never share client schematics or firmware."
   },
 ];

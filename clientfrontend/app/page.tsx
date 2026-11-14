@@ -108,15 +108,15 @@ export default function HomePage() {
             <div className="lg:col-span-7 flex flex-col justify-center">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 w-fit">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                INTEGRATED HARDWARE PLATFORM
+                VENOPAI HARDWARE PLATFORM
               </div>
 
               <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl dark:text-white leading-[1.1]">
-                Turn Electronics Concepts into Production Silicon
+                <span className="text-emerald-600 dark:text-emerald-400">Venopai</span> — Turn Electronics Concepts into Production Silicon
               </h1>
 
               <p className="mt-5 text-lg leading-relaxed text-zinc-600 dark:text-zinc-400 max-w-2xl">
-                From schematic capture and high-speed PCB design to rapid multi-layer fabrication, firmware bring-up, and direct-to-bench component delivery.
+                Venopai delivers end-to-end electronics engineering: from schematic capture and high-speed PCB design to rapid multi-layer fabrication, firmware bring-up, and direct-to-bench component delivery across India.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -167,7 +167,7 @@ export default function HomePage() {
                   <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl bg-zinc-950">
                     <img
                       src="/images/brand/venopai_brand_card.jpg"
-                      alt="VenoPai - Tech Today. Brighter Tomorrow."
+                      alt="Venopai - Tech Today. Brighter Tomorrow."
                       className="h-full w-full object-cover object-center"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none" />
@@ -376,7 +376,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
-              The VenopAI Realization Pathway
+              The Venopai Realization Pathway
             </h2>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
               A transparent, automated pipeline from specification to working hardware
@@ -518,7 +518,7 @@ export default function HomePage() {
                             <div className="flex h-full w-full items-center justify-center text-zinc-400">
                               <img
                                 src="/images/brand/venopai_cart_icon.png"
-                                alt="VenoPai"
+                                alt="Venopai"
                                 className="h-12 w-12 object-contain opacity-30"
                               />
                             </div>

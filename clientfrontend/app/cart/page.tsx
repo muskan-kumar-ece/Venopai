@@ -261,7 +261,7 @@ export default function CartPage() {
           Sign in to view your cart
         </h2>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Your cart is saved securely to your VenopAI customer account across all devices.
+          Your cart is saved securely to your Venopai customer account across all devices.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Link
@@ -288,7 +288,7 @@ export default function CartPage() {
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-zinc-100/80 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3.5 shadow-xs">
             <img
               src="/images/brand/venopai_cart_icon.png"
-              alt="VenoPai Cart"
+              alt="Venopai Cart"
               className="h-full w-full object-contain"
             />
           </div>

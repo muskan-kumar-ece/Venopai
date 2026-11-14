@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         const title = `${product.name}${priceStr ? ` (${priceStr})` : ""}`;
         const description = product.description
           ? `${product.description.slice(0, 160)}...`
-          : `Buy ${product.name} at VenopAI. 100% genuine certified components with fast pan-India express delivery.`;
+          : `Buy ${product.name} at Venopai. 100% genuine certified components with fast pan-India express delivery.`;
 
         const canonicalUrl = `/products/${product.slug || id}`;
 
@@ -40,10 +40,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
           title,
           description,
           openGraph: {
-            title: `${title} | VenopAI`,
+            title: `${title} | Venopai`,
             description,
             url: canonicalUrl,
-            siteName: "VenopAI",
+            siteName: "Venopai",
             images: [
               {
                 url: previewImg,
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
           },
           twitter: {
             card: "summary_large_image",
-            title: `${title} | VenopAI`,
+            title: `${title} | Venopai`,
             description,
             images: [previewImg],
           },
@@ -77,7 +77,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       canonical: `/products/${id}`,
     },
     openGraph: {
-      title: "Hardware Product Details | VenopAI",
+      title: "Hardware Product Details | Venopai",
       images: [{ url: "/images/og/venopai_og_preview.jpg", width: 1200, height: 630 }],
     },
   };
@@ -118,7 +118,7 @@ export default async function ProductLayout({
           sku: product.sku || id,
           brand: {
             "@type": "Brand",
-            name: "VenopAI",
+            name: "Venopai",
           },
           offers: {
             "@type": "Offer",
@@ -131,7 +131,7 @@ export default async function ProductLayout({
                 : "https://schema.org/InStock",
             seller: {
               "@type": "Organization",
-              name: "VenopAI Technologies Pvt. Ltd.",
+              name: "Venopai Technologies Pvt. Ltd.",
             },
           },
         };
